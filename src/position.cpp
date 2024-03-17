@@ -1,0 +1,804 @@
+
+#include <algorithm>
+#include <string>
+#include <sstream>
+#include <cstring>
+#include <stdlib.h>
+
+#include "types.h"
+#include "position.h"
+#include "move.h"
+#include "accumulator.h"
+#include "precomputed.h"
+#include "zobrist.h"
+
+
+
+namespace Horsie {
+
+	Position::Position(const std::string& fen = InitialFEN, SearchThread* owningThread = NULL) {
+		Owner = *owningThread;
+		GamePly = 0;
+		FullMoves = 1;
+
+		bb = Bitboard();
+
+		_stateBlock = (StateInfo*)AlignedAllocZeroed((sizeof(StateInfo) * StateStackSize), AllocAlignment);
+
+		_SentinelStart = &_stateBlock[0];
+		_SentinelEnd = &_stateBlock[StateStackSize - 1];
+		State = &_stateBlock[0];
+
+		_accumulatorBlock = (Accumulator*)AlignedAllocZeroed((sizeof(Accumulator) * StateStackSize), AllocAlignment);
+		for (int i = 0; i < StateStackSize; i++)
+		{
+			(_stateBlock + i)->Accumulator = _accumulatorBlock + i;
+		}
+
+		for (int i = 0; i < StateStackSize; i++)
+		{
+			*(_stateBlock + i)->Accumulator = Accumulator();
+		}
+
+		LoadFromFEN(fen);
+	}
+
+	Position::~Position() {
+
+		for (int i = 0; i < StateStackSize; i++)
+		{
+			//Accumulator acc = *(_SentinelStart + i)->Accumulator;
+			//delete acc;
+		}
+
+		AlignedFree(_accumulatorBlock);
+		AlignedFree(_stateBlock);
+
+	}
+
+	void Position::MakeMove(Move move) {
+		CopyBlock(State + 1, State, StateCopySize);
+
+        //  Move onto the next state
+        State++;
+
+        State->HalfmoveClock++;
+        GamePly++;
+
+        if (ToMove == Color::BLACK)
+        {
+            FullMoves++;
+        }
+
+        int moveFrom = (int) move.From();
+        int moveTo = (int) move.To();
+
+        Piece ourPiece = (Piece) bb.GetPieceAtIndex(moveFrom);
+        Color ourColor = (Color) bb.GetColorAtIndex(moveFrom);
+
+        Piece theirPiece = (Piece) bb.GetPieceAtIndex(moveTo);
+        Color theirColor = ~ourColor;
+
+        if (ourPiece == Piece::KING)
+        {
+            if (move.IsCastle())
+            {
+                //  Move our rook and update the hash
+                theirPiece = Piece::NONE;
+                DoCastling(ourColor, moveFrom, moveTo, false);
+                State->KingSquares[ourColor] = move.CastlingKingSquare();
+            }
+            else
+            {
+                State->KingSquares[ourColor] = moveTo;
+            }
+
+            //  Remove all of our castling rights
+            if (ourColor == Color::WHITE)
+            {
+                Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::White);
+                State->CastleStatus &= ~CastlingStatus::White;
+            }
+            else
+            {
+                Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::Black);
+                State->CastleStatus &= ~CastlingStatus::Black;
+            }
+        }
+        else if (ourPiece == Piece::ROOK && State->CastleStatus != CastlingStatus::None)
+        {
+            //  If we just moved a rook, update st->CastleStatus
+
+            if (moveFrom == CastlingRookSquares[(int)CastlingStatus::WQ])
+            {
+                Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::WQ);
+                State->CastleStatus &= ~CastlingStatus::WQ;
+            }
+            else if (moveFrom == CastlingRookSquares[(int)CastlingStatus::WK])
+            {
+                Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::WK);
+                State->CastleStatus &= ~CastlingStatus::WK;
+            }
+            else if (moveFrom == CastlingRookSquares[(int)CastlingStatus::BQ])
+            {
+                Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::BQ);
+                State->CastleStatus &= ~CastlingStatus::BQ;
+            }
+            else if (moveFrom == CastlingRookSquares[(int)CastlingStatus::BK])
+            {
+                Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::BK);
+                State->CastleStatus &= ~CastlingStatus::BK;
+            }
+        }
+
+        if (theirPiece != Piece::NONE)
+        {
+            //  Remove their piece, and update the hash
+            bb.RemovePiece(moveTo, theirColor, theirPiece);
+            Zobrist::ToggleSquare(State->Hash, theirColor, theirPiece, moveTo);
+
+            if (theirPiece == Piece::ROOK)
+            {
+                //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
+                if (moveTo == CastlingRookSquares[(int)CastlingStatus::WQ])
+                {
+                    Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::WQ);
+                    State->CastleStatus &= ~CastlingStatus::WQ;
+                }
+                else if (moveTo == CastlingRookSquares[(int)CastlingStatus::WK])
+                {
+                    Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::WK);
+                    State->CastleStatus &= ~CastlingStatus::WK;
+                }
+                else if (moveTo == CastlingRookSquares[(int)CastlingStatus::BQ])
+                {
+                    Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::BQ);
+                    State->CastleStatus &= ~CastlingStatus::BQ;
+                }
+                else if (moveTo == CastlingRookSquares[(int)CastlingStatus::BK])
+                {
+                    Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::BK);
+                    State->CastleStatus &= ~CastlingStatus::BK;
+                }
+            }
+
+            if (theirPiece != Piece::PAWN)
+            {
+                MaterialCountNonPawn[theirColor] -= GetPieceValue(theirPiece);
+            }
+
+            State->CapturedPiece = theirPiece;
+
+            //  Reset the halfmove clock
+            State->HalfmoveClock = 0;
+        }
+        else
+        {
+            State->CapturedPiece = Piece::NONE;
+        }
+
+
+        int tempEPSquare = State->EPSquare;
+
+        if (State->EPSquare != EP_NONE)
+        {
+            //  Set st->EPSquare to 64 now.
+            //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
+            Zobrist::EnPassant(State->Hash, GetIndexFile(State->EPSquare));
+            State->EPSquare = EP_NONE;
+        }
+
+        if (ourPiece == Piece::PAWN)
+        {
+            if (move.IsEnPassant())
+            {
+
+                int idxPawn = ((bb.Pieces[Piece::PAWN] & SquareBB(tempEPSquare - 8)) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
+                bb.RemovePiece(idxPawn, theirColor, Piece::PAWN);
+                Zobrist::ToggleSquare(State->Hash, theirColor, Piece::PAWN, idxPawn);
+
+                //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
+                State->CapturedPiece = Piece::PAWN;
+            }
+            else if ((moveTo ^ moveFrom) == 16)
+            {
+                //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
+
+                //if (ourColor == Color::WHITE && (WhitePawnAttackMasks[moveTo - 8] & bb.Colors[Color::BLACK] & bb.Pieces[Piece::PAWN]) != 0)
+                if (ourColor == Color::WHITE && (pawn_attacks_bb<WHITE>(moveTo - 8) & bb.Colors[Color::BLACK] & bb.Pieces[Piece::PAWN]) != 0)
+                {
+                    State->EPSquare = moveTo - 8;
+                }
+                //else if (ourColor == Color::BLACK && (BlackPawnAttackMasks[moveTo + 8] & bb.Colors[Color::WHITE] & bb.Pieces[Piece::PAWN]) != 0)
+                else if (ourColor == Color::BLACK && (pawn_attacks_bb<BLACK>(moveTo - 8) & bb.Colors[Color::WHITE] & bb.Pieces[Piece::PAWN]) != 0)
+                {
+                    State->EPSquare = moveTo + 8;
+                }
+
+                if (State->EPSquare != EP_NONE)
+                {
+                    //  Update the En Passant file if we just changed st->EPSquare
+                    Zobrist::EnPassant(State->Hash, GetIndexFile(State->EPSquare));
+                }
+            }
+
+            //  Reset the halfmove clock
+            State->HalfmoveClock = 0;
+        }
+
+        if (!move.IsCastle())
+        {
+            bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
+            Zobrist::Move(State->Hash, moveFrom, moveTo, ourColor, ourPiece);
+        }
+
+        if (move.IsPromotion())
+        {
+            //  Get rid of the pawn we just put there
+            bb.RemovePiece(moveTo, ourColor, ourPiece);
+
+            //  And replace it with the promotion piece
+            bb.AddPiece(moveTo, ourColor, move.PromotionTo());
+
+            Zobrist::ToggleSquare(State->Hash, ourColor, ourPiece, moveTo);
+            Zobrist::ToggleSquare(State->Hash, ourColor, move.PromotionTo(), moveTo);
+
+            MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo());
+        }
+
+        Zobrist::ChangeToMove(State->Hash);
+        ToMove = ~ToMove;
+
+        State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
+        switch (popcount(State->Checkers))
+        {
+        case 0:
+            InCheck = false;
+            InDoubleCheck = false;
+            idxChecker = SQUARE_NB;
+            break;
+        case 1:
+            InCheck = true;
+            InDoubleCheck = false;
+            idxChecker = lsb(State->Checkers);
+            break;
+        case 2:
+            InCheck = false;
+            InDoubleCheck = true;
+            idxChecker = lsb(State->Checkers);
+            break;
+        }
+
+        SetCheckInfo();
+
+	}
+
+	void Position::UnmakeMove(Move move) {
+            int moveFrom = move.From();
+            int moveTo = move.To();
+
+            //  Assume that "we" just made the last move, and "they" are undoing it.
+            Piece ourPiece = (Piece) bb.GetPieceAtIndex(moveTo);
+            Color ourColor = ~ToMove;
+            Color theirColor = ToMove;
+
+            GamePly--;
+
+            if (move.IsPromotion())
+            {
+                //  Remove the promotion piece and replace it with a pawn
+                bb.RemovePiece(moveTo, ourColor, ourPiece);
+
+                ourPiece = Piece::PAWN;
+
+                bb.AddPiece(moveTo, ourColor, ourPiece);
+
+                MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo());
+            }
+            else if (move.IsCastle())
+            {
+                //  Put both pieces back
+                DoCastling(ourColor, moveFrom, moveTo, true);
+            }
+
+            if (!move.IsCastle())
+            {
+                //  Put our piece back to the square it came from.
+                bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+            }
+
+            if (State->CapturedPiece != Piece::NONE)
+            {
+                //  CapturedPiece is set for captures and en passant, so check which it was
+                if (move.IsEnPassant())
+                {
+                    //  If the move was an en passant, put the captured pawn back
+
+                    int idxPawn = moveTo + ShiftUpDir(ToMove);
+                    bb.AddPiece(idxPawn, theirColor, Piece::PAWN);
+                }
+                else
+                {
+                    //  Otherwise it was a capture, so put the captured piece back
+                    bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
+
+                    if (State->CapturedPiece != Pawn)
+                    {
+                        MaterialCountNonPawn[theirColor] += GetPieceValue(State->CapturedPiece);
+                    }
+                }
+            }
+
+            if (ourColor == Color::BLACK)
+            {
+                //  If ourColor == Color.Black (and ToMove == White), then we incremented FullMoves when this move was made.
+                FullMoves--;
+            }
+
+            State--;
+
+            switch (popcount(State->Checkers))
+            {
+                case 0:
+                    InCheck = false;
+                    InDoubleCheck = false;
+                    idxChecker = SQUARE_NB;
+                    break;
+                case 1:
+                    InCheck = true;
+                    InDoubleCheck = false;
+                    idxChecker = lsb(State->Checkers);
+                    break;
+                case 2:
+                    InCheck = false;
+                    InDoubleCheck = true;
+                    idxChecker = lsb(State->Checkers);
+                    break;
+            }
+
+
+            ToMove = ~ToMove;
+	}
+
+	void Position::MakeNullMove()
+	{
+        CopyBlock(State + 1, State, StateCopySize);
+        State->Accumulator->CopyTo(NextState()->Accumulator);
+
+        State++;
+
+        if (State->EPSquare != EP_NONE)
+        {
+            //  Set EnPassantTarget to 64 now.
+            //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
+            Zobrist::EnPassant(State->Hash, GetIndexFile(State->EPSquare));
+            State->EPSquare = EP_NONE;
+        }
+
+        Zobrist::ChangeToMove(State->Hash);
+        ToMove = ~ToMove;
+        State->HalfmoveClock++;
+
+        SetCheckInfo();
+	}
+
+	void Position::UnmakeNullMove()
+	{
+		State--;
+		ToMove = ~ToMove;
+	}
+
+	void Position::DoCastling(int ourColor, int from, int to, bool undo = false) {
+        bool kingSide = to > from;
+        int rfrom = to;
+        int rto = (kingSide ? (int)Square::F1 : (int)Square::D1) ^ (ourColor * 56);
+        to = (kingSide ? (int)Square::G1 : (int)Square::C1) ^ (ourColor * 56);
+
+        if (undo)
+        {
+            bb.RemovePiece(to, ourColor, KING);
+            bb.RemovePiece(rto, ourColor, ROOK);
+
+            bb.AddPiece(from, ourColor, KING);
+            bb.AddPiece(rfrom, ourColor, ROOK);
+        }
+        else
+        {
+            bb.RemovePiece(from, ourColor, KING);
+            bb.RemovePiece(rfrom, ourColor, ROOK);
+
+            bb.AddPiece(to, ourColor, KING);
+            bb.AddPiece(rto, ourColor, ROOK);
+
+            Zobrist::Move(State->Hash, from, to, ourColor, KING);
+            Zobrist::Move(State->Hash, rfrom, rto, ourColor, ROOK);
+        }
+	}
+
+	void Position::SetState() {
+        State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[~ToMove];
+        switch (popcount(State->Checkers))
+        {
+            case 0:
+                InCheck = false;
+                InDoubleCheck = false;
+                idxChecker = SQUARE_NB;
+                break;
+            case 1:
+                InCheck = true;
+                InDoubleCheck = false;
+                idxChecker = lsb(State->Checkers);
+                break;
+            case 2:
+                InCheck = false;
+                InDoubleCheck = true;
+                idxChecker = lsb(State->Checkers);
+                break;
+        }
+
+        SetCheckInfo();
+
+        State->Hash = Zobrist::GetHash(*this);
+	}
+
+	void Position::SetCheckInfo() {
+        State->BlockingPieces[WHITE] = bb.BlockingPieces(WHITE, &State->Pinners[BLACK], &State->Xrays[BLACK]);
+        State->BlockingPieces[BLACK] = bb.BlockingPieces(BLACK, &State->Pinners[WHITE], &State->Xrays[WHITE]);
+
+        int kingSq = State->KingSquares[~ToMove];
+
+        State->CheckSquares[PAWN] = PawnAttackMasks[~ToMove][kingSq];
+        State->CheckSquares[HORSIE] = PseudoAttacks[HORSIE][kingSq];
+        State->CheckSquares[BISHOP] = attacks_bb(BISHOP, kingSq, bb.Occupancy);
+        State->CheckSquares[ROOK] = attacks_bb(ROOK, kingSq, bb.Occupancy);
+        State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
+        State->CheckSquares[King] = 0;
+	}
+
+	void Position::SetCastlingStatus(int c, int rfrom) {
+        int kfrom = bb.KingIndex(c);
+        CastlingStatus cr = (c == WHITE && kfrom < rfrom) ? CastlingStatus::WK :
+                            (c == BLACK && kfrom < rfrom) ? CastlingStatus::BK :
+                            (c == WHITE) ?                  CastlingStatus::WQ :
+                                                            CastlingStatus::BQ;
+
+        CastlingRookSquares[(int)cr] = rfrom;
+
+        int kto = (((int)cr & (int)CastlingStatus::Kingside) != (int)CastlingStatus::None ? (int)Square::G1 : (int)Square::C1) ^ (56 * c);
+        int rto = (((int)cr & (int)CastlingStatus::Kingside) != (int)CastlingStatus::None ? (int)Square::F1 : (int)Square::D1) ^ (56 * c);
+
+        CastlingRookPaths[(int)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
+
+        State->CastleStatus = (CastlingStatus) ((int)State->CastleStatus | (int)cr);
+	}
+
+	ulong Position::HashAfter(Move m) {
+        ulong hash = State->Hash;
+
+        int from = m.From();
+        int to = m.To();
+        int us = bb.GetColorAtIndex(from);
+        int ourPiece = bb.GetPieceAtIndex(from);
+
+        if (bb.GetPieceAtIndex(to) != Piece::NONE)
+        {
+            Zobrist::ToggleSquare(hash, ~us, bb.GetPieceAtIndex(to), to);
+        }
+
+        Zobrist::Move(hash, from, to, us, ourPiece);
+        Zobrist::ChangeToMove(hash);
+
+        return hash;
+	}
+
+	bool Position::IsPseudoLegal(Move move) const {
+        int moveTo = move.To();
+        int moveFrom = move.From();
+
+        int pt = bb.GetPieceAtIndex(moveFrom);
+        if (pt == Piece::NONE)
+        {
+            //  There isn't a piece on the move's "from" square.
+            return false;
+        }
+
+        int pc = bb.GetColorAtIndex(moveFrom);
+        if (pc != ToMove)
+        {
+            //  This isn't our piece, so we can't move it.
+            return false;
+        }
+
+        if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && pc == bb.GetColorAtIndex(moveTo) && !move.IsCastle())
+        {
+            //  There is a piece on the square we are moving to, and it is ours, so we can't capture it.
+            //  The one exception is castling, which is encoded as king captures rook.
+            return false;
+        }
+
+        if (pt == Pawn)
+        {
+            if (move.IsEnPassant())
+            {
+                return State->EPSquare != EP_NONE && (SquareBB(moveTo - ShiftUpDir(ToMove)) & bb.Pieces[Pawn] & bb.Colors[~ToMove]) != 0;
+            }
+
+            ulong empty = ~bb.Occupancy;
+            if ((moveTo ^ moveFrom) != 16)
+            {
+                //  This is NOT a pawn double move, so it can only go to a square it attacks or the empty square directly above/below.
+                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                    || (empty & SquareBB(moveTo)) != 0;
+            }
+            else
+            {
+                //  This IS a pawn double move, so it can only go to a square it attacks,
+                //  or the empty square 2 ranks above/below provided the square 1 rank above/below is also empty.
+                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                    || ((empty & SquareBB(moveTo - ShiftUpDir(pc))) != 0 && (empty & SquareBB(moveTo)) != 0);
+            }
+
+        }
+
+        //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
+        //  Pieces can only move to squares that they attack, with the one exception of queenside castling
+        return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
+	}
+
+	bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[~ToMove], State->BlockingPieces[ToMove]); }
+
+	bool Position::IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces) const {
+        int moveFrom = move.From();
+        int moveTo = move.To();
+
+        int pt = bb.GetPieceAtIndex(moveFrom);
+
+        if (pt == NONE)
+        {
+            return false;
+        }
+
+        if (InDoubleCheck && pt != Piece::KING)
+        {
+            //	Must move king out of double check
+            return false;
+        }
+
+        int ourColor = bb.GetColorAtIndex(moveFrom);
+        int theirColor = ~ourColor;
+
+        if (InCheck)
+        {
+            //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
+
+            if (pt == Piece::KING)
+            {
+                //  We need to move to a square that they don't attack.
+                //  We also need to consider (NeighborsMask[moveTo] & SquareBB[theirKing]), because bb.AttackersTo does NOT include king attacks
+                //  and we can't move to a square that their king attacks.
+                return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(moveFrom)) & bb.Colors[theirColor]) | (PseudoAttacks[KING][moveTo] & SquareBB(theirKing))) == 0;
+            }
+
+            int checker = idxChecker;
+            if (((LineBB[ourKing][checker] & SquareBB(moveTo)) != 0)
+                || (move.IsEnPassant() && GetIndexFile(moveTo) == GetIndexFile(checker)))
+            {
+                //  This move is another piece which has moved into the LineBB between our king and the checking piece.
+                //  This will be legal as long as it isn't pinned.
+
+                return pinnedPieces == 0 || (pinnedPieces & SquareBB(moveFrom)) == 0;
+            }
+
+            //  This isn't a king move and doesn't get us out of check, so it's illegal.
+            return false;
+        }
+
+        if (pt == Piece::KING)
+        {
+            if (move.IsCastle())
+            {
+                CastlingStatus thisCr = move.RelevantCastlingRight();
+                int rookSq = CastlingRookSquares[(int)thisCr];
+
+                if ((SquareBB(rookSq) & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
+                {
+                    //  There isn't a rook on the square that we are trying to castle towards.
+                    return false;
+                }
+
+                if (IsChess960 && (State->BlockingPieces[ourColor] & SquareBB(moveTo)) != 0)
+                {
+                    //  This rook was blocking a check, and it would put our king in check
+                    //  once the rook and king switched places
+                    return false;
+                }
+
+                int kingTo = (moveTo > moveFrom ? (int)Square::G1 : (int)Square::C1) ^ (ourColor * 56);
+                ulong them = bb.Colors[theirColor];
+                int dir = (moveFrom < kingTo) ? -1 : 1;
+                for (int sq = kingTo; sq != moveFrom; sq += dir)
+                {
+                    if ((bb.AttackersTo(sq, bb.Occupancy) & them) != 0)
+                    {
+                        //  Moving here would put us in check
+                        return false;
+                    }
+                }
+
+                return ((bb.AttackersTo(kingTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor])
+                        | (PseudoAttacks[KING][kingTo] & SquareBB(theirKing))) == 0;
+            }
+
+            //  We can move anywhere as long as it isn't attacked by them.
+
+            //  SquareBB[ourKing] is masked out from bb.Occupancy to prevent kings from being able to move backwards out of check,
+            //  meaning a king on B1 in check from a rook on C1 can't actually go to A1.
+            return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor])
+                    | (PseudoAttacks[KING][moveTo] & SquareBB(theirKing))) == 0;
+        }
+        else if (move.IsEnPassant())
+        {
+            //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
+            //  to make sure it is still legal
+
+            int idxPawn = moveTo - ShiftUpDir(ourColor);
+            ulong moveMask = SquareBB(moveFrom) | SquareBB(moveTo);
+
+            //  This is only legal if our king is NOT attacked after the EP is made
+            return (bb.AttackersTo(ourKing, bb.Occupancy ^ (moveMask | SquareBB(idxPawn))) & bb.Colors[~ourColor]) == 0;
+        }
+
+        //  Otherwise, this move is legal if:
+        //  The piece we are moving isn't a blocker for our king
+        //  The piece is a blocker for our king, but it is moving along the same ray that it had been blocking previously.
+        //  (i.e. a rook on B1 moving to A1 to capture a rook that was pinning it to our king on C1)
+        
+        return ((State->BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
+	}
+
+	bool Position::IsDraw() const {
+        return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition();
+	}
+
+	bool Position::IsInsufficientMaterial() const {
+        if ((bb.Pieces[Piece::Queen] | bb.Pieces[Piece::Rook] | bb.Pieces[Piece::Pawn]) != 0)
+        {
+            return false;
+        }
+
+        ulong knights = popcount(bb.Pieces[Piece::Knight]);
+        ulong bishops = popcount(bb.Pieces[Piece::Bishop]);
+
+        //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
+        //  Some organizations classify 2 knights a draw and others don't.
+        return (knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2);
+	}
+
+	bool Position::IsThreefoldRepetition() const {
+        //  At least 8 moves must be made before a draw can occur.
+        if (GamePly < 8)
+        {
+            return false;
+        }
+
+        ulong currHash = State->Hash;
+
+        //  Beginning with the current state's Hash, step backwards in increments of 2 until reaching the first move that we made.
+        //  If we encounter the current hash 2 additional times, then this is a draw.
+
+        int count = 0;
+        StateInfo* temp = State;
+        for (int i = 0; i < GamePly - 1; i += 2)
+        {
+            if (temp->Hash == currHash)
+            {
+                count++;
+
+                if (count == 3)
+                {
+                    return true;
+                }
+            }
+
+            if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart)
+            {
+                break;
+            }
+
+            temp -= 2;
+        }
+        return false;
+	}
+
+	bool Position::IsFiftyMoveDraw() const {
+        return State->HalfmoveClock >= 100;
+	}
+
+	ulong Position::Perft(int depth) {
+        return 1;
+	}
+
+	void Position::LoadFromFEN(const std::string& fen) {
+        printf("in LoadFromFEN\n");
+        bb.Reset();
+        FullMoves = 1;
+        State = StartingState();
+        MemClear(State, 0, StateCopySize);
+        State->CastleStatus = CastlingStatus::None;
+        State->HalfmoveClock = 0;
+        GamePly = 0;
+
+        printf("in LoadFromFEN 1\n");
+
+        unsigned char col, row, token;
+        size_t idx;
+        int sq = (int) Square::A8;
+        std::istringstream ss(fen);
+        ss >> std::noskipws;
+
+        while ((ss >> token) && !isspace(token))
+        {
+            if (isdigit(token))
+                sq += (token - '0') * EAST;  // Advance the given number of files
+
+            else if (token == '/')
+                sq += 2 * SOUTH;
+
+            else if ((idx = PieceToChar.find(tolower(token))) != std::string::npos)
+            {
+                int pc = isupper(PieceToChar[idx]) ? WHITE : BLACK;
+                int pt = Piece(idx);
+
+                bb.AddPiece(sq, pc, pt);
+                ++sq;
+            }
+        }
+
+        ss >> token;
+        ToMove = (token == 'w' ? WHITE : BLACK);
+        ss >> token;
+
+        while ((ss >> token) && !isspace(token)) {
+            int rsq = SQUARE_NB;
+            int color = isupper(token) ? WHITE : BLACK;
+            char upper = toupper(token);
+
+            if (upper == 'K') {
+                for (rsq = ((int)Square::H1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; --rsq) { }
+            }
+            else if (upper == 'Q') {
+                for (rsq = ((int)Square::A1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; ++rsq) { }
+            }
+            else if (upper >= 'A' && upper <= 'H') {
+                IsChess960 = true;
+                rsq = CoordToIndex((int)upper - 'A', (0 ^ (color * 7)));
+            }
+            else
+                continue;
+
+            SetCastlingStatus(color, rsq);
+        }
+
+        if (((ss >> col) && (col >= 'a' && col <= 'h')) && ((ss >> row) && (row == (ToMove == WHITE ? '6' : '3'))))
+        {
+            State->EPSquare = CoordToIndex(File(col - 'a'), Rank(row - '1'));
+        }
+        
+        // 5-6. Halfmove clock and fullmove number
+        ss >> std::skipws >> State->HalfmoveClock >> FullMoves;
+
+        State->KingSquares[WHITE] = bb.KingIndex(WHITE);
+        State->KingSquares[BLACK] = bb.KingIndex(BLACK);
+
+        SetState();
+
+        State->CapturedPiece = Piece::NONE;
+
+        MaterialCountNonPawn[Color::WHITE] = bb.MaterialCount(Color::WHITE, true);
+        MaterialCountNonPawn[Color::BLACK] = bb.MaterialCount(Color::BLACK, true);
+	}
+
+	std::string Position::GetFEN() {
+        return "meow";
+	}
+}
