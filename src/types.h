@@ -98,10 +98,10 @@ inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 constexpr Color operator~(Color c) { return Color(c ^ 1); }
 
 constexpr CastlingStatus operator~(CastlingStatus l) { return ~l; }
-constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return l & r; }
-constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return l | r; }
-constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l &= r; }
-constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l |= r; }
+//constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) & int(r)); }
+//constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) | int(r)); }
+//constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l &= r; }
+//constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l |= r; }
 
 constexpr Square operator^(Square s1, Square s2) { return Square(int(s1) ^ int(s2)); }
 constexpr Square operator-(Square s1, Square s2) { return Square(int(s1) - int(s2)); }
@@ -196,20 +196,20 @@ namespace Horsie {
 
 	constexpr int ShiftUpDir(int c) { return c == WHITE ? NORTH : SOUTH; };
 
-	template<Direction D>
-	constexpr ulong Shift(ulong b) {
-		return D == NORTH ? b << 8
-			: D == SOUTH ? b >> 8
-			: D == NORTH + NORTH ? b << 16
-			: D == SOUTH + SOUTH ? b >> 16
-			: D == EAST ? (b & ~FileHBB) << 1
-			: D == WEST ? (b & ~FileABB) >> 1
-			: D == NORTH_EAST ? (b & ~FileHBB) << 9
-			: D == NORTH_WEST ? (b & ~FileABB) << 7
-			: D == SOUTH_EAST ? (b & ~FileHBB) >> 7
-			: D == SOUTH_WEST ? (b & ~FileABB) >> 9
-			: 0;
-	}
+    template<Direction D>
+    constexpr ulong Shift(ulong b) {
+        return D == NORTH         ? b << 8
+             : D == SOUTH         ? b >> 8
+             : D == NORTH + NORTH ? b << 16
+             : D == SOUTH + SOUTH ? b >> 16
+             : D == EAST          ? (b & ~FileHBB) << 1
+             : D == WEST          ? (b & ~FileABB) >> 1
+             : D == NORTH_EAST    ? (b & ~FileHBB) << 9
+             : D == NORTH_WEST    ? (b & ~FileABB) << 7
+             : D == SOUTH_EAST    ? (b & ~FileHBB) >> 7
+             : D == SOUTH_WEST    ? (b & ~FileABB) >> 9
+                                  : 0;
+    }
 
 	constexpr ulong Forward(int c, ulong b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
 

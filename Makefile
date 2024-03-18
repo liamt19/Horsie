@@ -5,14 +5,14 @@ ARCH := -march=native
 _THIS     := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 _ROOT     := $(_THIS)
 
-LDFLAGS :=
+LDFLAGS := 
 
 # Debug compiler flags
-DEBUG_CXXFLAGS := -g3 -O1 -DDEBUG -fsanitize=address -fsanitize=undefined 
+DEBUG_CXXFLAGS := -std=c++20 -g3 -O1 -DDEBUG -fsanitize=address -fsanitize=undefined 
 
 #BUILD_CXXFLAGS := -DNDEBUG -O3
 
-BUILD_CXXFLAGS := -g3 -O1 -DDEBUG
+BUILD_CXXFLAGS := -std=c++20 -g3 -O1 -DDEBUG
 
 # Directories
 SRC_DIR := src

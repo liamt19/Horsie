@@ -1,17 +1,115 @@
 
-
-
+#include "enums.h"
+#include "types.h"
 #include "position.h"
 #include "movegen.h"
-#include "types.h"
+
 #include "precomputed.h"
 
+//constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return l & r; }
 
 namespace Horsie {
 
-    constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return l & r; }
+namespace {
+
+
+int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
+{
+    Bitboard bb = pos.bb;
+    ulong occ = bb.Occupancy;
+    ulong us = bb.Colors[pos.ToMove];
+    int ourKing = pos.State->KingSquares[pos.ToMove];
+    
+    if (pos.ToMove == WHITE && (ourKing == (int)Square::E1 || pos.IsChess960))
+    {
+        if ((pos.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None
+            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WK]) == 0
+            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WK]) & us) != 0)
+        {
+            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WK]);
+            list[size - 1].Move.SetCastle();
+        }
+
+        if ((pos.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None
+            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WQ]) == 0
+            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WQ]) & us) != 0)
+        {
+            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WQ]);
+            list[size - 1].Move.SetCastle();
+        }
+    }
+    else if (pos.ToMove == BLACK && (ourKing == (int)Square::E8 || pos.IsChess960))
+    {
+        if ((pos.State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None
+            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BK]) == 0
+            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BK]) & us) != 0)
+        {
+            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BK]);
+            list[size - 1].Move.SetCastle();
+        }
+
+        if ((pos.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None
+            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BQ]) == 0
+            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BQ]) & us) != 0)
+        {
+            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BQ]);
+            list[size - 1].Move.SetCastle();
+        }
+    }
+
+    return size;
+}
+
 
 template <MoveGenType GenType>
+int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size) {
+    constexpr bool loudMoves = GenType == GenLoud;
+    constexpr bool quiets = GenType == GenQuiets;
+    constexpr bool quietChecks = GenType == GenQChecks;
+    constexpr bool evasions = GenType == GenEvasions;
+    constexpr bool nonEvasions = GenType == GenNonEvasions;
+    
+    int highPiece = Knight;
+    int lowPiece = Queen;
+
+    if (quiets && isCapture)
+    {
+        return size;
+    }
+
+    if (evasions || nonEvasions)
+    {
+        //  All promotions are valid
+        highPiece = Queen;
+        lowPiece = Knight;
+    }
+
+    if (loudMoves)
+    {
+        //  GenLoud makes all promotions for captures, and only makes Queens for non-capture promotions
+        highPiece = Queen;
+        lowPiece = isCapture ? Knight : Queen;
+    }
+
+    if (quiets)
+    {
+        //  GenQuiets only makes underpromotions
+        lowPiece = Knight;
+        highPiece = Rook;
+    }
+
+    //  GenQChecks makes nothing.
+
+    for (int promotionPiece = lowPiece; promotionPiece <= highPiece; promotionPiece++)
+    {
+        list[size++].Move.SetNew(from, promotionSquare, promotionPiece);
+    }
+
+    return size;
+}
+
+
+template <Color stm, MoveGenType GenType>
 int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
     constexpr bool loudMoves = GenType == GenLoud;
     constexpr bool quiets = GenType == GenQuiets;
@@ -20,18 +118,17 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
     constexpr bool nonEvasions = GenType == GenNonEvasions;
 
 
-    ulong rank7 = (pos.ToMove == WHITE) ? Rank7BB : Rank2BB;
-    ulong rank3 = (pos.ToMove == WHITE) ? Rank3BB : Rank6BB;
+    ulong rank7 = (stm == WHITE) ? Rank7BB : Rank2BB;
+    ulong rank3 = (stm == WHITE) ? Rank3BB : Rank6BB;
 
-    constexpr int up = ShiftUpDir(pos.ToMove);
-
-    int theirColor = ~pos.ToMove;
+    constexpr int theirColor = ~stm;
+    constexpr Direction up = (Direction) ShiftUpDir(stm);
 
     Bitboard bb = pos.bb;
 
-    ulong us = bb.Colors[pos.ToMove];
+    ulong us = bb.Colors[stm];
     ulong them = bb.Colors[theirColor];
-    ulong captureSquares = evasions ? pos.State()->Checkers : them;
+    ulong captureSquares = evasions ? pos.State->Checkers : them;
 
     constexpr Direction UpLeft =  ((Direction) up + Direction::WEST);
     constexpr Direction UpRight = ((Direction) up + Direction::EAST);
@@ -48,8 +145,8 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
     if (!loudMoves)
     {
         //  Include pawn pushes
-        ulong moves = Forward(pos.ToMove, notPromotingPawns) & emptySquares;
-        ulong twoMoves = Forward(pos.ToMove, moves & rank3) & emptySquares;
+        ulong moves = Forward(stm, notPromotingPawns) & emptySquares;
+        ulong twoMoves = Forward(stm, moves & rank3) & emptySquares;
 
         if (evasions)
         {
@@ -157,8 +254,39 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
     return size;
 }
 
+template <Color stm>
+int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong targets, int size)
+{
+    // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
+    // This is far more convenient though
 
-template <MoveGenType GenType>
+    Bitboard bb = pos.bb;
+    ulong us = bb.Colors[pos.ToMove];
+    ulong them = bb.Colors[~pos.ToMove];
+    ulong occ = us | them;
+
+    ulong ourPieces = bb.Pieces[pt] & bb.Colors[pos.ToMove];
+    while (ourPieces != 0)
+    {
+        int idx = poplsb(ourPieces);
+        ulong moves = bb.AttackMask(idx, pos.ToMove, pt, occ) & targets;
+
+        if (checks && (pt == QUEEN || ((pos.State->BlockingPieces[~pos.ToMove] & SquareBB(idx)) == 0)))
+        {
+            moves &= pos.State->CheckSquares[pt];
+        }
+
+        while (moves != 0)
+        {
+            int to = poplsb(moves);
+            list[size++].Move.SetNew(idx, to);
+        }
+    }
+
+    return size;
+}
+
+template <Color stm, MoveGenType GenType>
 int GenAll(const Position& pos, ScoredMove* list, int size) {
     constexpr bool loudMoves = GenType == GenLoud;
     constexpr bool quiets = GenType == GenQuiets;
@@ -184,11 +312,11 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
                 : loudMoves ? them
                 : ~occ;
 
-        size = GenPawns<GenType>(pos, list, targets, size);
-        size = GenNormal(pos, list, Knight, quietChecks, targets, size);
-        size = GenNormal(pos, list, Bishop, quietChecks, targets, size);
-        size = GenNormal(pos, list, Rook, quietChecks, targets, size);
-        size = GenNormal(pos, list, Queen, quietChecks, targets, size);
+        size = GenPawns<stm, GenType>(pos, list, targets, size);
+        size = GenNormal<stm>(pos, list, Knight, quietChecks, targets, size);
+        size = GenNormal<stm>(pos, list, Bishop, quietChecks, targets, size);
+        size = GenNormal<stm>(pos, list, Rook, quietChecks, targets, size);
+        size = GenNormal<stm>(pos, list, Queen, quietChecks, targets, size);
     }
 
     //  If we are doing non-captures with check and our king isn't blocking a check, then skip generating king moves
@@ -221,133 +349,56 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
 }
 
 
-int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong targets, int size)
-{
-    // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
-    // This is far more convenient though
-
-    Bitboard bb = pos.bb;
-    ulong us = bb.Colors[pos.ToMove];
-    ulong them = bb.Colors[~pos.ToMove];
-    ulong occ = us | them;
-
-    ulong ourPieces = bb.Pieces[pt] & bb.Colors[pos.ToMove];
-    while (ourPieces != 0)
-    {
-        int idx = poplsb(ourPieces);
-        ulong moves = bb.AttackMask(idx, pos.ToMove, pt, occ) & targets;
-
-        if (checks && (pt == QUEEN || ((pos.State->BlockingPieces[~pos.ToMove] & SquareBB(idx)) == 0)))
-        {
-            moves &= pos.State->CheckSquares[pt];
-        }
-
-        while (moves != 0)
-        {
-            int to = poplsb(moves);
-            list[size++].Move.SetNew(idx, to);
-        }
-    }
-
-    return size;
 }
-
-
 
 template <MoveGenType GenType>
-int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size) {
-    constexpr bool loudMoves = GenType == GenLoud;
-    constexpr bool quiets = GenType == GenQuiets;
-    constexpr bool quietChecks = GenType == GenQChecks;
-    constexpr bool evasions = GenType == GenEvasions;
-    constexpr bool nonEvasions = GenType == GenNonEvasions;
-    
-    int highPiece = Knight;
-    int lowPiece = Queen;
+int Generate(const Position& pos, ScoredMove* moveList, int) {
 
-    if (quiets && isCapture)
-    {
-        return size;
-    }
-
-    if (evasions || nonEvasions)
-    {
-        //  All promotions are valid
-        highPiece = Queen;
-        lowPiece = Knight;
-    }
-
-    if (loudMoves)
-    {
-        //  GenLoud makes all promotions for captures, and only makes Queens for non-capture promotions
-        highPiece = Queen;
-        lowPiece = isCapture ? Knight : Queen;
-    }
-
-    if (quiets)
-    {
-        //  GenQuiets only makes underpromotions
-        lowPiece = Knight;
-        highPiece = Rook;
-    }
-
-    //  GenQChecks makes nothing.
-
-    for (int promotionPiece = lowPiece; promotionPiece <= highPiece; promotionPiece++)
-    {
-        list[size++].Move.SetNew(from, promotionSquare, promotionPiece);
-    }
-
-    return size;
+    Color us = pos.ToMove;
+    return pos.State->Checkers && us == WHITE ? GenAll<WHITE, GenEvasions>(pos, moveList, 0) :
+           pos.State->Checkers && us == BLACK ? GenAll<BLACK, GenEvasions>(pos, moveList, 0) :
+                                  us == WHITE ? GenAll<WHITE, GenNonEvasions>(pos, moveList, 0) :
+                                                GenAll<BLACK, GenNonEvasions>(pos, moveList, 0);
 }
 
+#define TEMPLATES
+#ifdef TEMPLATES
+template int Generate<GenLoud>(const Position&, ScoredMove*, int);
+template int Generate<GenQuiets>(const Position&, ScoredMove*, int);
+template int Generate<GenQChecks>(const Position&, ScoredMove*, int);
+template int Generate<GenEvasions>(const Position&, ScoredMove*, int);
+template int Generate<GenNonEvasions>(const Position&, ScoredMove*, int);
+#endif
 
-int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
-{
-    Bitboard bb = pos.bb;
-    ulong occ = bb.Occupancy;
-    ulong us = bb.Colors[pos.ToMove];
+template<>
+int Generate<GenLegal>(const Position& pos, ScoredMove* moveList, int size) {
+
+    int numMoves = pos.State->Checkers ? Generate<GenEvasions>(pos, moveList, 0) :
+                                         Generate<GenNonEvasions>(pos, moveList, 0);
+
     int ourKing = pos.State->KingSquares[pos.ToMove];
-    
-    if (pos.ToMove == WHITE && (ourKing == (int)Square::E1 || pos.IsChess960))
-    {
-        if ((pos.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None
-            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WK]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WK]) & us) != 0)
-        {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WK]);
-            list[size - 1].Move.SetCastle();
-        }
+    int theirKing = pos.State->KingSquares[~pos.ToMove];
+    ulong pinned = pos.State->BlockingPieces[pos.ToMove];
 
-        if ((pos.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None
-            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WQ]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WQ]) & us) != 0)
-        {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WQ]);
-            list[size - 1].Move.SetCastle();
-        }
-    }
-    else if (pos.ToMove == BLACK && (ourKing == (int)Square::E8 || pos.IsChess960))
-    {
-        if ((pos.State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None
-            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BK]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BK]) & us) != 0)
-        {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BK]);
-            list[size - 1].Move.SetCastle();
-        }
+    ScoredMove* curr = moveList;
+    ScoredMove* end = moveList + numMoves;
 
-        if ((pos.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None
-            && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BQ]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BQ]) & us) != 0)
+    while (curr != end)
+    {
+        if (!pos.IsLegal(curr->Move, ourKing, theirKing, pinned))
         {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BQ]);
-            list[size - 1].Move.SetCastle();
+            *curr = *--end;
+            numMoves--;
+        }
+        else
+        {
+            ++curr;
         }
     }
 
-    return size;
+    return numMoves;
 }
+
 
 }
 

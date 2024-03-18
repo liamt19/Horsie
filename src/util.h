@@ -21,7 +21,7 @@ namespace Horsie {
     constexpr const int MaxDepth = 64;
     constexpr const int MaxPly = 256;
 
-    constexpr std::string_view PieceToChar("pnbrqk");
+    constexpr std::string_view PieceToChar("pnbrqk ");
 
     inline int FenToPiece(char fenChar)
     {

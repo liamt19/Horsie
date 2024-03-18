@@ -11,7 +11,7 @@
 
 namespace Zobrist {
 
-	constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return l & r; }
+	//constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return l & r; }
 
 	static ulong ColorPieceSquareHashes[COLOR_NB][PIECE_NB][SQUARE_NB];
 	static ulong CastlingRightsHashes[4];

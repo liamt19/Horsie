@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cstring>
 #include <stdlib.h>
+#include <iostream>
 
 #include "types.h"
 #include "position.h"
@@ -719,7 +720,7 @@ namespace Horsie {
 	}
 
 	void Position::LoadFromFEN(const std::string& fen) {
-        printf("in LoadFromFEN\n");
+
         bb.Reset();
         FullMoves = 1;
         State = StartingState();
@@ -727,8 +728,6 @@ namespace Horsie {
         State->CastleStatus = CastlingStatus::None;
         State->HalfmoveClock = 0;
         GamePly = 0;
-
-        printf("in LoadFromFEN 1\n");
 
         unsigned char col, row, token;
         size_t idx;
@@ -746,18 +745,16 @@ namespace Horsie {
 
             else if ((idx = PieceToChar.find(tolower(token))) != std::string::npos)
             {
-                int pc = isupper(PieceToChar[idx]) ? WHITE : BLACK;
+                int pc = isupper(token) ? WHITE : BLACK;
                 int pt = Piece(idx);
 
                 bb.AddPiece(sq, pc, pt);
                 ++sq;
             }
         }
-
         ss >> token;
         ToMove = (token == 'w' ? WHITE : BLACK);
         ss >> token;
-
         while ((ss >> token) && !isspace(token)) {
             int rsq = SQUARE_NB;
             int color = isupper(token) ? WHITE : BLACK;
@@ -796,9 +793,37 @@ namespace Horsie {
 
         MaterialCountNonPawn[Color::WHITE] = bb.MaterialCount(Color::WHITE, true);
         MaterialCountNonPawn[Color::BLACK] = bb.MaterialCount(Color::BLACK, true);
+        
 	}
 
-	std::string Position::GetFEN() {
+	std::string Position::GetFEN() const {
         return "meow";
 	}
+
+    std::ostream& operator<<(std::ostream& os, const Position& pos) {
+
+        os << "\n +---+---+---+---+---+---+---+---+\n";
+
+        for (Rank r = RANK_8; r >= RANK_1; --r)
+        {
+            for (File f = FILE_A; f <= FILE_H; ++f) {
+                int sq = CoordToIndex(f, r);
+                int pt = pos.bb.GetPieceAtIndex(sq);
+                os << " | ";
+                if (pt != Piece::NONE) {
+                    char c = PieceToChar[pt];
+                    os << (pos.bb.GetColorAtIndex(sq) == WHITE ? (char)toupper(c) : c);
+                }
+                else {
+                    os << " ";
+                }
+            }
+
+            os << " | " << (1 + r) << "\n +---+---+---+---+---+---+---+---+\n";
+        }
+
+        os << "   a   b   c   d   e   f   g   h\n" << "\nFen: " << pos.GetFEN() << "\n";
+
+        return os;
+    }
 }

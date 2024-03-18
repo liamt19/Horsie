@@ -109,6 +109,10 @@ enum TTNodeType
 };
 
 
+constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) & int(r)); }
+constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) | int(r)); }
+constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l &= r; }
+constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l |= r; }
 
 
 #endif

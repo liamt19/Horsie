@@ -3,6 +3,7 @@
 #include "zobrist.h"
 #include "precomputed.h"
 #include "position.h"
+#include "movegen.h"
 
 using namespace Horsie;
 
@@ -19,10 +20,14 @@ int main()
     SearchThread thread = SearchThread();
 
     Position pos = Position(InitialFEN, &thread);
-
     std::cout << "Created pos" << std::endl;
 
-    std::cin.get();
+    ScoredMove movelist[MoveListSize];
+    ScoredMove* list = &movelist[0];
+    int size = Generate<GenLegal>(pos, list);
+    std::cout << "GenAll returned " << size << std::endl;
 
+
+    std::cin.get();
     return 0;
 }

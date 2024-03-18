@@ -69,8 +69,7 @@ namespace Horsie {
 
 		ulong Perft(int depth);
 
-		std::string GetFEN();
-
+		std::string GetFEN() const;
 	private:
 		
 		Accumulator* _accumulatorBlock;
@@ -79,6 +78,8 @@ namespace Horsie {
 		StateInfo* _SentinelStart;
 		StateInfo* _SentinelEnd;
 	};
+
+	std::ostream& operator<<(std::ostream& os, const Position& pos);
 
 }
 
