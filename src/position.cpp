@@ -814,6 +814,8 @@ namespace Horsie {
 
             //std::cout << "Unmade move " << m << std::endl;
         }
+
+        return n;
     }
 
     ulong Position::SplitPerft(int depth) {

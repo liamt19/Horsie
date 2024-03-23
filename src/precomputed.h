@@ -17,6 +17,9 @@ namespace Horsie {
 	extern ulong RookRays[SQUARE_NB];
 	extern ulong BishopRays[SQUARE_NB];
 
+    extern int LogarithmicReductionTable[MaxPly][MoveListSize];
+    extern int LMPTable[2][MaxDepth];
+
     namespace Precomputed {
         void init();
     }

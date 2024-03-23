@@ -61,6 +61,8 @@ namespace Horsie {
 
 		constexpr bool IsEmpty() const { return _depth == 0; }
 
+		void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false);
+
 	private:
 		const int KeyShift = 64 - (sizeof(ushort) * 8);
 		const int DepthOffset = 7;

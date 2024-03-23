@@ -55,4 +55,24 @@ namespace Horsie {
 
     }
 
+    void TTEntry::Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV) {
+        
+        //if (!move.IsNull() || (ushort)key != this.Key)
+        if (move != Move::Null() || (ushort)key != Key)
+        {
+            BestMove = move;
+        }
+
+        if (nodeType == TTNodeType::Exact
+            || (ushort)key != Key
+            || depth + (isPV ? 2 : 0) > _depth - 11)
+        {
+            Key = (ushort)key;
+            SetScore(score);
+            SetStatEval(statEval);
+            SetDepth((sbyte)depth);
+            _AgePVType = (sbyte)(TT.Age | ((isPV ? 1 : 0) << 2) | (int)nodeType);
+        }
+    }
+
 }

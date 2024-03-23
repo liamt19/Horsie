@@ -20,6 +20,7 @@ void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleBenchCommand(Position& pos);
 void HandleListMovesCommand(Position& pos);
+void HandleGoCommand(Position& pos, std::istringstream& is);
 
 
 int main()
@@ -55,6 +56,8 @@ int main()
             HandleBenchCommand(pos);
         else if (token == "list")
             HandleListMovesCommand(pos);
+        else if (token == "go")
+            HandleGoCommand(pos, is);
 
 
     } while (true);
@@ -87,7 +90,7 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
 
 
 void HandleDisplayPosition(Position& pos) {
-    std::cout << pos << std::endl;
+    cout << pos << endl;
 }
 
 
@@ -98,12 +101,12 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
     if (is && is.peek() != EOF)
 	    is >> depth;
 
-    std::cout << "\nSplitPerft(" << depth << "): " << std::endl;
+    cout << "\nSplitPerft(" << depth << "): " << endl;
     auto timeStart = std::chrono::high_resolution_clock::now();
     ulong nodes = pos.SplitPerft(depth);
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
-	 std::cout << "\nTotal: " << nodes << " in " << duration << std::endl << std::endl;
+	 cout << "\nTotal: " << nodes << " in " << duration << endl << endl;
 }
 
 
@@ -121,15 +124,15 @@ void HandleBenchCommand(Position& pos) {
 
         ulong ourNodes = pos.Perft(5);
         if (ourNodes != nodes) {
-            std::cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << std::endl;
+            cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << endl;
         }
         else {
-            std::cout << "[" << fen << "] Passed, Expected: " << nodes << " Got: " << ourNodes << std::endl;
+            cout << "[" << fen << "] Passed, Expected: " << nodes << " Got: " << ourNodes << endl;
         }
     }
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
-    std::cout << "Done in " << duration << std::endl;
+    cout << "Done in " << duration << endl;
 }
 
 
@@ -138,18 +141,27 @@ void HandleListMovesCommand(Position& pos) {
     ScoredMove pseudos[MoveListSize] = {};
     int pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
 
-    std::cout << "Pseudo: ";
+    cout << "Pseudo: ";
     for (size_t i = 0; i < pseudoSize; i++)
-        std::cout << Move::ToString(pseudos[i].Move) << " ";
-    std::cout << std::endl;
+        cout << Move::ToString(pseudos[i].Move) << " ";
+    cout << endl;
 
     ScoredMove legals[MoveListSize] = {};
     int legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
 
-    std::cout << "Legal: ";
+    cout << "Legal: ";
     for (size_t i = 0; i < legalsSize; i++)
     {
-        std::cout << Move::ToString(legals[i].Move) << " ";
+        cout << Move::ToString(legals[i].Move) << " ";
     }
-    std::cout << std::endl;
+    cout << endl;
+}
+
+
+void HandleGoCommand(Position& pos, std::istringstream& is) {
+    SearchThread thread = SearchThread();
+    thread.Reset();
+    cout << "Calling Search" << endl;
+    thread.Search(pos);
+
 }

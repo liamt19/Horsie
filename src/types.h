@@ -127,6 +127,14 @@ constexpr bool HasPext = true;
 constexpr bool HasPext = false;
 #endif
 
+    inline void prefetch(void* b) {
+#if defined(_MSC_VER)
+        _mm_prefetch((char*)b, _MM_HINT_T0);
+#else
+        __builtin_prefetch(b);
+#endif
+    }
+
 
     inline int popcount(ulong b) {
 
@@ -280,9 +288,10 @@ namespace Horsie {
         return NONE;
     }
 
-    inline std::string IndexToString(int sq) {
-        return "" + GetFileChar(sq % 8) + ((sq / 8) + 1);
+    inline int MakePiece(int pc, int pt) {
+        return (pc * 2) + pt;
     }
+
 
     class Accumulator;
     struct StateInfo {

@@ -169,12 +169,7 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
         while (moves != 0)
         {
             int to = poplsb(moves);
-			//std::cout << "pawn move from " << IndexToString(to - up) << " to " << IndexToString(up) << std::endl;
-            //std::cout << "pawn move from " << (to - up) << " to " << (to);
-            //list[size++].Move = Move(to - up, to);
 			list[size++].Move = Move(to - up, to);
-
-            //std::cout << "\ttos: [" << list[size - 1].Move.SmithNotation(pos.IsChess960) << "]" << std::endl;
         }
 
         while (twoMoves != 0)

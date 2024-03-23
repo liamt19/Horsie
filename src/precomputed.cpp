@@ -23,6 +23,9 @@ namespace Horsie {
 	Magic RookMagics[SQUARE_NB];
 	Magic BishopMagics[SQUARE_NB];
 
+    int LogarithmicReductionTable[MaxPly][MoveListSize];
+    int LMPTable[2][MaxDepth];
+
 	namespace {
 		ulong RookTable[0x19000];   // To store rook attacks
 		ulong BishopTable[0x1480];  // To store bishop attacks
@@ -101,6 +104,28 @@ namespace Horsie {
                     XrayBB[s1][s2] = 0;
                 }
             }
+        }
+
+
+        for (int depth = 0; depth < MaxPly; depth++)
+        {
+            for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
+            {
+                LogarithmicReductionTable[depth][moveIndex] = (int)((std::log(depth) * std::log(moveIndex) / 2.25) + 0.25);
+
+                if (LogarithmicReductionTable[depth][moveIndex] < 1)
+                {
+                    LogarithmicReductionTable[depth][moveIndex] = 0;
+                }
+            }
+        }
+
+        const int not_improving = 0;
+        const int improving = 1;
+        for (int depth = 0; depth < MaxPly; depth++)
+        {
+            LMPTable[not_improving][depth] = (3 + (depth * depth)) / 2;
+            LMPTable[    improving][depth] =  3 + (depth * depth);
         }
     }
 

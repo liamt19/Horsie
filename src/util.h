@@ -4,7 +4,6 @@
 #define UTIL_H
 
 #include <cstdint>
-#include <algorithm>
 #include <string>
 
 #include "types.h"
@@ -22,6 +21,23 @@ namespace Horsie {
     constexpr const int MaxPly = 256;
 
     constexpr std::string_view PieceToChar("pnbrqk ");
+
+
+    constexpr short ScoreNone = 32760;
+    constexpr int ScoreInfinite = 31200;
+    constexpr int ScoreMate = 30000;
+    constexpr int ScoreDraw = 0;
+    constexpr int ScoreTTWin = ScoreMate - 512;
+    constexpr int ScoreTTLoss = -ScoreTTWin;
+    constexpr int ScoreMateMax = ScoreMate - 256;
+    constexpr int ScoreMatedMax = -ScoreMateMax;
+    constexpr int ScoreAssuredWin = 20000;
+    constexpr int ScoreWin = 10000;
+
+    constexpr int AlphaStart = -ScoreMate;
+    constexpr int BetaStart = ScoreMate;
+
+
 
     inline int FenToPiece(char fenChar)
     {
@@ -48,6 +64,63 @@ namespace Horsie {
         default: return 0;
         }
     }
+
+    constexpr int GetSEEValue(int pt) {
+        switch (pt) {
+        case PAWN: return 112;
+        case HORSIE: return 794;
+        case BISHOP: return 864;
+        case ROOK: return 1324;
+        case QUEEN: return 2107;
+        default: return 0;
+        }
+    }
+
+    constexpr int MakeMateScore(int ply) {
+		return -ScoreMate + ply;
+	}
+
+    constexpr short MakeTTScore(short score, int ply)
+    {
+        if (score == ScoreNone)
+            return score;
+
+        if (score >= ScoreTTWin)
+            return (short)(score + ply);
+
+        if (score <= ScoreTTLoss)
+            return (short)(score - ply);
+
+        return score;
+    }
+
+    constexpr short MakeNormalScore(short ttScore, int ply)
+    {
+        if (ttScore == ScoreNone)
+            return ttScore;
+
+        if (ttScore >= ScoreTTWin)
+            return (short)(ttScore - ply);
+
+        if (ttScore <= ScoreTTLoss)
+            return (short)(ttScore + ply);
+
+        return ttScore;
+    }
+
+
+
+    constexpr bool IsScoreMate(int score)
+    {
+#if defined(_MSC_VER)
+        auto v = (score < 0 ? -score : score) - ScoreMate;
+        return (v < 0 ? -v : v) < MaxDepth;
+#else
+        return std::abs(std::abs(score) - ScoreMate) < MaxDepth;
+#endif
+    }
+
+
 
     const std::string EtherealFENs_D5[] = {
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1;4865609",

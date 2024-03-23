@@ -1,6 +1,6 @@
 
 # Compiler and flags
-CXX := g++
+CXX := clang++
 ARCH := -march=native
 _THIS     := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 _ROOT     := $(_THIS)
@@ -12,7 +12,7 @@ DEBUG_CXXFLAGS := -std=c++20 -g3 -O1 -DDEBUG -fsanitize=address -fsanitize=undef
 
 #BUILD_CXXFLAGS := -DNDEBUG -O3
 
-BUILD_CXXFLAGS := -std=c++23 -g3 -ggdb3 -O0 -DDEBUG
+BUILD_CXXFLAGS := -std=c++23 -O3 -flto -DNDEBUG
 
 # Directories
 SRC_DIR := src

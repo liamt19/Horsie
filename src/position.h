@@ -9,7 +9,7 @@
 #include "bitboard.h"
 #include "search.h"
 
-constexpr int StateStackSize = 2048;
+constexpr int StateStackSize = 1024;
 
 namespace Horsie {
 
