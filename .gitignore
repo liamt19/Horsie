@@ -33,3 +33,9 @@
 
 ./.vscode
 ./build
+/Horsie/x64/Debug
+/.vs/Horsie
+/Horsie.sln
+/Horsie.vcxproj
+/Horsie.vcxproj.filters
+/Horsie.vcxproj.user
