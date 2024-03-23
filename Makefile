@@ -8,11 +8,11 @@ _ROOT     := $(_THIS)
 LDFLAGS := 
 
 # Debug compiler flags
-DEBUG_CXXFLAGS := -std=c++20 -g3 -O1 -DDEBUG -fsanitize=address -fsanitize=undefined 
+DEBUG_CXXFLAGS := -std=c++20 -g3 -O1 -DDEBUG -fsanitize=address -fsanitize=undefined
 
 #BUILD_CXXFLAGS := -DNDEBUG -O3
 
-BUILD_CXXFLAGS := -std=c++20 -g3 -O1 -DDEBUG
+BUILD_CXXFLAGS := -std=c++23 -g3 -ggdb3 -O0 -DDEBUG
 
 # Directories
 SRC_DIR := src

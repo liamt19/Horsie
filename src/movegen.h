@@ -39,7 +39,7 @@ int GenCastlingMoves(const Position& pos, ScoredMove* list, int size);
 #endif
 
 template<MoveGenType>
-int Generate(const Position& pos, ScoredMove* moveList);
+int Generate(const Position& pos, ScoredMove* moveList, int size);
 
 
 

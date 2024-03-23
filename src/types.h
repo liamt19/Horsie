@@ -70,6 +70,8 @@ constexpr ulong Rank8BB = Rank1BB << (8 * 7);
 
 constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+#define N_TABS(n) \
+        for (int _n_ = 0; _n_ < n; n++) std::cout << "\t";
 
 #define ENABLE_INCR_OPERATORS_ON(T) \
         inline T& operator++(T& d) { return d = T(int(d) + 1); } \
@@ -97,7 +99,7 @@ inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 // Toggle color
 constexpr Color operator~(Color c) { return Color(c ^ 1); }
 
-constexpr CastlingStatus operator~(CastlingStatus l) { return ~l; }
+//constexpr CastlingStatus operator~(CastlingStatus l) { return ~l; }
 //constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) & int(r)); }
 //constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) | int(r)); }
 //constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l &= r; }
@@ -272,6 +274,10 @@ namespace Horsie {
         if (pieceName == "Queen") return QUEEN;
         if (pieceName == "King") return KING;
         return NONE;
+    }
+
+    inline std::string IndexToString(int sq) {
+        return "" + GetFileChar(sq % 8) + ((sq / 8) + 1);
     }
 
     struct Accumulator;

@@ -11,6 +11,7 @@
 #include "move.h"
 #include "accumulator.h"
 #include "precomputed.h"
+#include "movegen.h"
 #include "zobrist.h"
 
 
@@ -80,6 +81,9 @@ namespace Horsie {
         Piece theirPiece = (Piece) bb.GetPieceAtIndex(moveTo);
         Color theirColor = ~ourColor;
 
+        assert(theirPiece != Piece::KING);
+        assert(theirPiece == Piece::NONE || bb.GetColorAtIndex(moveTo) != ourColor);
+
         if (ourPiece == Piece::KING)
         {
             if (move.IsCastle())
@@ -109,7 +113,6 @@ namespace Horsie {
         else if (ourPiece == Piece::ROOK && State->CastleStatus != CastlingStatus::None)
         {
             //  If we just moved a rook, update st->CastleStatus
-
             if (moveFrom == CastlingRookSquares[(int)CastlingStatus::WQ])
             {
                 Zobrist::Castle(State->Hash, State->CastleStatus, CastlingStatus::WQ);
@@ -437,7 +440,17 @@ namespace Horsie {
                 break;
         }
 
+        for (size_t i = 0; i <= 5; i++)
+        {
+            ulong m = State->CheckSquares[i] & (bb.Colors[~ToMove] & bb.Pieces[i]);
+            if (m && idxChecker == SQUARE_NB) {
+                assert(false);
+            }
+        }
+
         SetCheckInfo();
+
+        
 
         State->Hash = Zobrist::GetHash(*this);
 	}
@@ -450,8 +463,8 @@ namespace Horsie {
 
         State->CheckSquares[PAWN] = PawnAttackMasks[~ToMove][kingSq];
         State->CheckSquares[HORSIE] = PseudoAttacks[HORSIE][kingSq];
-        State->CheckSquares[BISHOP] = attacks_bb(BISHOP, kingSq, bb.Occupancy);
-        State->CheckSquares[ROOK] = attacks_bb(ROOK, kingSq, bb.Occupancy);
+        State->CheckSquares[BISHOP] = attacks_bb<BISHOP>(kingSq, bb.Occupancy);
+        State->CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
         State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
         State->CheckSquares[King] = 0;
 	}
@@ -716,7 +729,54 @@ namespace Horsie {
 	}
 
 	ulong Position::Perft(int depth) {
-        return 1;
+        if (depth == 0) {
+			return 1;
+		}
+		
+		ScoredMove movelist[MoveListSize];
+		ScoredMove* list = &movelist[0];
+		int size = Generate<GenLegal>(*this, list, 0);
+        //for (int i = 0; i < depth; i++)
+        //    std::cout << "\t";
+
+        //std::cout << "Made " << size << " moves " << std::endl;
+		//std::cout << "Made " << size << " moves at depth " << depth << std::endl;
+		
+        StateInfo temp = StateInfo();
+        CopyBlock(&temp, State, StateCopySize);
+
+		ulong n = 0;
+		for (int i = 0; i < size; i++) {
+            Move m = list[i].Move;
+			
+            //std::cout << "Doing move " << m << std::endl;
+
+            MakeMove(m);
+            n += Perft(depth - 1);
+            UnmakeMove(m);
+
+            for (int n = 0; n < 6; n++) {
+                assert (State->CheckSquares[n] == temp.CheckSquares[n]);
+            }
+
+            for (int n = 0; n < 2; n++) {
+                assert (State->KingSquares[n] == temp.KingSquares[n]);
+                assert (State->BlockingPieces[n] == temp.BlockingPieces[n]);
+                assert (State->Pinners[n] == temp.Pinners[n]);
+                assert (State->Xrays[n] == temp.Xrays[n]);
+            }
+
+            assert(State->Hash == temp.Hash);
+            assert(State->Checkers == temp.Checkers);
+            assert(State->CastleStatus == temp.CastleStatus);
+            assert(State->HalfmoveClock == temp.HalfmoveClock);
+            assert(State->EPSquare == temp.EPSquare);
+            assert(State->CapturedPiece == temp.CapturedPiece);
+
+            //std::cout << "Unmade move " << m << std::endl;
+		}
+		
+		return n;
 	}
 
 	void Position::LoadFromFEN(const std::string& fen) {

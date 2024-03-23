@@ -6,6 +6,8 @@
 
 #include "precomputed.h"
 
+#include <iostream>
+
 //constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return l & r; }
 
 namespace Horsie {
@@ -166,7 +168,12 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
         while (moves != 0)
         {
             int to = poplsb(moves);
-            list[size++].Move.SetNew(to - up, to);
+			//std::cout << "pawn move from " << IndexToString(to - up) << " to " << IndexToString(up) << std::endl;
+            //std::cout << "pawn move from " << (to - up) << " to " << (to);
+            //list[size++].Move = Move(to - up, to);
+			list[size++].Move = Move(to - up, to);
+
+            //std::cout << "\ttos: [" << list[size - 1].Move.SmithNotation(pos.IsChess960) << "]" << std::endl;
         }
 
         while (twoMoves != 0)
@@ -261,17 +268,25 @@ int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong 
     // This is far more convenient though
 
     Bitboard bb = pos.bb;
-    ulong us = bb.Colors[pos.ToMove];
-    ulong them = bb.Colors[~pos.ToMove];
+    ulong us = bb.Colors[stm];
+    ulong them = bb.Colors[~stm];
     ulong occ = us | them;
 
-    ulong ourPieces = bb.Pieces[pt] & bb.Colors[pos.ToMove];
+    ulong ourPieces = bb.Pieces[pt] & bb.Colors[stm];
     while (ourPieces != 0)
     {
         int idx = poplsb(ourPieces);
-        ulong moves = bb.AttackMask(idx, pos.ToMove, pt, occ) & targets;
+        ulong moves = bb.AttackMask(idx, stm, pt, occ) & targets;
 
-        if (checks && (pt == QUEEN || ((pos.State->BlockingPieces[~pos.ToMove] & SquareBB(idx)) == 0)))
+        if (moves & bb.KingMask(stm)) {
+            assert(false);
+        }
+
+        if (moves & bb.KingMask(~stm)) {
+            assert(false);
+        }
+
+        if (checks && (pt == QUEEN || ((pos.State->BlockingPieces[~stm] & SquareBB(idx)) == 0)))
         {
             moves &= pos.State->CheckSquares[pt];
         }
@@ -295,12 +310,12 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
     constexpr bool nonEvasions = GenType == GenNonEvasions;
 
     Bitboard bb = pos.bb;
-    ulong us = bb.Colors[pos.ToMove];
-    ulong them = bb.Colors[~pos.ToMove];
+    ulong us = bb.Colors[stm];
+    ulong them = bb.Colors[~stm];
     ulong occ = us | them;
 
-    int ourKing = pos.State->KingSquares[pos.ToMove];
-    int theirKing = pos.State->KingSquares[~pos.ToMove];
+    int ourKing = pos.State->KingSquares[stm];
+    int theirKing = pos.State->KingSquares[~stm];
 
     ulong targets = 0;
 
@@ -320,7 +335,7 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
     }
 
     //  If we are doing non-captures with check and our king isn't blocking a check, then skip generating king moves
-    if (!(quietChecks && (pos.State->BlockingPieces[~pos.ToMove] & SquareBB(ourKing)) == 0))
+    if (!(quietChecks && (pos.State->BlockingPieces[~stm] & SquareBB(ourKing)) == 0))
     {
         ulong moves = PseudoAttacks[KING][ourKing] & (evasions ? ~us : targets);
         if (quietChecks)
@@ -329,7 +344,7 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
             //  then only generate moves that get the king off of any shared ranks/files.
             //  Note we can't move our king from one shared ray to another since we can only move diagonally 1 square
             //  and their king would be attacking ours.
-            moves &= ~bb.AttackMask(theirKing, ~pos.ToMove, QUEEN, occ);
+            moves &= ~bb.AttackMask(theirKing, ~stm, QUEEN, occ);
         }
 
         while (moves != 0)
@@ -338,7 +353,7 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
             list[size++].Move.SetNew(ourKing, to);
         }
 
-        if ((quiets || nonEvasions) && ((pos.State->CastleStatus & (pos.ToMove == WHITE ? CastlingStatus::White : CastlingStatus::Black)) != CastlingStatus::None))
+        if ((quiets || nonEvasions) && ((pos.State->CastleStatus & (stm == WHITE ? CastlingStatus::White : CastlingStatus::Black)) != CastlingStatus::None))
         {
             //  Only do castling moves if we are doing non-captures or we aren't in check.
             size = GenCastlingMoves(pos, list, size);
@@ -352,7 +367,7 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
 }
 
 template <MoveGenType GenType>
-int Generate(const Position& pos, ScoredMove* moveList, int) {
+int Generate(const Position& pos, ScoredMove* moveList, int size) {
 
     Color us = pos.ToMove;
     return pos.State->Checkers && us == WHITE ? GenAll<WHITE, GenEvasions>(pos, moveList, 0) :

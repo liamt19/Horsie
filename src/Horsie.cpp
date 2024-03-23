@@ -1,4 +1,5 @@
 
+
 #include <iostream>
 #include "zobrist.h"
 #include "precomputed.h"
@@ -6,6 +7,9 @@
 #include "movegen.h"
 
 using namespace Horsie;
+
+void handler(int sig);
+int main();
 
 int main()
 {
@@ -24,8 +28,21 @@ int main()
 
     ScoredMove movelist[MoveListSize];
     ScoredMove* list = &movelist[0];
-    int size = Generate<GenLegal>(pos, list);
+    int size = Generate<GenLegal>(pos, list, 0);
     std::cout << "GenAll returned " << size << std::endl;
+    for (size_t i = 0; i < size; i++)
+    {
+        //std::cout << "Move[" << i << "]: " << list[i].Move.SmithNotation(pos.IsChess960) << std::endl;
+    }
+    
+    //pos.Perft(3);
+
+    for (int i = 1; i < 7; i++)
+    {
+        ulong u = pos.Perft(i);
+	    std::cout << "Perft(" << i << "): " << u << std::endl;
+    }
+    
 
 
     std::cin.get();

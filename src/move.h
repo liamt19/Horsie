@@ -23,6 +23,10 @@ namespace Horsie {
         constexpr explicit Move(ushort d) : data(d) {}
         constexpr Move(int from, int to) : data((ushort)((from << 6) + to)) {}
 
+        static constexpr Move make(int from, int to) {
+            return Move((int)to | ((int)from << 6));
+        }
+		
         static constexpr Move make(int from, int to, Piece promotionTo) {
             return Move((int)to | ((int)from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
         }
@@ -84,14 +88,14 @@ namespace Horsie {
         }
 
         std::string SmithNotation(bool is960) const {
-            //int fx = from_sq() % 8;
-            //int fy = from_sq() / 8;
-            //int tx = to_sq() % 8;
-            //int ty = to_sq() / 8;
+            //int fx = From() % 8;
+            //int fy = From() / 8;
+            //int tx = To() % 8;
+            //int ty = To() / 8;
 
             int fx, fy, tx, ty = 0;
             IndexToCoord((int) From(), fx, fy);
-            IndexToCoord((int) To(), fx, fy);
+            IndexToCoord((int) To(), tx, ty);
 
 
             if (IsCastle() && !is960)
@@ -100,11 +104,24 @@ namespace Horsie {
             }
 
 
+            std::string retVal = std::string{char('a' + fx), char('1' + fy)} + std::string{char('a' + tx), char('1' + ty)};
             if (IsPromotion()) {
-                return "" + GetFileChar(fx) + (fy + 1) + GetFileChar(tx) + (ty + 1) + char(std::tolower(PieceToChar[PromotionTo()]));
+                retVal += char(std::tolower(PieceToChar[PromotionTo()]));
             }
 
-            return "" + GetFileChar(fx) + (fy + 1) + GetFileChar(tx) + (ty + 1);
+#ifdef DEBUG
+            retVal = "[" + retVal;
+            retVal += (IsEnPassant() ? " EP" : "");
+            retVal += (IsCastle() ? " Castle" : "");
+            return retVal + "]";
+#endif
+            return retVal;
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const Move& m)
+        {
+            os << m.SmithNotation(false);
+            return os;
         }
 
 
@@ -117,6 +134,8 @@ namespace Horsie {
         Move Move;
         int Score;
     };
+
+
 }
 
 #endif // !MOVE_H

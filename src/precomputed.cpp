@@ -44,50 +44,59 @@ namespace Horsie {
         init_magics(ROOK, RookTable, RookMagics);
         init_magics(BISHOP, BishopTable, BishopMagics);
 
-        for (Square s1 = Square::A1; s1 <= Square::H8; ++s1)
+        for (Square sq1 = Square::A1; sq1 <= Square::H8; ++sq1)
         {
-            PawnAttackMasks[WHITE][(int)s1] = pawn_attacks_bb<WHITE>(SquareBB(s1));
-            PawnAttackMasks[BLACK][(int)s1] = pawn_attacks_bb<BLACK>(SquareBB(s1));
+            int s1 = (int)sq1;
+            PawnAttackMasks[WHITE][s1] = pawn_attacks_bb<WHITE>(SquareBB(sq1));
+            PawnAttackMasks[BLACK][s1] = pawn_attacks_bb<BLACK>(SquareBB(sq1));
 
             for (int step : {-9, -8, -7, -1, 1, 7, 8, 9})
-                PseudoAttacks[KING][(int)s1] |= safe_destination(s1, step);
+                PseudoAttacks[KING][s1] |= safe_destination(sq1, step);
 
             for (int step : {-17, -15, -10, -6, 6, 10, 15, 17})
-                PseudoAttacks[HORSIE][(int)s1] |= safe_destination(s1, step);
+                PseudoAttacks[HORSIE][s1] |= safe_destination(sq1, step);
 
-            PseudoAttacks[QUEEN][(int)s1] = PseudoAttacks[BISHOP][(int)s1] = attacks_bb<BISHOP>((int)s1, 0);
-            PseudoAttacks[QUEEN][(int)s1] |= PseudoAttacks[ROOK][(int)s1] = attacks_bb<ROOK>((int)s1, 0);
+            PseudoAttacks[QUEEN][s1] = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
+            PseudoAttacks[QUEEN][s1] |= PseudoAttacks[ROOK][s1] = attacks_bb<ROOK>(s1, 0);
 
-            for (Piece pt : {BISHOP, ROOK})
-                for (Square s2 = Square::A1; s2 <= Square::H8; ++s2)
-                {
-                    if (PseudoAttacks[pt][(int)s1] & s2)
-                    {
-                        LineBB[(int)s1][(int)s2] = (attacks_bb(pt, (int)s1, 0) & attacks_bb(pt, (int)s2, 0)) | s1 | s2;
-                        BetweenBB[(int)s1][(int)s2] = (attacks_bb(pt, (int)s1, SquareBB(s2)) & attacks_bb(pt, (int)s2, SquareBB(s1)));
-                    }
-                    BetweenBB[(int)s1][(int)s2] |= s2;
-                }
+            RookRays[s1] = PseudoAttacks[ROOK][s1];
+            BishopRays[s1] = PseudoAttacks[BISHOP][s1];
             
-            RookRays[(int)s1] = PseudoAttacks[ROOK][(int)s1];
-            BishopRays[(int)s1] = PseudoAttacks[BISHOP][(int)s1];
-
             for (int s2 = 0; s2 < 64; s2++)
             {
-                if ((RookRays[(int)s1] & SquareBB((int)s2)) != 0)
+                if ((RookRays[s1] & SquareBB(s2)) != 0)
                 {
-                    RayBB[(int)s1][(int)s2] = (RookRays[(int)s1] & RookRays[s2]) | SquareBB((int)s1) | SquareBB((int)s2);
-                    XrayBB[(int)s1][(int)s2] = (attacks_bb(ROOK, (int)s2, SquareBB((int)s1)) & RookRays[(int)s1]) | SquareBB((int)s1) | SquareBB((int)s2);
+                    BetweenBB[s1][s2] = attacks_bb<ROOK>(s1, SquareBB(s2)) & attacks_bb<ROOK>(s2, SquareBB(s1));
+                    LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB(s2);
                 }
-                else if ((BishopRays[(int)s1] & SquareBB((int)s2)) != 0)
+                else if ((BishopRays[s1] & SquareBB(s2)) != 0)
                 {
-                    RayBB[(int)s1][(int)s2] = (BishopRays[(int)s1] & BishopRays[(int)s2]) | SquareBB((int)s1) | SquareBB((int)s2);
-                    XrayBB[(int)s1][(int)s2] = (attacks_bb(BISHOP, (int)s2, SquareBB((int)s1)) & BishopRays[(int)s1]) | SquareBB((int)s1) | SquareBB((int)s2);
+                    BetweenBB[s1][s2] = attacks_bb<BISHOP>(s1, SquareBB(s2)) & attacks_bb<BISHOP>(s2, SquareBB(s1));
+                    LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB(s2);
                 }
                 else
                 {
-                    RayBB[(int)s1][(int)s2] = 0;
-                    XrayBB[(int)s1][(int)s2] = 0;
+                    BetweenBB[s1][s2] = 0;
+                    LineBB[s1][s2] = SquareBB(s2);
+                }
+            }
+            
+            for (int s2 = 0; s2 < 64; s2++)
+            {
+                if ((RookRays[s1] & SquareBB(s2)) != 0)
+                {
+                    RayBB[s1][s2] = (RookRays[s1] & RookRays[s2]) | SquareBB(s1) | SquareBB(s2);
+                    XrayBB[s1][s2] = (attacks_bb(ROOK, s2, SquareBB(s1)) & RookRays[s1]) | SquareBB(s1) | SquareBB(s2);
+                }
+                else if ((BishopRays[s1] & SquareBB(s2)) != 0)
+                {
+                    RayBB[s1][s2] = (BishopRays[s1] & BishopRays[s2]) | SquareBB(s1) | SquareBB(s2);
+                    XrayBB[s1][s2] = (attacks_bb(BISHOP, s2, SquareBB(s1)) & BishopRays[s1]) | SquareBB(s1) | SquareBB(s2);
+                }
+                else
+                {
+                    RayBB[s1][s2] = 0;
+                    XrayBB[s1][s2] = 0;
                 }
             }
             

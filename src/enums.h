@@ -3,7 +3,7 @@
 #ifndef ENUMS_H
 #define ENUMS_H
 
-
+#include <iostream>
 
 enum Piece : int {
 	PAWN = 0,
@@ -111,8 +111,19 @@ enum TTNodeType
 
 constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) & int(r)); }
 constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) | int(r)); }
-constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l &= r; }
-constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l |= r; }
 
+constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { 
+	l = CastlingStatus(int(l) & int(r));
+	return l;
+	//return l &= r; 
+}
+
+constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { 
+	l = CastlingStatus(int(l) | int(r));
+	return l;
+	//return l |= r;
+}
+
+constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~int(l)); }
 
 #endif
