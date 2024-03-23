@@ -79,8 +79,10 @@ namespace Horsie {
                     BetweenBB[s1][s2] = 0;
                     LineBB[s1][s2] = SquareBB(s2);
                 }
-            }
-            
+            }            
+        }
+
+        for (int s1 = 0; s1 < 64; s1++) {
             for (int s2 = 0; s2 < 64; s2++)
             {
                 if ((RookRays[s1] & SquareBB(s2)) != 0)
@@ -99,7 +101,6 @@ namespace Horsie {
                     XrayBB[s1][s2] = 0;
                 }
             }
-            
         }
     }
 

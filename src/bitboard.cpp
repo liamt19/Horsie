@@ -95,7 +95,7 @@ namespace Horsie {
 
 		ulong temp;
 		ulong us = Colors[pc];
-		ulong them = Colors[~pc];
+		ulong them = Colors[Not(pc)];
 
 		int ourKing = KingIndex(pc);
 

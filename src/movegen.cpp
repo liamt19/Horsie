@@ -111,6 +111,7 @@ int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool is
 }
 
 
+#pragma optimize("s", off)
 template <Color stm, MoveGenType GenType>
 int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
     constexpr bool loudMoves = GenType == GenLoud;
@@ -123,7 +124,7 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
     ulong rank7 = (stm == WHITE) ? Rank7BB : Rank2BB;
     ulong rank3 = (stm == WHITE) ? Rank3BB : Rank6BB;
 
-    constexpr int theirColor = ~stm;
+    constexpr int theirColor = Not(stm);
     constexpr Direction up = (Direction) ShiftUpDir(stm);
 
     Bitboard bb = pos.bb;
@@ -260,6 +261,7 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
 
     return size;
 }
+#pragma optimize("s", on)
 
 template <Color stm>
 int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong targets, int size)
@@ -269,7 +271,7 @@ int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong 
 
     Bitboard bb = pos.bb;
     ulong us = bb.Colors[stm];
-    ulong them = bb.Colors[~stm];
+    ulong them = bb.Colors[Not(stm)];
     ulong occ = us | them;
 
     ulong ourPieces = bb.Pieces[pt] & bb.Colors[stm];
@@ -282,11 +284,11 @@ int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong 
             assert(false);
         }
 
-        if (moves & bb.KingMask(~stm)) {
+        if (moves & bb.KingMask(Not(stm))) {
             assert(false);
         }
 
-        if (checks && (pt == QUEEN || ((pos.State->BlockingPieces[~stm] & SquareBB(idx)) == 0)))
+        if (checks && (pt == QUEEN || ((pos.State->BlockingPieces[Not(stm)] & SquareBB(idx)) == 0)))
         {
             moves &= pos.State->CheckSquares[pt];
         }
@@ -311,11 +313,11 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
 
     Bitboard bb = pos.bb;
     ulong us = bb.Colors[stm];
-    ulong them = bb.Colors[~stm];
+    ulong them = bb.Colors[Not(stm)];
     ulong occ = us | them;
 
     int ourKing = pos.State->KingSquares[stm];
-    int theirKing = pos.State->KingSquares[~stm];
+    int theirKing = pos.State->KingSquares[Not(stm)];
 
     ulong targets = 0;
 
@@ -335,7 +337,7 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
     }
 
     //  If we are doing non-captures with check and our king isn't blocking a check, then skip generating king moves
-    if (!(quietChecks && (pos.State->BlockingPieces[~stm] & SquareBB(ourKing)) == 0))
+    if (!(quietChecks && (pos.State->BlockingPieces[Not(stm)] & SquareBB(ourKing)) == 0))
     {
         ulong moves = PseudoAttacks[KING][ourKing] & (evasions ? ~us : targets);
         if (quietChecks)
@@ -344,7 +346,7 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
             //  then only generate moves that get the king off of any shared ranks/files.
             //  Note we can't move our king from one shared ray to another since we can only move diagonally 1 square
             //  and their king would be attacking ours.
-            moves &= ~bb.AttackMask(theirKing, ~stm, QUEEN, occ);
+            moves &= ~bb.AttackMask(theirKing, Not(stm), QUEEN, occ);
         }
 
         while (moves != 0)
@@ -376,14 +378,12 @@ int Generate(const Position& pos, ScoredMove* moveList, int size) {
                                                 GenAll<BLACK, GenNonEvasions>(pos, moveList, 0);
 }
 
-#define TEMPLATES
-#ifdef TEMPLATES
+
 template int Generate<GenLoud>(const Position&, ScoredMove*, int);
 template int Generate<GenQuiets>(const Position&, ScoredMove*, int);
 template int Generate<GenQChecks>(const Position&, ScoredMove*, int);
 template int Generate<GenEvasions>(const Position&, ScoredMove*, int);
 template int Generate<GenNonEvasions>(const Position&, ScoredMove*, int);
-#endif
 
 template<>
 int Generate<GenLegal>(const Position& pos, ScoredMove* moveList, int size) {
@@ -392,7 +392,7 @@ int Generate<GenLegal>(const Position& pos, ScoredMove* moveList, int size) {
                                          Generate<GenNonEvasions>(pos, moveList, 0);
 
     int ourKing = pos.State->KingSquares[pos.ToMove];
-    int theirKing = pos.State->KingSquares[~pos.ToMove];
+    int theirKing = pos.State->KingSquares[Not(pos.ToMove)];
     ulong pinned = pos.State->BlockingPieces[pos.ToMove];
 
     ScoredMove* curr = moveList;

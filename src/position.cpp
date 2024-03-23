@@ -14,11 +14,12 @@
 #include "movegen.h"
 #include "zobrist.h"
 
-
+#define BULK_PERFT 1
+#undef BULK_PERFT
 
 namespace Horsie {
 
-	Position::Position(const std::string& fen = InitialFEN, SearchThread* owningThread = NULL) {
+	Position::Position(const std::string& fen, SearchThread* owningThread) {
 		Owner = *owningThread;
 		GamePly = 0;
 		FullMoves = 1;
@@ -79,7 +80,7 @@ namespace Horsie {
         Color ourColor = (Color) bb.GetColorAtIndex(moveFrom);
 
         Piece theirPiece = (Piece) bb.GetPieceAtIndex(moveTo);
-        Color theirColor = ~ourColor;
+        Color theirColor = Not(ourColor);
 
         assert(theirPiece != Piece::KING);
         assert(theirPiece == Piece::NONE || bb.GetColorAtIndex(moveTo) != ourColor);
@@ -209,12 +210,12 @@ namespace Horsie {
                 //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
 
                 //if (ourColor == Color::WHITE && (WhitePawnAttackMasks[moveTo - 8] & bb.Colors[Color::BLACK] & bb.Pieces[Piece::PAWN]) != 0)
-                if (ourColor == Color::WHITE && (pawn_attacks_bb<WHITE>(moveTo - 8) & bb.Colors[Color::BLACK] & bb.Pieces[Piece::PAWN]) != 0)
+                if (ourColor == Color::WHITE && (PawnAttackMasks[Color::WHITE][moveTo - 8] & bb.Colors[Color::BLACK] & bb.Pieces[Piece::PAWN]) != 0)
                 {
                     State->EPSquare = moveTo - 8;
                 }
                 //else if (ourColor == Color::BLACK && (BlackPawnAttackMasks[moveTo + 8] & bb.Colors[Color::WHITE] & bb.Pieces[Piece::PAWN]) != 0)
-                else if (ourColor == Color::BLACK && (pawn_attacks_bb<BLACK>(moveTo - 8) & bb.Colors[Color::WHITE] & bb.Pieces[Piece::PAWN]) != 0)
+                else if (ourColor == Color::BLACK && (PawnAttackMasks[Color::BLACK][moveTo + 8] & bb.Colors[Color::WHITE] & bb.Pieces[Piece::PAWN]) != 0)
                 {
                     State->EPSquare = moveTo + 8;
                 }
@@ -251,7 +252,7 @@ namespace Horsie {
         }
 
         Zobrist::ChangeToMove(State->Hash);
-        ToMove = ~ToMove;
+        ToMove = Not(ToMove);
 
         State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
         switch (popcount(State->Checkers))
@@ -283,7 +284,7 @@ namespace Horsie {
 
             //  Assume that "we" just made the last move, and "they" are undoing it.
             Piece ourPiece = (Piece) bb.GetPieceAtIndex(moveTo);
-            Color ourColor = ~ToMove;
+            Color ourColor = Not(ToMove);
             Color theirColor = ToMove;
 
             GamePly--;
@@ -361,7 +362,7 @@ namespace Horsie {
             }
 
 
-            ToMove = ~ToMove;
+            ToMove = Not(ToMove);
 	}
 
 	void Position::MakeNullMove()
@@ -380,7 +381,7 @@ namespace Horsie {
         }
 
         Zobrist::ChangeToMove(State->Hash);
-        ToMove = ~ToMove;
+        ToMove = Not(ToMove);
         State->HalfmoveClock++;
 
         SetCheckInfo();
@@ -389,7 +390,7 @@ namespace Horsie {
 	void Position::UnmakeNullMove()
 	{
 		State--;
-		ToMove = ~ToMove;
+		ToMove = Not(ToMove);
 	}
 
 	void Position::DoCastling(int ourColor, int from, int to, bool undo = false) {
@@ -420,7 +421,7 @@ namespace Horsie {
 	}
 
 	void Position::SetState() {
-        State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[~ToMove];
+        State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
         switch (popcount(State->Checkers))
         {
             case 0:
@@ -442,7 +443,7 @@ namespace Horsie {
 
         for (size_t i = 0; i <= 5; i++)
         {
-            ulong m = State->CheckSquares[i] & (bb.Colors[~ToMove] & bb.Pieces[i]);
+            ulong m = State->CheckSquares[i] & (bb.Colors[Not(ToMove)] & bb.Pieces[i]);
             if (m && idxChecker == SQUARE_NB) {
                 assert(false);
             }
@@ -459,9 +460,9 @@ namespace Horsie {
         State->BlockingPieces[WHITE] = bb.BlockingPieces(WHITE, &State->Pinners[BLACK], &State->Xrays[BLACK]);
         State->BlockingPieces[BLACK] = bb.BlockingPieces(BLACK, &State->Pinners[WHITE], &State->Xrays[WHITE]);
 
-        int kingSq = State->KingSquares[~ToMove];
+        int kingSq = State->KingSquares[Not(ToMove)];
 
-        State->CheckSquares[PAWN] = PawnAttackMasks[~ToMove][kingSq];
+        State->CheckSquares[PAWN] = PawnAttackMasks[Not(ToMove)][kingSq];
         State->CheckSquares[HORSIE] = PseudoAttacks[HORSIE][kingSq];
         State->CheckSquares[BISHOP] = attacks_bb<BISHOP>(kingSq, bb.Occupancy);
         State->CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
@@ -496,7 +497,7 @@ namespace Horsie {
 
         if (bb.GetPieceAtIndex(to) != Piece::NONE)
         {
-            Zobrist::ToggleSquare(hash, ~us, bb.GetPieceAtIndex(to), to);
+            Zobrist::ToggleSquare(hash, Not(us), bb.GetPieceAtIndex(to), to);
         }
 
         Zobrist::Move(hash, from, to, us, ourPiece);
@@ -534,7 +535,7 @@ namespace Horsie {
         {
             if (move.IsEnPassant())
             {
-                return State->EPSquare != EP_NONE && (SquareBB(moveTo - ShiftUpDir(ToMove)) & bb.Pieces[Pawn] & bb.Colors[~ToMove]) != 0;
+                return State->EPSquare != EP_NONE && (SquareBB(moveTo - ShiftUpDir(ToMove)) & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0;
             }
 
             ulong empty = ~bb.Occupancy;
@@ -559,7 +560,7 @@ namespace Horsie {
         return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
 	}
 
-	bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[~ToMove], State->BlockingPieces[ToMove]); }
+	bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }
 
 	bool Position::IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces) const {
         int moveFrom = move.From();
@@ -579,7 +580,7 @@ namespace Horsie {
         }
 
         int ourColor = bb.GetColorAtIndex(moveFrom);
-        int theirColor = ~ourColor;
+        int theirColor = Not(ourColor);
 
         if (InCheck)
         {
@@ -659,7 +660,7 @@ namespace Horsie {
             ulong moveMask = SquareBB(moveFrom) | SquareBB(moveTo);
 
             //  This is only legal if our king is NOT attacked after the EP is made
-            return (bb.AttackersTo(ourKing, bb.Occupancy ^ (moveMask | SquareBB(idxPawn))) & bb.Colors[~ourColor]) == 0;
+            return (bb.AttackersTo(ourKing, bb.Occupancy ^ (moveMask | SquareBB(idxPawn))) & bb.Colors[Not(ourColor)]) == 0;
         }
 
         //  Otherwise, this move is legal if:
@@ -667,6 +668,7 @@ namespace Horsie {
         //  The piece is a blocker for our king, but it is moving along the same ray that it had been blocking previously.
         //  (i.e. a rook on B1 moving to A1 to capture a rook that was pinning it to our king on C1)
         
+        auto rayAlign = RayBB[moveFrom][moveTo];
         return ((State->BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
 	}
 
@@ -728,42 +730,78 @@ namespace Horsie {
         return State->HalfmoveClock >= 100;
 	}
 
-	ulong Position::Perft(int depth) {
-        if (depth == 0) {
-			return 1;
-		}
-		
-		ScoredMove movelist[MoveListSize];
-		ScoredMove* list = &movelist[0];
-		int size = Generate<GenLegal>(*this, list, 0);
-        //for (int i = 0; i < depth; i++)
-        //    std::cout << "\t";
 
-        //std::cout << "Made " << size << " moves " << std::endl;
-		//std::cout << "Made " << size << " moves at depth " << depth << std::endl;
+
+	ulong Position::Perft(int depth) {
+#ifndef BULK_PERFT
+        if (depth == 0) {
+            return 1;
+        }
+#endif
 		
-        StateInfo temp = StateInfo();
-        CopyBlock(&temp, State, StateCopySize);
+        ScoredMove movelist[MoveListSize] = {};
+		int size = Generate<GenLegal>(*this, &movelist[0], 0);
+
+#ifdef BULK_PERFT
+        if (depth == 1) {
+            return size;
+        }
+#endif
 
 		ulong n = 0;
 		for (int i = 0; i < size; i++) {
-            Move m = list[i].Move;
-			
-            //std::cout << "Doing move " << m << std::endl;
+            Move m = movelist[i].Move;
 
             MakeMove(m);
             n += Perft(depth - 1);
             UnmakeMove(m);
+		}
+		
+		return n;
+	}
+
+
+
+
+    Move PerftMoves[16];
+    ulong Position::DebugPerft(int depth) {
+        ScoredMove movelist[MoveListSize] = {};
+        ScoredMove* list = &movelist[0];
+        int size = Generate<GenLegal>(*this, list, 0);
+
+        StateInfo temp = StateInfo();
+        CopyBlock(&temp, State, StateCopySize);
+
+        ulong n = 0;
+        for (int i = 0; i < size; i++) {
+            Move m = list[i].Move;
+            std::string tos = Move::ToString(m);
+
+            if (depth == 2 && m.Data() == 3893 && i == 18) {
+                int z = 0;
+                assert(IsLegal(m));
+            }
+
+            if (depth == 3 && m.Data() == 346 && i == 22) {
+                int z = 0;
+            }
+            //std::cout << "Doing move " << m << std::endl;
+
+            MakeMove(m);
+            PerftMoves[depth] = m;
+            n += DebugPerft(depth - 1);
+            UnmakeMove(m);
+            PerftMoves[depth] = Move::Null();
 
             for (int n = 0; n < 6; n++) {
-                assert (State->CheckSquares[n] == temp.CheckSquares[n]);
+                assert(State->CheckSquares[n] == temp.CheckSquares[n]);
             }
 
             for (int n = 0; n < 2; n++) {
-                assert (State->KingSquares[n] == temp.KingSquares[n]);
-                assert (State->BlockingPieces[n] == temp.BlockingPieces[n]);
-                assert (State->Pinners[n] == temp.Pinners[n]);
-                assert (State->Xrays[n] == temp.Xrays[n]);
+                assert(State->KingSquares[n] == temp.KingSquares[n]);
+                assert(State->BlockingPieces[n] == temp.BlockingPieces[n]);
+                assert(State->Pinners[n] == temp.Pinners[n]);
+                assert(State->Xrays[n] == temp.Xrays[n]);
             }
 
             assert(State->Hash == temp.Hash);
@@ -774,12 +812,37 @@ namespace Horsie {
             assert(State->CapturedPiece == temp.CapturedPiece);
 
             //std::cout << "Unmade move " << m << std::endl;
-		}
-		
-		return n;
-	}
+        }
+    }
+
+    ulong Position::SplitPerft(int depth) {
+        ScoredMove movelist[MoveListSize] = {};
+        ScoredMove* list = &movelist[0];
+        int size = Generate<GenLegal>(*this, list, 0);
+
+        ulong n, total = 0;
+        for (int i = 0; i < size; i++) {
+            Move m = list[i].Move;
+
+            MakeMove(m);
+            PerftMoves[depth] = m;
+            n = Perft(depth - 1);
+            total += n;
+            UnmakeMove(m);
+
+            PerftMoves[depth] = Move::Null();
+
+            std::cout << Move::ToString(m) << ": " << n << std::endl;
+        }
+
+        return total;
+    }
+
+
 
 	void Position::LoadFromFEN(const std::string& fen) {
+
+        //std::cout << "loading [" << fen << "]" << std::endl;
 
         bb.Reset();
         FullMoves = 1;
@@ -854,6 +917,7 @@ namespace Horsie {
         MaterialCountNonPawn[Color::WHITE] = bb.MaterialCount(Color::WHITE, true);
         MaterialCountNonPawn[Color::BLACK] = bb.MaterialCount(Color::BLACK, true);
         
+        //std::cout << *this << std::endl;
 	}
 
 	std::string Position::GetFEN() const {

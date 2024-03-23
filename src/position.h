@@ -16,7 +16,7 @@ namespace Horsie {
 	class Position
 	{
 	public:
-		Position(const std::string& fen, SearchThread* owningThread);
+		Position(const std::string& fen = InitialFEN, SearchThread* owningThread = NULL);
 		~Position();
 		void LoadFromFEN(const std::string& fen);
 
@@ -68,6 +68,8 @@ namespace Horsie {
 		bool IsFiftyMoveDraw() const;
 
 		ulong Perft(int depth);
+		ulong DebugPerft(int depth);
+		ulong SplitPerft(int depth);
 
 		std::string GetFEN() const;
 	private:

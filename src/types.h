@@ -69,6 +69,7 @@ constexpr ulong Rank7BB = Rank1BB << (8 * 6);
 constexpr ulong Rank8BB = Rank1BB << (8 * 7);
 
 constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+constexpr auto KiwiFEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10";
 
 #define N_TABS(n) \
         for (int _n_ = 0; _n_ < n; n++) std::cout << "\t";
@@ -98,6 +99,8 @@ inline Square& operator+=(Square& s, Direction d) { return s = s + d; }
 inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 // Toggle color
 constexpr Color operator~(Color c) { return Color(c ^ 1); }
+constexpr int Not(int c) { return c ^ 1; }
+constexpr Color Not(Color c) { return Color(int(c) ^ 1); }
 
 //constexpr CastlingStatus operator~(CastlingStatus l) { return ~l; }
 //constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) & int(r)); }
@@ -280,7 +283,7 @@ namespace Horsie {
         return "" + GetFileChar(sq % 8) + ((sq / 8) + 1);
     }
 
-    struct Accumulator;
+    class Accumulator;
     struct StateInfo {
     public:
 

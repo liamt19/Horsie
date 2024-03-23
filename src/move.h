@@ -44,6 +44,7 @@ namespace Horsie {
             return int(data & 0x3F);
         }
 
+        constexpr int Data() const { return data; }
         constexpr int GetMoveMask() const { return data & 0xFFF; }
 
         constexpr void SetEnPassant() { data |= FlagEnPassant; }
@@ -124,6 +125,10 @@ namespace Horsie {
             return os;
         }
 
+
+        static std::string ToString(Move m) {
+			return m.SmithNotation(false);
+		}
 
     private:
         ushort data;
