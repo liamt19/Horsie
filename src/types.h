@@ -11,6 +11,7 @@
 
 using ushort = uint16_t;
 using ulong = uint64_t;
+using sbyte = int8_t;
 
 // Predefined macros hell:
 //

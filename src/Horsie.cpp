@@ -7,8 +7,10 @@
 #include "precomputed.h"
 #include "position.h"
 #include "movegen.h"
+#include "tt.h"
 
 using namespace Horsie;
+using namespace Horsie::Search;
 using std::cout;
 using std::endl;
 
@@ -16,66 +18,17 @@ int main();
 void HandleSetPosition(Position& pos, std::istringstream& is);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
+void HandleBenchCommand(Position& pos);
+void HandleListMovesCommand(Position& pos);
 
 
 int main()
 {
     Precomputed::init();
-    std::cout << "Precomputed::init()" << std::endl;
-
     Zobrist::init();
-    std::cout << "Zobrist::init() done" << std::endl;
+    TT.Initialize(16);
 
-    SearchThread thread = SearchThread();
-
-    Position pos = Position(InitialFEN, &thread);
-
-    if (false) {
-        ScoredMove pseudos[MoveListSize] = {};
-        int pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
-
-        std::cout << "Pseudo: ";
-        for (size_t i = 0; i < pseudoSize; i++)
-            std::cout << Move::ToString(pseudos[i].Move) << " ";
-        std::cout << std::endl;
-
-        ScoredMove legals[MoveListSize] = {};
-        int legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
-
-        std::cout << "Legal: ";
-        for (size_t i = 0; i < legalsSize; i++)
-        {
-            std::cout << Move::ToString(legals[i].Move) << " ";
-        }
-        std::cout << std::endl;
-
-        int breakpoint = 0;
-    }
-
-    if (false) {
-        auto timeStart = std::chrono::high_resolution_clock::now();
-
-        for (std::string entry : EtherealFENs_D5)
-        {
-            std::string fen = entry.substr(0, entry.find(";"));
-            std::string nodesStr = entry.substr(entry.find(";") + 1);
-
-            ulong nodes = std::stoull(nodesStr);
-            pos.LoadFromFEN(fen);
-
-            ulong ourNodes = pos.Perft(5);
-            if (ourNodes != nodes) {
-                std::cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << std::endl;
-            }
-            else {
-                std::cout << "[" << fen << "] Passed, Expected: " << nodes << " Got: " << ourNodes << std::endl;
-            }
-        }
-
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
-        std::cout << "Done in " << duration << std::endl;
-    }
-
+    Position pos = Position(InitialFEN);
 
     std::string token, cmd;
 
@@ -98,20 +51,18 @@ int main()
             HandleDisplayPosition(pos);
         else if (token == "perft")
             HandlePerftCommand(pos, is);
+        else if (token == "bench")
+            HandleBenchCommand(pos);
+        else if (token == "list")
+            HandleListMovesCommand(pos);
 
 
     } while (true);
 
-    //for (int i = 1; i < 7; i++)
-    //{
-	   // std::cout << "\nSplitPerft(" << i << "): " << pos.SplitPerft(i) << std::endl;
-    //}
-    
-
-
     std::cin.get();
     return 0;
 }
+
 
 
 void HandleSetPosition(Position& pos, std::istringstream& is) {
@@ -133,9 +84,13 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
     pos.LoadFromFEN(fen);
 }
 
-void HandleDisplayPosition(Position& pos) {
 
+
+void HandleDisplayPosition(Position& pos) {
+    std::cout << pos << std::endl;
 }
+
+
 
 void HandlePerftCommand(Position& pos, std::istringstream& is) {
 	int depth = 5;
@@ -149,4 +104,52 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
 	 std::cout << "\nTotal: " << nodes << " in " << duration << std::endl << std::endl;
+}
+
+
+
+void HandleBenchCommand(Position& pos) {
+    auto timeStart = std::chrono::high_resolution_clock::now();
+
+    for (std::string entry : EtherealFENs_D5)
+    {
+        std::string fen = entry.substr(0, entry.find(";"));
+        std::string nodesStr = entry.substr(entry.find(";") + 1);
+
+        ulong nodes = std::stoull(nodesStr);
+        pos.LoadFromFEN(fen);
+
+        ulong ourNodes = pos.Perft(5);
+        if (ourNodes != nodes) {
+            std::cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << std::endl;
+        }
+        else {
+            std::cout << "[" << fen << "] Passed, Expected: " << nodes << " Got: " << ourNodes << std::endl;
+        }
+    }
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
+    std::cout << "Done in " << duration << std::endl;
+}
+
+
+
+void HandleListMovesCommand(Position& pos) {
+    ScoredMove pseudos[MoveListSize] = {};
+    int pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
+
+    std::cout << "Pseudo: ";
+    for (size_t i = 0; i < pseudoSize; i++)
+        std::cout << Move::ToString(pseudos[i].Move) << " ";
+    std::cout << std::endl;
+
+    ScoredMove legals[MoveListSize] = {};
+    int legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+
+    std::cout << "Legal: ";
+    for (size_t i = 0; i < legalsSize; i++)
+    {
+        std::cout << Move::ToString(legals[i].Move) << " ";
+    }
+    std::cout << std::endl;
 }

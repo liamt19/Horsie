@@ -7,7 +7,7 @@
 #include "move.h"
 #include "accumulator.h"
 #include "bitboard.h"
-#include "search_thread.h"
+#include "search.h"
 
 constexpr int StateStackSize = 2048;
 
@@ -16,7 +16,7 @@ namespace Horsie {
 	class Position
 	{
 	public:
-		Position(const std::string& fen = InitialFEN, SearchThread* owningThread = NULL);
+		Position(const std::string& fen = InitialFEN);
 		~Position();
 		void LoadFromFEN(const std::string& fen);
 
@@ -29,7 +29,6 @@ namespace Horsie {
 		bool InDoubleCheck;
 		int idxChecker;
 
-		SearchThread Owner;
 		StateInfo* State;
 
 		bool UpdateNN;

@@ -13,14 +13,15 @@
 #include "precomputed.h"
 #include "movegen.h"
 #include "zobrist.h"
+#include "search.h"
+
 
 #define BULK_PERFT 1
 #undef BULK_PERFT
 
 namespace Horsie {
 
-	Position::Position(const std::string& fen, SearchThread* owningThread) {
-		Owner = *owningThread;
+	Position::Position(const std::string& fen) {
 		GamePly = 0;
 		FullMoves = 1;
 
