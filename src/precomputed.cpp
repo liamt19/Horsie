@@ -122,7 +122,7 @@ namespace Horsie {
 
         const int not_improving = 0;
         const int improving = 1;
-        for (int depth = 0; depth < MaxPly; depth++)
+        for (int depth = 0; depth < MaxDepth; depth++)
         {
             LMPTable[not_improving][depth] = (3 + (depth * depth)) / 2;
             LMPTable[    improving][depth] =  3 + (depth * depth);
