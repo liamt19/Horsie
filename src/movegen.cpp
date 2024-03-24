@@ -26,7 +26,7 @@ int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
     {
         if ((pos.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WK]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WK]) & us) != 0)
+            && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WK]) & us) != 0)
         {
             list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WK]);
             list[size - 1].Move.SetCastle();
@@ -34,7 +34,7 @@ int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
 
         if ((pos.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WQ]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WQ]) & us) != 0)
+            && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WQ]) & us) != 0)
         {
             list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WQ]);
             list[size - 1].Move.SetCastle();
@@ -44,7 +44,7 @@ int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
     {
         if ((pos.State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BK]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BK]) & us) != 0)
+            && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BK]) & us) != 0)
         {
             list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BK]);
             list[size - 1].Move.SetCastle();
@@ -52,7 +52,7 @@ int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
 
         if ((pos.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BQ]) == 0
-            && (bb.Pieces[Rook] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BQ]) & us) != 0)
+            && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BQ]) & us) != 0)
         {
             list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BQ]);
             list[size - 1].Move.SetCastle();

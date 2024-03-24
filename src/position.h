@@ -37,6 +37,7 @@ namespace Horsie {
         ulong CastlingRookPaths[(int) CastlingStatus::All];
 
         bool IsChess960;
+        int dbg_ThisPositionNumber;
 
         constexpr bool Checked() const { return InCheck || InDoubleCheck; }
         constexpr StateInfo* StartingState() const { return _SentinelStart; }
@@ -71,6 +72,8 @@ namespace Horsie {
         ulong SplitPerft(int depth);
 
         std::string GetFEN() const;
+        bool SEE_GE(Move m, int threshold = 1) const;
+
     private:
         
         Accumulator* _accumulatorBlock;

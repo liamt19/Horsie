@@ -8,9 +8,13 @@
 #include "position.h"
 #include "movegen.h"
 #include "tt.h"
+#include "nn.h"
+#include <list>
 
 using namespace Horsie;
 using namespace Horsie::Search;
+using namespace Horsie::NNUE;
+
 using std::cout;
 using std::endl;
 
@@ -21,12 +25,13 @@ void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleBenchCommand(Position& pos);
 void HandleListMovesCommand(Position& pos);
 void HandleGoCommand(Position& pos, std::istringstream& is);
-
+void HandleEvalCommand(Position& pos);
 
 int main()
 {
     Precomputed::init();
     Zobrist::init();
+    NNUE::init_tables();
     TT.Initialize(16);
 
     Position pos = Position(InitialFEN);
@@ -58,6 +63,8 @@ int main()
             HandleListMovesCommand(pos);
         else if (token == "go")
             HandleGoCommand(pos, is);
+        else if (token == "eval")
+            HandleEvalCommand(pos);
 
 
     } while (true);
@@ -160,8 +167,36 @@ void HandleListMovesCommand(Position& pos) {
 
 void HandleGoCommand(Position& pos, std::istringstream& is) {
     SearchThread thread = SearchThread();
+    thread.IsMain = true;
+
     thread.Reset();
     cout << "Calling Search" << endl;
     thread.Search(pos);
+    cout << "Search finished" << endl;
+}
+
+void HandleEvalCommand(Position& pos) {
+    cout << "Evaluation: " << NNUE::GetEvaluation(pos) << endl << endl;
+
+    ScoredMove legals[MoveListSize] = {};
+    int legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+    std::list<ScoredMove> moves;
+
+    for (size_t i = 0; i < legalsSize; i++)
+    {
+        Move m = legals[i].Move;
+        pos.MakeMove(m);
+        int eval = NNUE::GetEvaluation(pos);
+        pos.UnmakeMove(m);
+
+        moves.push_back({ m, eval });
+    }
+
+    moves.sort([](const ScoredMove& l, const ScoredMove& r) { return l.Score > r.Score; });
+
+    for (ScoredMove m : moves) {
+        cout << Move::ToString(m.Move) << ": " << m.Score << endl;
+    }
+
 
 }

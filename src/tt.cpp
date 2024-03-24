@@ -5,10 +5,10 @@ namespace Horsie {
 
     TranspositionTable TT;
 
-    bool TranspositionTable::Probe(ulong hash, TTEntry* tte)
+    TTEntry* TranspositionTable::Probe(ulong hash, bool& ttHit)
     {
         TTCluster* cluster = GetCluster(hash);
-        tte = (TTEntry*)cluster;
+        TTEntry* tte = (TTEntry*)cluster;
 
         auto key = (ushort)hash;
 
@@ -18,12 +18,13 @@ namespace Horsie {
             if (tte[i].Key == key || tte[i].IsEmpty())
             {
                 tte[i]._AgePVType = (sbyte)(TT.Age | (tte[i]._AgePVType & (TT_AGE_INC - 1)));
-
                 tte = &tte[i];
 
                 //  We return true if the entry isn't empty, which means that tte is valid.
                 //  Check tte[0] here, not tte[i].
-                return !tte[0].IsEmpty();
+                ttHit = !tte[0].IsEmpty();
+
+                return tte;
             }
         }
 
@@ -41,8 +42,8 @@ namespace Horsie {
             }
         }
 
-        tte = replace;
-        return false;
+        ttHit = false;
+        return replace;
     }
 
 
@@ -52,7 +53,7 @@ namespace Horsie {
         ulong size = ulong(mb) * 1024 * 1024 / sizeof(TTCluster);
         Clusters = new TTCluster[size];
         ClusterCount = size;
-
+        std::memset(Clusters, 0, sizeof(TTCluster) * size);
     }
 
     void TTEntry::Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV) {

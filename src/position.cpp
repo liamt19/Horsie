@@ -21,12 +21,16 @@
 
 namespace Horsie {
 
+    static int PositionNumber = 0;
+
     Position::Position(const std::string& fen) {
         GamePly = 0;
         FullMoves = 1;
 
         bb = Bitboard();
 
+        dbg_ThisPositionNumber = PositionNumber++;
+        std::cout << "Creating position " << dbg_ThisPositionNumber << std::endl;
         _stateBlock = (StateInfo*)AlignedAllocZeroed((sizeof(StateInfo) * StateStackSize), AllocAlignment);
 
         _SentinelStart = &_stateBlock[0];
@@ -54,6 +58,8 @@ namespace Horsie {
             //Accumulator acc = *(_SentinelStart + i)->Accumulator;
             //delete acc;
         }
+
+        std::cout << "Destroying position " << dbg_ThisPositionNumber << std::endl;
 
         AlignedFree(_accumulatorBlock);
         AlignedFree(_stateBlock);
@@ -467,7 +473,7 @@ namespace Horsie {
         State->CheckSquares[HORSIE] = PseudoAttacks[HORSIE][kingSq];
         State->CheckSquares[BISHOP] = attacks_bb<BISHOP>(kingSq, bb.Occupancy);
         State->CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
-        State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
+        State->CheckSquares[QUEEN] = State->CheckSquares[BISHOP] | State->CheckSquares[ROOK];
         State->CheckSquares[King] = 0;
     }
 
@@ -536,7 +542,7 @@ namespace Horsie {
         {
             if (move.IsEnPassant())
             {
-                return State->EPSquare != EP_NONE && (SquareBB(moveTo - ShiftUpDir(ToMove)) & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0;
+                return State->EPSquare != EP_NONE && (SquareBB(moveTo - ShiftUpDir(ToMove)) & bb.Pieces[PAWN] & bb.Colors[Not(ToMove)]) != 0;
             }
 
             ulong empty = ~bb.Occupancy;
@@ -576,7 +582,7 @@ namespace Horsie {
 
         if (InDoubleCheck && pt != Piece::KING)
         {
-            //	Must move king out of double check
+            //  Must move king out of double check
             return false;
         }
 
@@ -616,7 +622,7 @@ namespace Horsie {
                 CastlingStatus thisCr = move.RelevantCastlingRight();
                 int rookSq = CastlingRookSquares[(int)thisCr];
 
-                if ((SquareBB(rookSq) & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
+                if ((SquareBB(rookSq) & bb.Pieces[ROOK] & bb.Colors[ourColor]) == 0)
                 {
                     //  There isn't a rook on the square that we are trying to castle towards.
                     return false;
@@ -949,8 +955,115 @@ namespace Horsie {
             os << " | " << (1 + r) << "\n +---+---+---+---+---+---+---+---+\n";
         }
 
-        os << "   a   b   c   d   e   f   g   h\n" << "\nFen: " << pos.GetFEN() << "\n";
+        os << "   a   b   c   d   e   f   g   h\n";
+        os << "\nFen: " << pos.GetFEN() << "\n";
+        os << "\nHash: " << pos.State->Hash << "\n";
 
         return os;
     }
+
+
+
+    bool Position::SEE_GE(Move m, int threshold) const
+    {
+        if (m.IsCastle() || m.IsEnPassant() || m.IsPromotion())
+        {
+            return threshold <= 0;
+        }
+
+        int from = m.From();
+        int to = m.To();
+
+        int swap = GetSEEValue(bb.PieceTypes[to]) - threshold;
+        if (swap < 0)
+            return false;
+
+        swap = GetSEEValue(bb.PieceTypes[from]) - swap;
+        if (swap <= 0)
+            return true;
+
+        ulong occ = (bb.Occupancy ^ SquareBB(from) | SquareBB(to));
+
+        ulong attackers = bb.AttackersTo(to, occ);
+        ulong stmAttackers;
+        ulong temp;
+
+        int stm = ToMove;
+        int res = 1;
+        while (true)
+        {
+            stm = Not(stm);
+            attackers &= occ;
+
+            stmAttackers = attackers & bb.Colors[stm];
+            if (stmAttackers == 0)
+            {
+                break;
+            }
+
+            if ((State->Pinners[Not(stm)] & occ) != 0)
+            {
+                stmAttackers &= ~State->BlockingPieces[stm];
+                if (stmAttackers == 0)
+                {
+                    break;
+                }
+            }
+
+            res ^= 1;
+
+            if ((temp = stmAttackers & bb.Pieces[PAWN]) != 0)
+            {
+                occ ^= SquareBB(lsb(temp));
+                if ((swap = GetPieceValue(PAWN) - swap) < res)
+                    break;
+
+                attackers |= attacks_bb<BISHOP>(to, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+            }
+            else if ((temp = stmAttackers & bb.Pieces[HORSIE]) != 0)
+            {
+                occ ^= SquareBB(lsb(temp));
+                if ((swap = GetPieceValue(HORSIE) - swap) < res)
+                    break;
+            }
+            else if ((temp = stmAttackers & bb.Pieces[BISHOP]) != 0)
+            {
+                occ ^= SquareBB(lsb(temp));
+                if ((swap = GetPieceValue(BISHOP) - swap) < res)
+                    break;
+
+                attackers |= attacks_bb<BISHOP>(to, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+            }
+            else if ((temp = stmAttackers & bb.Pieces[ROOK]) != 0)
+            {
+                occ ^= SquareBB(lsb(temp));
+                if ((swap = GetPieceValue(ROOK) - swap) < res)
+                    break;
+
+                attackers |= attacks_bb<ROOK>(to, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
+            }
+            else if ((temp = stmAttackers & bb.Pieces[QUEEN]) != 0)
+            {
+                occ ^= SquareBB(lsb(temp));
+                if ((swap = GetPieceValue(QUEEN) - swap) < res)
+                    break;
+
+                attackers |= (attacks_bb<BISHOP>(to, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN])) | (attacks_bb<ROOK>(to, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
+            }
+            else
+            {
+                if ((attackers & ~bb.Pieces[stm]) != 0)
+                {
+                    return (res ^ 1) != 0;
+                }
+                else
+                {
+                    return res != 0;
+                }
+            }
+        }
+
+        return res != 0;
+    }
+
 }

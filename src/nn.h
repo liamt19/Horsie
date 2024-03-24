@@ -8,12 +8,11 @@
 namespace Horsie
 {
 
-	namespace NNUE {
-
-
-		int GetEvaluation(Position& pos);
-
-	}
+    namespace NNUE {
+        int GetEvaluation(Position& pos);
+        void init_tables();
+        int Pesto(Position& pos);
+    }
 
 }
 

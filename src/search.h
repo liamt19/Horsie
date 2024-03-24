@@ -29,6 +29,7 @@ namespace Horsie {
         public:
             int MaxDepth = Horsie::MaxDepth;
             ulong MaxNodes = UINT64_MAX;
+            int MaxTime = INT32_MAX;
         };
 
         struct SearchStackEntry {
@@ -75,9 +76,9 @@ namespace Horsie {
         struct RootMove {
 
             explicit RootMove(Move m) : PV(1, m) {
+                Move = m;
                 Score = PreviousScore = AverageScore = -ScoreInfinite;
                 Depth = 0;
-                PVLength = 1;
             }
             bool operator==(const Move& m) const { return PV[0] == m; }
             bool operator<(const RootMove& m) const { return m.Score != Score ? m.Score < Score : m.PreviousScore < PreviousScore; }
@@ -87,7 +88,6 @@ namespace Horsie {
             int PreviousScore;
             int AverageScore;
             int Depth;
-            int PVLength;
 
             std::vector<Horsie::Move> PV;
         };
@@ -140,10 +140,7 @@ namespace Horsie {
             void UpdatePV(Move* pv, Move move, Move* childPV);
 
             void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus);
-            void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount);
-
-            bool SEE_GE(Position pos, Move m, int threshold = 1);
-
+            void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount);
 
 
             bool CheckTime() const {

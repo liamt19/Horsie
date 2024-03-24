@@ -13,14 +13,14 @@ namespace Horsie {
     };
 
     struct ContinuationHistory {
-        PieceToHistory* Histories[PIECE_NB * 2][SQUARE_NB];
+        PieceToHistory Histories[PIECE_NB * 2][SQUARE_NB];
     };
 
     class HistoryTable {
     public:
         short MainHistory[COLOR_NB][SQUARE_NB * SQUARE_NB];
 
-        //	Index with [pc][pt][toSquare][capturedType]
+        //  Index with [pc][pt][toSquare][capturedType]
         short CaptureHistory[COLOR_NB][PIECE_NB][SQUARE_NB][PIECE_NB];
 
         ContinuationHistory Continuations[2][2];

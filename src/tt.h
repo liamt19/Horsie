@@ -84,7 +84,8 @@ namespace Horsie {
     class TranspositionTable {
     public:
         void Initialize(int mb);
-        bool Probe(ulong hash, TTEntry* tte);
+        //bool Probe(ulong hash, TTEntry* tte);
+        TTEntry* Probe(ulong hash, bool& ttHit);
 
         void TTUpdate() {
             Age += TT_AGE_INC;

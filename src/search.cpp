@@ -6,6 +6,8 @@
 #include "movegen.h"
 #include "precomputed.h"
 
+#include <chrono>
+
 #include "search_options.h"
 
 using namespace Horsie::Search;
@@ -23,7 +25,12 @@ namespace Horsie {
     void SearchThread::Search(Position& pos) {
 
         SearchLimits info = SearchLimits();
-        info.MaxDepth = 3;
+        info.MaxDepth = 12;
+        info.MaxNodes = UINT64_MAX;
+        info.MaxTime = INT32_MAX;
+
+        MaxNodes = info.MaxNodes;
+        SearchTimeMS = info.MaxTime;
 
         SearchStackEntry _SearchStackBlock[MaxPly] = {};
         SearchStackEntry* ss = &_SearchStackBlock[10];
@@ -32,7 +39,7 @@ namespace Horsie {
             (ss + i)->Clear();
             (ss + i)->Ply = (short)i;
             (ss + i)->PV = (Move*)AlignedAllocZeroed((MaxPly * sizeof(Move)), AllocAlignment);
-            (ss + i)->ContinuationHistory = History.Continuations[0][0].Histories[0][0];
+            (ss + i)->ContinuationHistory = &History.Continuations[0][0].Histories[0][0];
         }
 
         for (int sq = 0; sq < SQUARE_NB; sq++)
@@ -53,6 +60,8 @@ namespace Horsie {
 
         int multiPV = std::min(MultiPV, int(RootMoves.size()));
         RootMove lastBestRootMove = RootMove(Move::Null());
+
+        auto timeStart = std::chrono::high_resolution_clock::now();
 
         int maxDepth = IsMain ? MaxDepth : MaxPly;
         while (++RootDepth < maxDepth)
@@ -117,7 +126,38 @@ namespace Horsie {
                 if (IsMain)
                 {
                     //info.OnDepthFinish?.Invoke(ref info);
-                    std::cout << "depth done" << std::endl;
+                    //std::cout << "depth done" << std::endl;
+
+                    RootMove rm = RootMoves[0];
+
+                    bool moveSearched = rm.Score != -ScoreInfinite;
+                    int depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
+                    int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
+                    auto durCnt = (double) duration.count();
+                    int nodesPerSec = (int) (Nodes / (durCnt / 1000));
+
+                    std::cout << "info depth " << depth;
+                    std::cout << " seldepth " << rm.Depth;
+                    std::cout << " time " << duration;
+                    std::cout << " score " << score;
+                    std::cout << " nodes " << Nodes;
+                    std::cout << " nps " << nodesPerSec;
+                    std::cout << " pv";
+
+                    for (int j = 0; j < rm.PV.size(); j++)
+                    {
+                        if (rm.PV[j] == Move::Null())
+                        {
+                            break;
+                        }
+
+                        std::cout << " " + rm.PV[j].SmithNotation(pos.IsChess960);
+                    }
+
+
+                    std::cout << std::endl;
                 }
             }
 
@@ -131,6 +171,8 @@ namespace Horsie {
                 //  so that the move we send is based on an entire depth being searched instead of only a portion of it.
                 RootMoves[0] = lastBestRootMove;
 
+                std::cout << "Stopping search" << std::endl;
+
                 for (int i = -10; i < MaxSearchStackPly; i++)
                 {
                     AlignedFree((ss + i)->PV);
@@ -142,10 +184,10 @@ namespace Horsie {
             lastBestRootMove.Move = RootMoves[0].Move;
             lastBestRootMove.Score = RootMoves[0].Score;
             lastBestRootMove.Depth = RootMoves[0].Depth;
-
-            for (int i = 0; i < MaxPly; i++)
+            lastBestRootMove.PV.clear();
+            for (int i = 0; i < RootMoves[0].PV.size(); i++)
             {
-                lastBestRootMove.PV[i] = RootMoves[0].PV[i];
+                lastBestRootMove.PV.push_back(RootMoves[0].PV[i]);
                 if (lastBestRootMove.PV[i] == Move::Null())
                 {
                     break;
@@ -180,7 +222,7 @@ namespace Horsie {
         constexpr bool isRoot = NodeType == SearchNodeType::RootNode;
         constexpr bool isPV = NodeType != SearchNodeType::NonPVNode;
 
-        std::cout << "Negamax(" << ss->Ply << ", " << alpha << ", " << beta << ", " << depth << ")" << std::endl;
+        //std::cout << "Negamax(" << ss->Ply << ", " << alpha << ", " << beta << ", " << depth << ")" << std::endl;
 
         if (depth <= 0)
         {
@@ -214,7 +256,7 @@ namespace Horsie {
 
             //if (thisThread.CheckTime() || SearchPool.GetNodeCount() >= info.MaxNodes)
             //{
-            //	SearchPool.StopThreads = true;
+            //  SearchPool.StopThreads = true;
             //}
 
             if (CheckTime())
@@ -261,7 +303,7 @@ namespace Horsie {
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
         ss->StatScore = 0;
         ss->InCheck = pos.Checked();
-        ss->TTHit = TT.Probe(posHash, tte);
+        tte = TT.Probe(posHash, ss->TTHit);
         if (!doSkip)
         {
             ss->TTPV = isPV || (ss->TTHit && tte->PV());
@@ -335,7 +377,7 @@ namespace Horsie {
         {
             int reduction = NMPReductionBase + (depth / NMPReductionDivisor);
             ss->CurrentMove = Move::Null();
-            ss->ContinuationHistory = history->Continuations[0][0].Histories[0][0];
+            ss->ContinuationHistory = &history->Continuations[0][0].Histories[0][0];
 
             pos.MakeNullMove();
             score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
@@ -410,7 +452,7 @@ namespace Horsie {
 
                 if (givesCheck || isCapture || skipQuiets)
                 {
-                    if (!SEE_GE(pos, m, -LMRExchangeBase * depth))
+                    if (!pos.SEE_GE(m, -LMRExchangeBase * depth))
                     {
                         continue;
                     }
@@ -464,7 +506,7 @@ namespace Horsie {
             prefetch(TT.GetCluster(pos.HashAfter(m)));
             ss->CurrentMove = m;
             //ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
-            ss->ContinuationHistory = history->Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0].Histories[histIdx][toSquare];
+            ss->ContinuationHistory = &history->Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0].Histories[histIdx][toSquare];
             Nodes++;
 
             pos.MakeMove(m);
@@ -571,7 +613,7 @@ namespace Horsie {
                     }
                 }
 
-                RootMove rm = RootMoves[rmIndex];
+                RootMove& rm = RootMoves[rmIndex];
                 rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
 
                 if (playedMoves == 1 || score > alpha)
@@ -579,16 +621,13 @@ namespace Horsie {
                     rm.Score = score;
                     rm.Depth = SelDepth;
 
-                    rm.PVLength = 1;
+                    rm.PV.resize(1);
                     //Array.Fill(rm.PV, Move.Null, 1, MaxPly - rm.PVLength);
-                    for (size_t i = 1; i < MaxPly - rm.PVLength; i++)
-                    {
-                        rm.PV[i] = Move::Null();
-                    }
-                    
+
                     for (Move* childMove = (ss + 1)->PV; *childMove != Move::Null(); ++childMove)
                     {
-                        rm.PV[rm.PVLength++] = *childMove;
+                        //rm.PV[rm.PVLength++] = *childMove;
+                        rm.PV.push_back(*childMove);
                     }
                 }
                 else
@@ -667,12 +706,11 @@ namespace Horsie {
         
         constexpr bool isPV = NodeType != SearchNodeType::NonPVNode;
 
-        std::cout << "QSearch(" << ss->Ply << ", " << alpha << ", " << beta << ", " << depth << ")" << std::endl;
+        //std::cout << "QSearch(" << ss->Ply << ", " << alpha << ", " << beta << ", " << depth << ")" << std::endl;
 
         Bitboard bb = pos.bb;
-        //SearchThread thisThread = pos.Owner;
-        SearchThread thisThread = *this;
-        HistoryTable history = this->History;
+        SearchThread* thisThread = this;
+        //HistoryTable history = this->History;
         Move bestMove = Move::Null();
 
         int score = -ScoreMate - MaxPly;
@@ -683,10 +721,10 @@ namespace Horsie {
 
         int startingAlpha = alpha;
 
-        TTEntry* tte = {};
+        TTEntry* tte;
 
         ss->InCheck = pos.Checked();
-        ss->TTHit = TT.Probe(pos.State->Hash, tte);
+        tte = TT.Probe(pos.State->Hash, ss->TTHit);
         int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
         short ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         Move ttMove = ss->TTHit ? tte->BestMove : Move::Null();
@@ -710,7 +748,7 @@ namespace Horsie {
 
         if (isPV)
         {
-            thisThread.SelDepth = std::max(thisThread.SelDepth, ss->Ply + 1);
+            SelDepth = std::max(SelDepth, ss->Ply + 1);
         }
 
         if (!isPV
@@ -778,7 +816,7 @@ namespace Horsie {
 
         ScoredMove list[MoveListSize] = {};
         int size = Generate<MoveGenType::GenNonEvasions>(pos, list, 0);
-        AssignScores(pos, ss, history, list, size, ttMove);
+        AssignScores(pos, ss, thisThread->History, list, size, ttMove);
 
         for (int i = 0; i < size; i++)
         {
@@ -821,7 +859,7 @@ namespace Horsie {
                         continue;
                     }
 
-                    if (futility <= alpha && !SEE_GE(pos, m, 1))
+                    if (futility <= alpha && !pos.SEE_GE(m, 1))
                     {
                         bestScore = std::max(bestScore, futility);
                         continue;
@@ -833,7 +871,7 @@ namespace Horsie {
                     break;
                 }
 
-                if (!ss->InCheck && !SEE_GE(pos, m, -90))
+                if (!ss->InCheck && !pos.SEE_GE(m, -90))
                 {
                     continue;
                 }
@@ -850,8 +888,8 @@ namespace Horsie {
             prefetch(TT.GetCluster(pos.HashAfter(m)));
             ss->CurrentMove = m;
             //ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
-            ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0].Histories[histIdx][moveTo];
-            thisThread.Nodes++;
+            ss->ContinuationHistory = &thisThread->History.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0].Histories[histIdx][moveTo];
+            thisThread->Nodes++;
 
             pos.MakeMove(m);
             score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha, depth - 1);
@@ -908,18 +946,18 @@ namespace Horsie {
             if ((ss - i)->CurrentMove != Move::Null())
             {
                 (*(ss - i)->ContinuationHistory).history[MakePiece(pc, pt)][sq] += (short)(bonus - 
-                    ((*(ss - i)->ContinuationHistory).history[MakePiece(pc, pt)][sq] * std::abs(bonus) / HistoryClamp));
+               ((*(ss - i)->ContinuationHistory).history[MakePiece(pc, pt)][sq] * std::abs(bonus) / HistoryClamp));
             }
         }
     }
 
 
-    void SearchThread::UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount) {
-
-        HistoryTable history = this->History;
+    void SearchThread::UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount) {
+        
         int moveFrom = bestMove.From();
         int moveTo = bestMove.To();
 
+        HistoryTable& history = this->History;
         Bitboard bb = pos.bb;
 
         int thisPiece = bb.GetPieceAtIndex(moveFrom);
@@ -1056,9 +1094,9 @@ namespace Horsie {
 
                 list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
                 list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=		(*(ss - 2)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=		(*(ss - 4)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=		(*(ss - 6)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 2)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 4)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 6)->ContinuationHistory).history[contIdx][moveTo];
 
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0)
                 {
@@ -1067,115 +1105,5 @@ namespace Horsie {
             }
         }
     }
-
-
-
-
-
-    bool SearchThread::SEE_GE(Position pos, Move m, int threshold)
-    {
-        if (m.IsCastle() || m.IsEnPassant() || m.IsPromotion())
-        {
-            return threshold <= 0;
-        }
-
-        Bitboard bb = pos.bb;
-
-        int from = m.From();
-        int to = m.To();
-
-        int swap = GetSEEValue(bb.PieceTypes[to]) - threshold;
-        if (swap < 0)
-            return false;
-
-        swap = GetSEEValue(bb.PieceTypes[from]) - swap;
-        if (swap <= 0)
-            return true;
-
-        ulong occ = (bb.Occupancy ^ SquareBB(from) | SquareBB(to));
-
-        ulong attackers = bb.AttackersTo(to, occ);
-        ulong stmAttackers;
-        ulong temp;
-
-        int stm = pos.ToMove;
-        int res = 1;
-        while (true)
-        {
-            stm = Not(stm);
-            attackers &= occ;
-
-            stmAttackers = attackers & bb.Colors[stm];
-            if (stmAttackers == 0)
-            {
-                break;
-            }
-
-            if ((pos.State->Pinners[Not(stm)] & occ) != 0)
-            {
-                stmAttackers &= ~pos.State->BlockingPieces[stm];
-                if (stmAttackers == 0)
-                {
-                    break;
-                }
-            }
-
-            res ^= 1;
-
-            if ((temp = stmAttackers & bb.Pieces[Pawn]) != 0)
-            {
-                occ ^= SquareBB(lsb(temp));
-                if ((swap = GetPieceValue(Pawn) - swap) < res)
-                    break;
-
-                attackers |= attacks_bb<BISHOP>(to, occ) & (bb.Pieces[Bishop] | bb.Pieces[Queen]);
-            }
-            else if ((temp = stmAttackers & bb.Pieces[Knight]) != 0)
-            {
-                occ ^= SquareBB(lsb(temp));
-                if ((swap = GetPieceValue(Knight) - swap) < res)
-                    break;
-            }
-            else if ((temp = stmAttackers & bb.Pieces[Bishop]) != 0)
-            {
-                occ ^= SquareBB(lsb(temp));
-                if ((swap = GetPieceValue(BISHOP) - swap) < res)
-                    break;
-
-                attackers |= attacks_bb<BISHOP>(to, occ) & (bb.Pieces[Bishop] | bb.Pieces[Queen]);
-            }
-            else if ((temp = stmAttackers & bb.Pieces[Rook]) != 0)
-            {
-                occ ^= SquareBB(lsb(temp));
-                if ((swap = GetPieceValue(ROOK) - swap) < res)
-                    break;
-
-                attackers |= attacks_bb<ROOK>(to, occ) & (bb.Pieces[Rook] | bb.Pieces[Queen]);
-            }
-            else if ((temp = stmAttackers & bb.Pieces[Queen]) != 0)
-            {
-                occ ^= SquareBB(lsb(temp));
-                if ((swap = GetPieceValue(Queen) - swap) < res)
-                    break;
-
-                attackers |= (attacks_bb<BISHOP>(to, occ) & (bb.Pieces[Bishop] | bb.Pieces[Queen])) | (attacks_bb<ROOK>(to, occ) & (bb.Pieces[Rook] | bb.Pieces[Queen]));
-            }
-            else
-            {
-                if ((attackers & ~bb.Pieces[stm]) != 0)
-                {
-                    return (res ^ 1) != 0;
-                }
-                else
-                {
-                    return res != 0;
-                }
-            }
-        }
-
-        return res != 0;
-    }
-
-
 
 }
