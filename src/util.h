@@ -77,8 +77,8 @@ namespace Horsie {
     }
 
     constexpr int MakeMateScore(int ply) {
-		return -ScoreMate + ply;
-	}
+        return -ScoreMate + ply;
+    }
 
     constexpr short MakeTTScore(short score, int ply)
     {

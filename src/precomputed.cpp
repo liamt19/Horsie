@@ -8,37 +8,37 @@ constexpr bool Is64Bit = true;
 
 namespace Horsie {
 
-	uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+    uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-	ulong BetweenBB[SQUARE_NB][SQUARE_NB];
-	ulong LineBB[SQUARE_NB][SQUARE_NB];
+    ulong BetweenBB[SQUARE_NB][SQUARE_NB];
+    ulong LineBB[SQUARE_NB][SQUARE_NB];
     ulong RayBB[SQUARE_NB][SQUARE_NB];
     ulong XrayBB[SQUARE_NB][SQUARE_NB];
-	ulong PseudoAttacks[PIECE_NB][SQUARE_NB];
+    ulong PseudoAttacks[PIECE_NB][SQUARE_NB];
 
-	ulong PawnAttackMasks[COLOR_NB][SQUARE_NB];
-	ulong RookRays[SQUARE_NB];
-	ulong BishopRays[SQUARE_NB];
+    ulong PawnAttackMasks[COLOR_NB][SQUARE_NB];
+    ulong RookRays[SQUARE_NB];
+    ulong BishopRays[SQUARE_NB];
 
-	Magic RookMagics[SQUARE_NB];
-	Magic BishopMagics[SQUARE_NB];
+    Magic RookMagics[SQUARE_NB];
+    Magic BishopMagics[SQUARE_NB];
 
     int LogarithmicReductionTable[MaxPly][MoveListSize];
     int LMPTable[2][MaxDepth];
 
-	namespace {
-		ulong RookTable[0x19000];   // To store rook attacks
-		ulong BishopTable[0x1480];  // To store bishop attacks
+    namespace {
+        ulong RookTable[0x19000];   // To store rook attacks
+        ulong BishopTable[0x1480];  // To store bishop attacks
 
-		void init_magics(Piece pt, ulong table[], Magic magics[]);
+        void init_magics(Piece pt, ulong table[], Magic magics[]);
 
-		ulong safe_destination(Square s, int step) {
-			Square to = Square(s + step);
-			return IsOK((int)to) && distance(s, to) <= 2 ? SquareBB(to) : ulong(0);
-		}
-	}
+        ulong safe_destination(Square s, int step) {
+            Square to = Square(s + step);
+            return IsOK((int)to) && distance(s, to) <= 2 ? SquareBB(to) : ulong(0);
+        }
+    }
 
-	void Precomputed::init() {
+    void Precomputed::init() {
 
         for (Square s1 = Square::A1; s1 <= Square::H8; ++s1)
             for (Square s2 = Square::A1; s2 <= Square::H8; ++s2)

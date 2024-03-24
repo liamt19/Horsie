@@ -21,47 +21,47 @@
 
 namespace Horsie {
 
-	Position::Position(const std::string& fen) {
-		GamePly = 0;
-		FullMoves = 1;
+    Position::Position(const std::string& fen) {
+        GamePly = 0;
+        FullMoves = 1;
 
-		bb = Bitboard();
+        bb = Bitboard();
 
-		_stateBlock = (StateInfo*)AlignedAllocZeroed((sizeof(StateInfo) * StateStackSize), AllocAlignment);
+        _stateBlock = (StateInfo*)AlignedAllocZeroed((sizeof(StateInfo) * StateStackSize), AllocAlignment);
 
-		_SentinelStart = &_stateBlock[0];
-		_SentinelEnd = &_stateBlock[StateStackSize - 1];
-		State = &_stateBlock[0];
+        _SentinelStart = &_stateBlock[0];
+        _SentinelEnd = &_stateBlock[StateStackSize - 1];
+        State = &_stateBlock[0];
 
-		_accumulatorBlock = (Accumulator*)AlignedAllocZeroed((sizeof(Accumulator) * StateStackSize), AllocAlignment);
-		for (int i = 0; i < StateStackSize; i++)
-		{
-			(_stateBlock + i)->Accumulator = _accumulatorBlock + i;
-		}
+        _accumulatorBlock = (Accumulator*)AlignedAllocZeroed((sizeof(Accumulator) * StateStackSize), AllocAlignment);
+        for (int i = 0; i < StateStackSize; i++)
+        {
+            (_stateBlock + i)->Accumulator = _accumulatorBlock + i;
+        }
 
-		for (int i = 0; i < StateStackSize; i++)
-		{
-			*(_stateBlock + i)->Accumulator = Accumulator();
-		}
+        for (int i = 0; i < StateStackSize; i++)
+        {
+            *(_stateBlock + i)->Accumulator = Accumulator();
+        }
 
-		LoadFromFEN(fen);
-	}
+        LoadFromFEN(fen);
+    }
 
-	Position::~Position() {
+    Position::~Position() {
 
-		for (int i = 0; i < StateStackSize; i++)
-		{
-			//Accumulator acc = *(_SentinelStart + i)->Accumulator;
-			//delete acc;
-		}
+        for (int i = 0; i < StateStackSize; i++)
+        {
+            //Accumulator acc = *(_SentinelStart + i)->Accumulator;
+            //delete acc;
+        }
 
-		AlignedFree(_accumulatorBlock);
-		AlignedFree(_stateBlock);
+        AlignedFree(_accumulatorBlock);
+        AlignedFree(_stateBlock);
 
-	}
+    }
 
-	void Position::MakeMove(Move move) {
-		CopyBlock(State + 1, State, StateCopySize);
+    void Position::MakeMove(Move move) {
+        CopyBlock(State + 1, State, StateCopySize);
 
         //  Move onto the next state
         State++;
@@ -277,9 +277,9 @@ namespace Horsie {
 
         SetCheckInfo();
 
-	}
+    }
 
-	void Position::UnmakeMove(Move move) {
+    void Position::UnmakeMove(Move move) {
             int moveFrom = move.From();
             int moveTo = move.To();
 
@@ -364,10 +364,10 @@ namespace Horsie {
 
 
             ToMove = Not(ToMove);
-	}
+    }
 
-	void Position::MakeNullMove()
-	{
+    void Position::MakeNullMove()
+    {
         CopyBlock(State + 1, State, StateCopySize);
         State->Accumulator->CopyTo(NextState()->Accumulator);
 
@@ -386,15 +386,15 @@ namespace Horsie {
         State->HalfmoveClock++;
 
         SetCheckInfo();
-	}
+    }
 
-	void Position::UnmakeNullMove()
-	{
-		State--;
-		ToMove = Not(ToMove);
-	}
+    void Position::UnmakeNullMove()
+    {
+        State--;
+        ToMove = Not(ToMove);
+    }
 
-	void Position::DoCastling(int ourColor, int from, int to, bool undo = false) {
+    void Position::DoCastling(int ourColor, int from, int to, bool undo = false) {
         bool kingSide = to > from;
         int rfrom = to;
         int rto = (kingSide ? (int)Square::F1 : (int)Square::D1) ^ (ourColor * 56);
@@ -419,9 +419,9 @@ namespace Horsie {
             Zobrist::Move(State->Hash, from, to, ourColor, KING);
             Zobrist::Move(State->Hash, rfrom, rto, ourColor, ROOK);
         }
-	}
+    }
 
-	void Position::SetState() {
+    void Position::SetState() {
         State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
         switch (popcount(State->Checkers))
         {
@@ -455,9 +455,9 @@ namespace Horsie {
         
 
         State->Hash = Zobrist::GetHash(*this);
-	}
+    }
 
-	void Position::SetCheckInfo() {
+    void Position::SetCheckInfo() {
         State->BlockingPieces[WHITE] = bb.BlockingPieces(WHITE, &State->Pinners[BLACK], &State->Xrays[BLACK]);
         State->BlockingPieces[BLACK] = bb.BlockingPieces(BLACK, &State->Pinners[WHITE], &State->Xrays[WHITE]);
 
@@ -469,9 +469,9 @@ namespace Horsie {
         State->CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
         State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
         State->CheckSquares[King] = 0;
-	}
+    }
 
-	void Position::SetCastlingStatus(int c, int rfrom) {
+    void Position::SetCastlingStatus(int c, int rfrom) {
         int kfrom = bb.KingIndex(c);
         CastlingStatus cr = (c == WHITE && kfrom < rfrom) ? CastlingStatus::WK :
                             (c == BLACK && kfrom < rfrom) ? CastlingStatus::BK :
@@ -486,9 +486,9 @@ namespace Horsie {
         CastlingRookPaths[(int)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
 
         State->CastleStatus = (CastlingStatus) ((int)State->CastleStatus | (int)cr);
-	}
+    }
 
-	ulong Position::HashAfter(Move m) {
+    ulong Position::HashAfter(Move m) {
         ulong hash = State->Hash;
 
         int from = m.From();
@@ -505,9 +505,9 @@ namespace Horsie {
         Zobrist::ChangeToMove(hash);
 
         return hash;
-	}
+    }
 
-	bool Position::IsPseudoLegal(Move move) const {
+    bool Position::IsPseudoLegal(Move move) const {
         int moveTo = move.To();
         int moveFrom = move.From();
 
@@ -559,11 +559,11 @@ namespace Horsie {
         //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
         //  Pieces can only move to squares that they attack, with the one exception of queenside castling
         return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
-	}
+    }
 
-	bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }
+    bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }
 
-	bool Position::IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces) const {
+    bool Position::IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces) const {
         int moveFrom = move.From();
         int moveTo = move.To();
 
@@ -671,13 +671,13 @@ namespace Horsie {
         
         auto rayAlign = RayBB[moveFrom][moveTo];
         return ((State->BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
-	}
+    }
 
-	bool Position::IsDraw() const {
+    bool Position::IsDraw() const {
         return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition();
-	}
+    }
 
-	bool Position::IsInsufficientMaterial() const {
+    bool Position::IsInsufficientMaterial() const {
         if ((bb.Pieces[Piece::Queen] | bb.Pieces[Piece::Rook] | bb.Pieces[Piece::Pawn]) != 0)
         {
             return false;
@@ -689,9 +689,9 @@ namespace Horsie {
         //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
         //  Some organizations classify 2 knights a draw and others don't.
         return (knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2);
-	}
+    }
 
-	bool Position::IsThreefoldRepetition() const {
+    bool Position::IsThreefoldRepetition() const {
         //  At least 8 moves must be made before a draw can occur.
         if (GamePly < 8)
         {
@@ -725,23 +725,23 @@ namespace Horsie {
             temp -= 2;
         }
         return false;
-	}
+    }
 
-	bool Position::IsFiftyMoveDraw() const {
+    bool Position::IsFiftyMoveDraw() const {
         return State->HalfmoveClock >= 100;
-	}
+    }
 
 
 
-	ulong Position::Perft(int depth) {
+    ulong Position::Perft(int depth) {
 #ifndef BULK_PERFT
         if (depth == 0) {
             return 1;
         }
 #endif
-		
+        
         ScoredMove movelist[MoveListSize] = {};
-		int size = Generate<GenLegal>(*this, &movelist[0], 0);
+        int size = Generate<GenLegal>(*this, &movelist[0], 0);
 
 #ifdef BULK_PERFT
         if (depth == 1) {
@@ -749,17 +749,17 @@ namespace Horsie {
         }
 #endif
 
-		ulong n = 0;
-		for (int i = 0; i < size; i++) {
+        ulong n = 0;
+        for (int i = 0; i < size; i++) {
             Move m = movelist[i].Move;
 
             MakeMove(m);
             n += Perft(depth - 1);
             UnmakeMove(m);
-		}
-		
-		return n;
-	}
+        }
+        
+        return n;
+    }
 
 
 
@@ -843,7 +843,7 @@ namespace Horsie {
 
 
 
-	void Position::LoadFromFEN(const std::string& fen) {
+    void Position::LoadFromFEN(const std::string& fen) {
 
         //std::cout << "loading [" << fen << "]" << std::endl;
 
@@ -921,11 +921,11 @@ namespace Horsie {
         MaterialCountNonPawn[Color::BLACK] = bb.MaterialCount(Color::BLACK, true);
         
         //std::cout << *this << std::endl;
-	}
+    }
 
-	std::string Position::GetFEN() const {
+    std::string Position::GetFEN() const {
         return "meow";
-	}
+    }
 
     std::ostream& operator<<(std::ostream& os, const Position& pos) {
 

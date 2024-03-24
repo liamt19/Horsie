@@ -6,13 +6,13 @@
 namespace Horsie
 {
 
-	namespace NNUE {
+    namespace NNUE {
 
 
-		int GetEvaluation(Position& pos) {
-			return 1;
-		}
+        int GetEvaluation(Position& pos) {
+            return 1;
+        }
 
-	}
+    }
 
 }

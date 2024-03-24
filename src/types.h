@@ -190,25 +190,25 @@ namespace Horsie {
 
     constexpr size_t AllocAlignment = 64;
 
-	constexpr ulong SquareBB(int s) { return (1ULL << s); }
+    constexpr ulong SquareBB(int s) { return (1ULL << s); }
     constexpr ulong SquareBB(Square s) { return SquareBB((int)s); }
-	constexpr bool MoreThanOne(ulong b) { return b & (b - 1); }
+    constexpr bool MoreThanOne(ulong b) { return b & (b - 1); }
 
-	constexpr ulong RankBB(Rank r) { return Rank1BB << (8 * r); }
-	constexpr ulong FileBB(File f) { return FileABB << f; }
+    constexpr ulong RankBB(Rank r) { return Rank1BB << (8 * r); }
+    constexpr ulong FileBB(File f) { return FileABB << f; }
 
-	constexpr Rank GetIndexRank(int s) { return Rank(int(s) >> 3); }
-	constexpr File GetIndexFile(int s) { return File((int)s & 7); }
+    constexpr Rank GetIndexRank(int s) { return Rank(int(s) >> 3); }
+    constexpr File GetIndexFile(int s) { return File((int)s & 7); }
 
-	constexpr ulong RankBB(int s) { return RankBB(GetIndexRank(s)); }
-	constexpr ulong FileBB(int s) { return FileBB(GetIndexFile(s)); }
+    constexpr ulong RankBB(int s) { return RankBB(GetIndexRank(s)); }
+    constexpr ulong FileBB(int s) { return FileBB(GetIndexFile(s)); }
 
-	constexpr char GetFileChar(int fileNumber) { return (char)(97 + fileNumber); }
-	constexpr int GetFileInt(char fileLetter) { return fileLetter - 97; }
+    constexpr char GetFileChar(int fileNumber) { return (char)(97 + fileNumber); }
+    constexpr int GetFileInt(char fileLetter) { return fileLetter - 97; }
 
-	constexpr bool IsOK(int s) { return s >= (int)Square::A1 && s <= (int)Square::H8; }
+    constexpr bool IsOK(int s) { return s >= (int)Square::A1 && s <= (int)Square::H8; }
 
-	constexpr int ShiftUpDir(int c) { return c == WHITE ? NORTH : SOUTH; };
+    constexpr int ShiftUpDir(int c) { return c == WHITE ? NORTH : SOUTH; };
 
     template<Direction D>
     constexpr ulong Shift(ulong b) {
@@ -225,20 +225,20 @@ namespace Horsie {
                                   : 0;
     }
 
-	constexpr ulong Forward(int c, ulong b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
+    constexpr ulong Forward(int c, ulong b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
 
 
-	inline ulong  operator&(ulong b, Square s) { return b & SquareBB(s); }
-	inline ulong  operator|(ulong b, Square s) { return b | SquareBB(s); }
-	inline ulong  operator^(ulong b, Square s) { return b ^ SquareBB(s); }
-	inline ulong& operator|=(ulong& b, Square s) { return b |= SquareBB(s); }
-	inline ulong& operator^=(ulong& b, Square s) { return b ^= SquareBB(s); }
+    inline ulong  operator&(ulong b, Square s) { return b & SquareBB(s); }
+    inline ulong  operator|(ulong b, Square s) { return b | SquareBB(s); }
+    inline ulong  operator^(ulong b, Square s) { return b ^ SquareBB(s); }
+    inline ulong& operator|=(ulong& b, Square s) { return b |= SquareBB(s); }
+    inline ulong& operator^=(ulong& b, Square s) { return b ^= SquareBB(s); }
 
-	inline ulong operator&(Square s, ulong b) { return b & s; }
-	inline ulong operator|(Square s, ulong b) { return b | s; }
-	inline ulong operator^(Square s, ulong b) { return b ^ s; }
+    inline ulong operator&(Square s, ulong b) { return b & s; }
+    inline ulong operator|(Square s, ulong b) { return b | s; }
+    inline ulong operator^(Square s, ulong b) { return b ^ s; }
 
-	inline ulong operator|(Square s1, Square s2) { return SquareBB(s1) | s2; }
+    inline ulong operator|(Square s1, Square s2) { return SquareBB(s1) | s2; }
 
 
     constexpr bool DirectionOK(Square sq, Direction dir)

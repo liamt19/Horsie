@@ -13,74 +13,74 @@ constexpr int StateStackSize = 1024;
 
 namespace Horsie {
 
-	class Position
-	{
-	public:
-		Position(const std::string& fen = InitialFEN);
-		~Position();
-		void LoadFromFEN(const std::string& fen);
+    class Position
+    {
+    public:
+        Position(const std::string& fen = InitialFEN);
+        ~Position();
+        void LoadFromFEN(const std::string& fen);
 
-		Bitboard bb;
-		Color ToMove;
-		int MaterialCountNonPawn[2];
-		int FullMoves;
-		int GamePly;
-		bool InCheck;
-		bool InDoubleCheck;
-		int idxChecker;
+        Bitboard bb;
+        Color ToMove;
+        int MaterialCountNonPawn[2];
+        int FullMoves;
+        int GamePly;
+        bool InCheck;
+        bool InDoubleCheck;
+        int idxChecker;
 
-		StateInfo* State;
+        StateInfo* State;
 
-		bool UpdateNN;
+        bool UpdateNN;
 
-		int CastlingRookSquares[(int) CastlingStatus::All];
-		ulong CastlingRookPaths[(int) CastlingStatus::All];
+        int CastlingRookSquares[(int) CastlingStatus::All];
+        ulong CastlingRookPaths[(int) CastlingStatus::All];
 
-		bool IsChess960;
+        bool IsChess960;
 
-		constexpr bool Checked() const { return InCheck || InDoubleCheck; }
-		constexpr StateInfo* StartingState() const { return _SentinelStart; }
-		constexpr StateInfo* PreviousState() const { return (State == _SentinelStart) ? NULL : _stateBlock - 1; }
-		constexpr StateInfo* NextState() const { return (State != _SentinelEnd) ? State + 1 : NULL; }
+        constexpr bool Checked() const { return InCheck || InDoubleCheck; }
+        constexpr StateInfo* StartingState() const { return _SentinelStart; }
+        constexpr StateInfo* PreviousState() const { return (State == _SentinelStart) ? NULL : _stateBlock - 1; }
+        constexpr StateInfo* NextState() const { return (State != _SentinelEnd) ? State + 1 : NULL; }
 
 
-		void MakeMove(Move move);
-		void UnmakeMove(Move move);
-		void MakeNullMove();
-		void UnmakeNullMove();
+        void MakeMove(Move move);
+        void UnmakeMove(Move move);
+        void MakeNullMove();
+        void UnmakeNullMove();
 
-		void DoCastling(int ourColor, int from, int to, bool undo);
+        void DoCastling(int ourColor, int from, int to, bool undo);
 
-		void SetState();
-		void SetCheckInfo();
-		void SetCastlingStatus(int c, int rfrom);
+        void SetState();
+        void SetCheckInfo();
+        void SetCastlingStatus(int c, int rfrom);
 
-		ulong HashAfter(Move m);
+        ulong HashAfter(Move m);
 
-		bool IsPseudoLegal(Move move) const;
-		bool IsLegal(Move move) const;
-		bool IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces) const;
+        bool IsPseudoLegal(Move move) const;
+        bool IsLegal(Move move) const;
+        bool IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces) const;
 
-		bool IsDraw() const;
-		bool IsInsufficientMaterial() const;
-		bool IsThreefoldRepetition() const;
-		bool IsFiftyMoveDraw() const;
+        bool IsDraw() const;
+        bool IsInsufficientMaterial() const;
+        bool IsThreefoldRepetition() const;
+        bool IsFiftyMoveDraw() const;
 
-		ulong Perft(int depth);
-		ulong DebugPerft(int depth);
-		ulong SplitPerft(int depth);
+        ulong Perft(int depth);
+        ulong DebugPerft(int depth);
+        ulong SplitPerft(int depth);
 
-		std::string GetFEN() const;
-	private:
-		
-		Accumulator* _accumulatorBlock;
-		StateInfo* _stateBlock;
+        std::string GetFEN() const;
+    private:
+        
+        Accumulator* _accumulatorBlock;
+        StateInfo* _stateBlock;
 
-		StateInfo* _SentinelStart;
-		StateInfo* _SentinelEnd;
-	};
+        StateInfo* _SentinelStart;
+        StateInfo* _SentinelEnd;
+    };
 
-	std::ostream& operator<<(std::ostream& os, const Position& pos);
+    std::ostream& operator<<(std::ostream& os, const Position& pos);
 
 }
 

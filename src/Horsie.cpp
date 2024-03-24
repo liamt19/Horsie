@@ -96,17 +96,17 @@ void HandleDisplayPosition(Position& pos) {
 
 
 void HandlePerftCommand(Position& pos, std::istringstream& is) {
-	int depth = 5;
+    int depth = 5;
 
     if (is && is.peek() != EOF)
-	    is >> depth;
+        is >> depth;
 
     cout << "\nSplitPerft(" << depth << "): " << endl;
     auto timeStart = std::chrono::high_resolution_clock::now();
     ulong nodes = pos.SplitPerft(depth);
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
-	 cout << "\nTotal: " << nodes << " in " << duration << endl << endl;
+     cout << "\nTotal: " << nodes << " in " << duration << endl << endl;
 }
 
 

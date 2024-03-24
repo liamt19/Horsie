@@ -169,7 +169,7 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
         while (moves != 0)
         {
             int to = poplsb(moves);
-			list[size++].Move = Move(to - up, to);
+            list[size++].Move = Move(to - up, to);
         }
 
         while (twoMoves != 0)

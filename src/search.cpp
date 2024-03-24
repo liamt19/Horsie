@@ -12,12 +12,12 @@ using namespace Horsie::Search;
 
 namespace Horsie {
 
-	constexpr int MaxSearchStackPly = 256 - 10;
-	constexpr int DepthQChecks = 0;
-	constexpr int DepthQNoChecks = -1;
+    constexpr int MaxSearchStackPly = 256 - 10;
+    constexpr int DepthQChecks = 0;
+    constexpr int DepthQNoChecks = -1;
 
-	constexpr int BoundLower = (int)TTNodeType::Alpha;
-	constexpr int BoundUpper = (int)TTNodeType::Beta;
+    constexpr int BoundLower = (int)TTNodeType::Alpha;
+    constexpr int BoundUpper = (int)TTNodeType::Beta;
 
 
     void SearchThread::Search(Position& pos) {
@@ -175,215 +175,215 @@ namespace Horsie {
     }
 
 
-	template <SearchNodeType NodeType>
-	int SearchThread::Negamax(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) {
-		constexpr bool isRoot = NodeType == SearchNodeType::RootNode;
-		constexpr bool isPV = NodeType != SearchNodeType::NonPVNode;
+    template <SearchNodeType NodeType>
+    int SearchThread::Negamax(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) {
+        constexpr bool isRoot = NodeType == SearchNodeType::RootNode;
+        constexpr bool isPV = NodeType != SearchNodeType::NonPVNode;
 
         std::cout << "Negamax(" << ss->Ply << ", " << alpha << ", " << beta << ", " << depth << ")" << std::endl;
 
-		if (depth <= 0)
-		{
-			return QSearch<NodeType>(pos, ss, alpha, beta, depth);
-		}
+        if (depth <= 0)
+        {
+            return QSearch<NodeType>(pos, ss, alpha, beta, depth);
+        }
 
-		Bitboard bb = pos.bb;
-		//SearchThread thisThread = pos.Owner;
-		HistoryTable* history = &History;
+        Bitboard bb = pos.bb;
+        //SearchThread thisThread = pos.Owner;
+        HistoryTable* history = &History;
 
-		ulong posHash = pos.State->Hash;
+        ulong posHash = pos.State->Hash;
 
-		Move bestMove = Move::Null();
+        Move bestMove = Move::Null();
 
-		int ourColor = (int)pos.ToMove;
-		int score = -ScoreMate - MaxPly;
-		int bestScore = -ScoreInfinite;
+        int ourColor = (int)pos.ToMove;
+        int score = -ScoreMate - MaxPly;
+        int bestScore = -ScoreInfinite;
 
-		int startingAlpha = alpha;
+        int startingAlpha = alpha;
 
-		short eval = ss->StaticEval;
+        short eval = ss->StaticEval;
 
-		bool doSkip = ss->Skip != Move::Null();
-		bool improving = false;
-		TTEntry* tte = {};
-
-
-		if (IsMain && ((++CheckupCount) >= CheckupMax))
-		{
-			CheckupCount = 0;
-
-			//if (thisThread.CheckTime() || SearchPool.GetNodeCount() >= info.MaxNodes)
-			//{
-			//	SearchPool.StopThreads = true;
-			//}
-
-			if (CheckTime())
-			{
-				StopSearching = true;
-			}
-		}
-
-		if (isPV)
-		{
-			SelDepth = std::max(SelDepth, ss->Ply + 1);
-		}
-
-		if (!isRoot)
-		{
-			if (pos.IsDraw())
-			{
-				return ScoreDraw;
-			}
-
-			if (StopSearching || ss->Ply >= MaxSearchStackPly - 1)
-			{
-				if (pos.Checked())
-				{
-					return ScoreDraw;
-				}
-				else
-				{
-					return Horsie::NNUE::GetEvaluation(pos);
-				}
-
-			}
-
-			alpha = std::max(MakeMateScore(ss->Ply), alpha);
-			beta = std::min(ScoreMate - (ss->Ply + 1), beta);
-			if (alpha >= beta)
-			{
-				return alpha;
-			}
-		}
-
-		(ss + 1)->Skip = Move::Null();
-		(ss + 1)->Killer0 = (ss + 1)->Killer1 = Move::Null();
-		ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
-		ss->StatScore = 0;
-		ss->InCheck = pos.Checked();
-		ss->TTHit = TT.Probe(posHash, tte);
-		if (!doSkip)
-		{
-			ss->TTPV = isPV || (ss->TTHit && tte->PV());
-		}
-
-		short ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
-
-		Move ttMove = isRoot ? CurrentMove() : (ss->TTHit ? tte->BestMove : Move::Null());
-
-		if (!isPV
-			&& !doSkip
-			&& tte->Depth() >= depth
-			&& ttScore != ScoreNone
-			&& (ttScore < alpha || cutNode)
-			&& (tte->Bound() & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
-		{
-			return ttScore;
-		}
-
-		if (ss->InCheck)
-		{
-			ss->StaticEval = eval = ScoreNone;
-			goto MovesLoop;
-		}
-
-		if (doSkip)
-		{
-			eval = ss->StaticEval;
-		}
-		else if (ss->TTHit)
-		{
-			eval = ss->StaticEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
-
-			if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
-			{
-				eval = ttScore;
-			}
-		}
-		else
-		{
-			eval = ss->StaticEval = NNUE::GetEvaluation(pos);
-		}
-
-		if (ss->Ply >= 2)
-		{
-			improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
-			           ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
-		}
+        bool doSkip = ss->Skip != Move::Null();
+        bool improving = false;
+        TTEntry* tte = {};
 
 
-		if (UseReverseFutilityPruning
-			&& !ss->TTPV
-			&& !doSkip
-			&& depth <= ReverseFutilityPruningMaxDepth
-			&& ttMove == Move::Null()
-			&& (eval < ScoreAssuredWin)
-			&& (eval >= beta)
-			&& (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
-		{
-			return (eval + beta) / 2;
-		}
+        if (IsMain && ((++CheckupCount) >= CheckupMax))
+        {
+            CheckupCount = 0;
 
-		if (UseNullMovePruning
-			&& !isPV
-			&& depth >= NMPMinDepth
-			&& eval >= beta
-			&& eval >= ss->StaticEval
-			&& !doSkip
-			&& (ss - 1)->CurrentMove != Move::Null()
-			&& pos.MaterialCountNonPawn[pos.ToMove] > 0)
-		{
-			int reduction = NMPReductionBase + (depth / NMPReductionDivisor);
-			ss->CurrentMove = Move::Null();
-			ss->ContinuationHistory = history->Continuations[0][0].Histories[0][0];
+            //if (thisThread.CheckTime() || SearchPool.GetNodeCount() >= info.MaxNodes)
+            //{
+            //	SearchPool.StopThreads = true;
+            //}
 
-			pos.MakeNullMove();
-			score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
-			pos.UnmakeNullMove();
+            if (CheckTime())
+            {
+                StopSearching = true;
+            }
+        }
 
-			if (score >= beta)
-			{
-				return score < ScoreTTWin ? score : beta;
-			}
-		}
+        if (isPV)
+        {
+            SelDepth = std::max(SelDepth, ss->Ply + 1);
+        }
 
-		if (ttMove == Move::Null()
-			&& cutNode
-			&& depth >= ExtraCutNodeReductionMinDepth)
-		{
-			depth--;
-		}
+        if (!isRoot)
+        {
+            if (pos.IsDraw())
+            {
+                return ScoreDraw;
+            }
 
-	MovesLoop:
+            if (StopSearching || ss->Ply >= MaxSearchStackPly - 1)
+            {
+                if (pos.Checked())
+                {
+                    return ScoreDraw;
+                }
+                else
+                {
+                    return Horsie::NNUE::GetEvaluation(pos);
+                }
 
-		int legalMoves = 0, playedMoves = 0;
-		int quietCount = 0, captureCount = 0;
+            }
 
-		bool didSkip = false;
+            alpha = std::max(MakeMateScore(ss->Ply), alpha);
+            beta = std::min(ScoreMate - (ss->Ply + 1), beta);
+            if (alpha >= beta)
+            {
+                return alpha;
+            }
+        }
 
-		Move captureMoves[16] = {};
-		Move quietMoves[16] = {};
+        (ss + 1)->Skip = Move::Null();
+        (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move::Null();
+        ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
+        ss->StatScore = 0;
+        ss->InCheck = pos.Checked();
+        ss->TTHit = TT.Probe(posHash, tte);
+        if (!doSkip)
+        {
+            ss->TTPV = isPV || (ss->TTHit && tte->PV());
+        }
 
-		bool skipQuiets = false;
+        short ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
 
-		ScoredMove list[MoveListSize] = {};
-		int size = Generate<MoveGenType::GenNonEvasions>(pos, list, 0);
-		AssignScores(pos, ss, *history, list, size, ttMove);
+        Move ttMove = isRoot ? CurrentMove() : (ss->TTHit ? tte->BestMove : Move::Null());
 
-		for (int i = 0; i < size; i++)
-		{
-			Move m = OrderNextMove(list, size, i);
+        if (!isPV
+            && !doSkip
+            && tte->Depth() >= depth
+            && ttScore != ScoreNone
+            && (ttScore < alpha || cutNode)
+            && (tte->Bound() & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
+        {
+            return ttScore;
+        }
 
-			if (m == ss->Skip)
-			{
-				didSkip = true;
-				continue;
-			}
+        if (ss->InCheck)
+        {
+            ss->StaticEval = eval = ScoreNone;
+            goto MovesLoop;
+        }
 
-			if (!pos.IsLegal(m))
-			{
-				continue;
-			}
+        if (doSkip)
+        {
+            eval = ss->StaticEval;
+        }
+        else if (ss->TTHit)
+        {
+            eval = ss->StaticEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
+
+            if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
+            {
+                eval = ttScore;
+            }
+        }
+        else
+        {
+            eval = ss->StaticEval = NNUE::GetEvaluation(pos);
+        }
+
+        if (ss->Ply >= 2)
+        {
+            improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
+                       ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
+        }
+
+
+        if (UseReverseFutilityPruning
+            && !ss->TTPV
+            && !doSkip
+            && depth <= ReverseFutilityPruningMaxDepth
+            && ttMove == Move::Null()
+            && (eval < ScoreAssuredWin)
+            && (eval >= beta)
+            && (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
+        {
+            return (eval + beta) / 2;
+        }
+
+        if (UseNullMovePruning
+            && !isPV
+            && depth >= NMPMinDepth
+            && eval >= beta
+            && eval >= ss->StaticEval
+            && !doSkip
+            && (ss - 1)->CurrentMove != Move::Null()
+            && pos.MaterialCountNonPawn[pos.ToMove] > 0)
+        {
+            int reduction = NMPReductionBase + (depth / NMPReductionDivisor);
+            ss->CurrentMove = Move::Null();
+            ss->ContinuationHistory = history->Continuations[0][0].Histories[0][0];
+
+            pos.MakeNullMove();
+            score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
+            pos.UnmakeNullMove();
+
+            if (score >= beta)
+            {
+                return score < ScoreTTWin ? score : beta;
+            }
+        }
+
+        if (ttMove == Move::Null()
+            && cutNode
+            && depth >= ExtraCutNodeReductionMinDepth)
+        {
+            depth--;
+        }
+
+    MovesLoop:
+
+        int legalMoves = 0, playedMoves = 0;
+        int quietCount = 0, captureCount = 0;
+
+        bool didSkip = false;
+
+        Move captureMoves[16] = {};
+        Move quietMoves[16] = {};
+
+        bool skipQuiets = false;
+
+        ScoredMove list[MoveListSize] = {};
+        int size = Generate<MoveGenType::GenNonEvasions>(pos, list, 0);
+        AssignScores(pos, ss, *history, list, size, ttMove);
+
+        for (int i = 0; i < size; i++)
+        {
+            Move m = OrderNextMove(list, size, i);
+
+            if (m == ss->Skip)
+            {
+                didSkip = true;
+                continue;
+            }
+
+            if (!pos.IsLegal(m))
+            {
+                continue;
+            }
 
             int toSquare = m.To();
             bool isCapture = (bb.GetPieceAtIndex(toSquare) != Piece::NONE && !m.IsCastle());
@@ -659,11 +659,11 @@ namespace Horsie {
         }
 
         return bestScore;
-	}
+    }
 
 
-	template <SearchNodeType NodeType>
-	int SearchThread::QSearch(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth) {
+    template <SearchNodeType NodeType>
+    int SearchThread::QSearch(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth) {
         
         constexpr bool isPV = NodeType != SearchNodeType::NonPVNode;
 
@@ -891,30 +891,30 @@ namespace Horsie {
         tte->Update(pos.State->Hash, MakeTTScore(bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
 
         return bestScore;
-	}
+    }
 
 
 
 
 
 
-	void SearchThread::UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus) {
-		for (int i : {1, 2, 4, 6}) {
-			if (ss->InCheck && i > 2)
-			{
-				break;
-			}
+    void SearchThread::UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus) {
+        for (int i : {1, 2, 4, 6}) {
+            if (ss->InCheck && i > 2)
+            {
+                break;
+            }
 
-			if ((ss - i)->CurrentMove != Move::Null())
-			{
-				(*(ss - i)->ContinuationHistory).history[MakePiece(pc, pt)][sq] += (short)(bonus - 
-					((*(ss - i)->ContinuationHistory).history[MakePiece(pc, pt)][sq] * std::abs(bonus) / HistoryClamp));
-			}
-		}
-	}
+            if ((ss - i)->CurrentMove != Move::Null())
+            {
+                (*(ss - i)->ContinuationHistory).history[MakePiece(pc, pt)][sq] += (short)(bonus - 
+                    ((*(ss - i)->ContinuationHistory).history[MakePiece(pc, pt)][sq] * std::abs(bonus) / HistoryClamp));
+            }
+        }
+    }
 
 
-	void SearchThread::UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount) {
+    void SearchThread::UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount) {
 
         HistoryTable history = this->History;
         int moveFrom = bestMove.From();
@@ -983,7 +983,7 @@ namespace Horsie {
            (history.CaptureHistory[thisColor][capThisPt][moveTo][capTheirPt] * std::abs(-quietMoveBonus) / HistoryClamp));
         }
 
-	}
+    }
 
 
 
@@ -999,74 +999,74 @@ namespace Horsie {
 
 
 
-	Move SearchThread::OrderNextMove(ScoredMove* moves, int size, int listIndex) {
-		int max = INT32_MIN;
-		int maxIndex = listIndex;
+    Move SearchThread::OrderNextMove(ScoredMove* moves, int size, int listIndex) {
+        int max = INT32_MIN;
+        int maxIndex = listIndex;
 
-		for (int i = listIndex; i < size; i++)
-		{
-			if (moves[i].Score > max)
-			{
-				max = moves[i].Score;
-				maxIndex = i;
-			}
-		}
+        for (int i = listIndex; i < size; i++)
+        {
+            if (moves[i].Score > max)
+            {
+                max = moves[i].Score;
+                maxIndex = i;
+            }
+        }
 
-		//(moves[maxIndex], moves[listIndex]) = (moves[listIndex], moves[maxIndex]);
+        //(moves[maxIndex], moves[listIndex]) = (moves[listIndex], moves[maxIndex]);
         std::swap(moves[maxIndex], moves[listIndex]);
 
-		return moves[listIndex].Move;
-	}
+        return moves[listIndex].Move;
+    }
 
 
 
-	void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove) {
-		
-		Bitboard bb = pos.bb;
-		int pc = (int) pos.ToMove;
+    void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove) {
+        
+        Bitboard bb = pos.bb;
+        int pc = (int) pos.ToMove;
 
-		for (int i = 0; i < size; i++) {
-			Move m = list[i].Move;
-			int moveTo = m.To();
-			int moveFrom = m.From();
+        for (int i = 0; i < size; i++) {
+            Move m = list[i].Move;
+            int moveTo = m.To();
+            int moveFrom = m.From();
 
-			if (m == ttMove)
-			{
-				list[i].Score = INT32_MAX - 100000;
-			}
-			else if (m == ss->Killer0)
-			{
-				list[i].Score = INT32_MAX - 1000000;
-			}
-			else if (m == ss->Killer1)
-			{
-				list[i].Score = INT32_MAX - 2000000;
-			}
-			else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle())
-			{
-				int capturedPiece = bb.GetPieceAtIndex(moveTo);
-				auto hist = history.CaptureHistory[pc][bb.GetPieceAtIndex(moveFrom)][moveTo][capturedPiece];
-				list[i].Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + (hist / OrderingHistoryDivisor);
-			}
-			else {
+            if (m == ttMove)
+            {
+                list[i].Score = INT32_MAX - 100000;
+            }
+            else if (m == ss->Killer0)
+            {
+                list[i].Score = INT32_MAX - 1000000;
+            }
+            else if (m == ss->Killer1)
+            {
+                list[i].Score = INT32_MAX - 2000000;
+            }
+            else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle())
+            {
+                int capturedPiece = bb.GetPieceAtIndex(moveTo);
+                auto hist = history.CaptureHistory[pc][bb.GetPieceAtIndex(moveFrom)][moveTo][capturedPiece];
+                list[i].Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + (hist / OrderingHistoryDivisor);
+            }
+            else {
 
-				int pt = bb.GetPieceAtIndex(moveFrom);
-				//int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
-				int contIdx = (pc * PIECE_NB) + pt;
+                int pt = bb.GetPieceAtIndex(moveFrom);
+                //int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
+                int contIdx = (pc * PIECE_NB) + pt;
 
-				list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-				list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];
-				list[i].Score +=		(*(ss - 2)->ContinuationHistory).history[contIdx][moveTo];
-				list[i].Score +=		(*(ss - 4)->ContinuationHistory).history[contIdx][moveTo];
-				list[i].Score +=		(*(ss - 6)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=		(*(ss - 2)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=		(*(ss - 4)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=		(*(ss - 6)->ContinuationHistory).history[contIdx][moveTo];
 
-				if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0)
-				{
-					list[i].Score += OrderingGivesCheckBonus;
-				}
-			}
-		}
-	}
+                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0)
+                {
+                    list[i].Score += OrderingGivesCheckBonus;
+                }
+            }
+        }
+    }
 
 
 

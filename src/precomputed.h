@@ -6,16 +6,16 @@
 #include "types.h"
 
 namespace Horsie {
-	extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
-	extern ulong BetweenBB[SQUARE_NB][SQUARE_NB];
-	extern ulong LineBB[SQUARE_NB][SQUARE_NB];
+    extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+    extern ulong BetweenBB[SQUARE_NB][SQUARE_NB];
+    extern ulong LineBB[SQUARE_NB][SQUARE_NB];
     extern ulong RayBB[SQUARE_NB][SQUARE_NB];
     extern ulong XrayBB[SQUARE_NB][SQUARE_NB];
-	extern ulong PseudoAttacks[PIECE_NB][SQUARE_NB];
-	extern ulong PawnAttackMasks[COLOR_NB][SQUARE_NB];
+    extern ulong PseudoAttacks[PIECE_NB][SQUARE_NB];
+    extern ulong PawnAttackMasks[COLOR_NB][SQUARE_NB];
     extern ulong HorsieMasks[SQUARE_NB];
-	extern ulong RookRays[SQUARE_NB];
-	extern ulong BishopRays[SQUARE_NB];
+    extern ulong RookRays[SQUARE_NB];
+    extern ulong BishopRays[SQUARE_NB];
 
     extern int LogarithmicReductionTable[MaxPly][MoveListSize];
     extern int LMPTable[2][MaxDepth];
@@ -119,6 +119,7 @@ namespace Horsie {
         case BISHOP:
             return BishopMagics[(int)s].attacks[BishopMagics[(int)s].index(occupied)];
         case ROOK:
+            
             return RookMagics[(int)s].attacks[RookMagics[(int)s].index(occupied)];
         case QUEEN:
             return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);

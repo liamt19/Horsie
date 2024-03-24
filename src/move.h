@@ -26,7 +26,7 @@ namespace Horsie {
         static constexpr Move make(int from, int to) {
             return Move((int)to | ((int)from << 6));
         }
-		
+        
         static constexpr Move make(int from, int to, Piece promotionTo) {
             return Move((int)to | ((int)from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
         }
@@ -127,8 +127,8 @@ namespace Horsie {
 
 
         static std::string ToString(Move m) {
-			return m.SmithNotation(false);
-		}
+            return m.SmithNotation(false);
+        }
 
     private:
         ushort data;
