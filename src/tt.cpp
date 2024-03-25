@@ -5,9 +5,9 @@ namespace Horsie {
 
     TranspositionTable TT;
 
-    TTEntry* TranspositionTable::Probe(ulong hash, bool& ttHit)
+    TTEntry* TranspositionTable::Probe(ulong hash, bool& ttHit) const
     {
-        TTCluster* cluster = GetCluster(hash);
+        TTCluster* const cluster = GetCluster(hash);
         TTEntry* tte = (TTEntry*)cluster;
 
         auto key = (ushort)hash;

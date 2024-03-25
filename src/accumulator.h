@@ -9,7 +9,7 @@ constexpr int ByteSize = 1536 * sizeof(short);
 
 namespace Horsie {
 
-    struct Accumulator {
+    struct alignas(64) Accumulator {
     public:
         short White[1536] = {};
         short Black[1536] = {};
