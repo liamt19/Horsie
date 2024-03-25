@@ -289,7 +289,8 @@ namespace Horsie {
     }
 
     inline int MakePiece(int pc, int pt) {
-        return (pc * 2) + pt;
+        //return (pc * 2) + pt;
+        return (pc * 6) + pt;
     }
 
 

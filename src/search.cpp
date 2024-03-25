@@ -27,6 +27,8 @@ namespace Horsie {
         MaxNodes = info.MaxNodes;
         SearchTimeMS = info.MaxTime;
 
+        History.Clear();
+
         SearchStackEntry _SearchStackBlock[MaxPly] = {};
         SearchStackEntry* ss = &_SearchStackBlock[10];
         for (int i = -10; i < MaxSearchStackPly; i++)
@@ -564,6 +566,11 @@ namespace Horsie {
             Nodes++;
 
             pos.MakeMove(m);
+            
+#ifdef _DEBUG
+            N_TABS(ss->Ply);
+            std::cout << "NM " << m << std::endl;
+#endif
 
             playedMoves++;
             ulong prevNodes = Nodes;
@@ -946,6 +953,12 @@ namespace Horsie {
             thisThread->Nodes++;
 
             pos.MakeMove(m);
+
+#ifdef _DEBUG
+            N_TABS(ss->Ply);
+            std::cout << "QS " << m << std::endl;
+#endif
+
             score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha, depth - 1);
             pos.UnmakeMove(m);
 
@@ -1153,7 +1166,7 @@ namespace Horsie {
 
                 int pt = bb.GetPieceAtIndex(moveFrom);
                 //int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
-                int contIdx = (pc * PIECE_NB) + pt;
+                int contIdx = MakePiece(pc, pt);
 
                 list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
                 list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];
@@ -1203,7 +1216,7 @@ namespace Horsie {
 
                 int pt = bb.GetPieceAtIndex(moveFrom);
                 //int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
-                int contIdx = (pc * PIECE_NB) + pt;
+                int contIdx = MakePiece(pc, pt);
 
                 list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
                 list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];

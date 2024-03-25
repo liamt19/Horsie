@@ -182,7 +182,7 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
     thread.Reset();
 
     SearchLimits info = SearchLimits();
-    info.MaxDepth = 12;
+    info.MaxDepth = 18;
     info.MaxNodes = UINT64_MAX;
     info.MaxTime = INT32_MAX;
 

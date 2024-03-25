@@ -30,7 +30,7 @@ namespace Horsie {
 
     void Bitboard::AddPiece(int idx, int pc, int pt)
     {
-        PieceTypes[(int)idx] = pt;
+        PieceTypes[idx] = pt;
 
         assert((Colors[pc] & SquareBB(idx)) == 0);
         assert((Pieces[pt] & SquareBB(idx)) == 0);
@@ -43,7 +43,7 @@ namespace Horsie {
 
     void Bitboard::RemovePiece(int idx, int pc, int pt)
     {
-        PieceTypes[(int)idx] = Piece::NONE;
+        PieceTypes[idx] = Piece::NONE;
 
         assert((Colors[pc] & SquareBB(idx)) != 0);
         assert((Pieces[pt] & SquareBB(idx)) != 0);

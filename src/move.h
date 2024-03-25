@@ -6,6 +6,9 @@
 #include "types.h"
 #include "util.h"
 
+#include <string>  
+#include <iostream> 
+#include <sstream>   
 
 constexpr int FlagEnPassant = 0b000001 << 14;
 constexpr int FlagCastle = 0b000010 << 14;
@@ -133,6 +136,18 @@ namespace Horsie {
         Move Move;
         int Score;
     };
+
+
+
+    inline std::string MoveListToString(const ScoredMove* moves, int size) {
+        std::stringstream buffer;
+        for (int i = 0; i < size; i++)
+        {
+			buffer << Move::ToString(moves[i].Move) << ": " << moves[i].Score << "\n";
+		}
+
+		return buffer.str();
+	}
 
 
 }
