@@ -16,7 +16,7 @@ namespace Horsie {
         PieceToHistory Histories[PIECE_NB * 2][SQUARE_NB];
     };
 
-    class HistoryTable {
+    struct HistoryTable {
     public:
         short MainHistory[COLOR_NB][SQUARE_NB * SQUARE_NB];
 
