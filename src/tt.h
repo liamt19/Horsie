@@ -43,19 +43,21 @@ namespace Horsie {
         Exact = Beta | Alpha
     };
 
+
     struct TTEntry {
-        int _ScoreStatEval;
-        Move BestMove;
-        ushort Key;
-        sbyte _AgePVType;
-        sbyte _depth;
+        short _Score;           //  16 bits
+        short _StatEval;		//  16 bits
+        Move BestMove;          //  16 bits
+        ushort Key;             //  16 bits
+        sbyte _AgePVType;       //  5 + 2 + 1 bits
+        sbyte _depth;           //  8 bits
 
 
-        constexpr short Score() const { return (short)(_ScoreStatEval & 0xFFFF); }
-        constexpr void SetScore(short n) { _ScoreStatEval = (_ScoreStatEval & ~0xFFFF) | n; }
+        constexpr short Score() const { return _Score; }
+        constexpr void SetScore(short n) { _Score = n; }
 
-        constexpr short StatEval() const { return (short)((_ScoreStatEval & 0xFFFF0000) >> 16); }
-        constexpr void SetStatEval(short n) { _ScoreStatEval = (int)((_ScoreStatEval & 0x0000FFFF) | (n << 16)); }
+        constexpr short StatEval() const { return _StatEval; }
+        constexpr void SetStatEval(short n) { _StatEval = n; }
 
         constexpr int Age() const { return _AgePVType & TT_AGE_MASK; }
         constexpr bool PV() const { return (_AgePVType & TT_PV_MASK) != 0; }
@@ -69,9 +71,9 @@ namespace Horsie {
         void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false);
 
     private:
-        const int KeyShift = 64 - (sizeof(ushort) * 8);
-        const int DepthOffset = 7;
-        const int DepthNone = -6;
+        static constexpr int KeyShift = 64 - (sizeof(ushort) * 8);
+        static constexpr int DepthOffset = 7;
+        static constexpr int DepthNone = -6;
     };
 
 
@@ -83,6 +85,8 @@ namespace Horsie {
             std::memset(&entries[0], 0, sizeof(TTEntry) * 3);
         }
     };
+
+    static_assert(sizeof(TTCluster) == 32, "Unexpected Cluster size");
 
 
 
