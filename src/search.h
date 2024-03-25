@@ -14,6 +14,9 @@
 
 namespace Horsie {
 
+    static const int DepthQChecks = 0;
+    static const int DepthQNoChecks = -1;
+
     enum SearchNodeType {
         PVNode,
         NonPVNode,

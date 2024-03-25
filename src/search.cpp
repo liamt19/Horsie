@@ -16,8 +16,7 @@ using namespace Horsie::Search;
 namespace Horsie {
 
     constexpr int MaxSearchStackPly = 256 - 10;
-    constexpr int DepthQChecks = 0;
-    constexpr int DepthQNoChecks = -1;
+
 
     constexpr int BoundLower = (int)TTNodeType::Alpha;
     constexpr int BoundUpper = (int)TTNodeType::Beta;
@@ -870,7 +869,7 @@ namespace Horsie {
         //AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
 
         ScoredMove list[MoveListSize] = {};
-        int size = Generate<MoveGenType::GenNonEvasions>(pos, list, 0);
+        int size = GenerateQS<MoveGenType::GenNonEvasions>(pos, list, ttDepth, 0);
         AssignQuiescenceScores(pos, ss, thisThread->History, list, size, ttMove);
 
         for (int i = 0; i < size; i++)
@@ -892,11 +891,6 @@ namespace Horsie {
             bool isCapture = (capturedPiece != Piece::NONE && !m.IsCastle());
             bool isPromotion = m.IsPromotion();
             bool givesCheck = ((pos.State->CheckSquares[thisPiece] & SquareBB(moveTo)) != 0);
-
-            if (!(isCapture || ss->InCheck || (givesCheck && ttDepth > DepthQNoChecks)))
-            {
-                continue;
-            }
 
             movesMade++;
 

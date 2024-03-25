@@ -5,6 +5,7 @@
 #include "movegen.h"
 
 #include "precomputed.h"
+#include "search.h"
 
 #include <iostream>
 
@@ -282,14 +283,6 @@ int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong 
         int idx = poplsb(ourPieces);
         ulong moves = bb.AttackMask(idx, stm, pt, occ) & targets;
 
-        if (moves & bb.KingMask(stm)) {
-            assert(false);
-        }
-
-        if (moves & bb.KingMask(Not(stm))) {
-            assert(false);
-        }
-
         if (checks && (pt == QUEEN || ((pos.State->BlockingPieces[Not(stm)] & SquareBB(idx)) == 0)))
         {
             moves &= pos.State->CheckSquares[pt];
@@ -415,6 +408,203 @@ int Generate<GenLegal>(const Position& pos, ScoredMove* moveList, int size) {
 
     return numMoves;
 }
+
+
+
+
+
+
+
+
+
+
+
+template <Color stm>
+int GenPawnsQS(const Position& pos, ScoredMove* list, bool allowChecks, int size) {
+
+    ulong rank7 = (stm == WHITE) ? Rank7BB : Rank2BB;
+    ulong rank3 = (stm == WHITE) ? Rank3BB : Rank6BB;
+
+    constexpr int theirColor = Not(stm);
+    constexpr Direction up = (Direction)ShiftUpDir(stm);
+
+    Bitboard bb = pos.bb;
+
+    ulong us = bb.Colors[stm];
+    ulong them = bb.Colors[theirColor];
+    ulong emptySquares = ~(them | us);
+
+    constexpr Direction UpLeft = ((Direction)up + Direction::WEST);
+    constexpr Direction UpRight = ((Direction)up + Direction::EAST);
+
+    ulong ourPawns = us & bb.Pieces[Piece::PAWN];
+    ulong promotingPawns = ourPawns & rank7;
+    ulong notPromotingPawns = ourPawns & ~rank7;
+
+    int theirKing = pos.State->KingSquares[theirColor];
+
+    if (allowChecks)
+    {
+        //  Include pawn pushes
+        ulong moves = Forward(stm, notPromotingPawns) & emptySquares & PawnAttackMasks[theirColor][theirKing];
+        ulong twoMoves = Forward(stm, moves & rank3) & emptySquares & PawnAttackMasks[theirColor][theirKing];
+
+        while (moves != 0)
+        {
+            int to = poplsb(moves);
+            list[size++].Move = Move(to - up, to);
+        }
+
+        while (twoMoves != 0)
+        {
+            int to = poplsb(twoMoves);
+            list[size++].Move.SetNew(to - up - up, to);
+        }
+    }
+
+    if (promotingPawns != 0)
+    {
+        ulong promotions = Shift<up>(promotingPawns) & emptySquares;
+        ulong promotionCapturesL = Shift<UpLeft>(promotingPawns) & them;
+        ulong promotionCapturesR = Shift<UpRight>(promotingPawns) & them;
+
+        if (allowChecks) {
+            while (promotions != 0)
+            {
+                int to = poplsb(promotions);
+                for (int promotionPiece = QUEEN; promotionPiece >= HORSIE; promotionPiece--)
+                {
+                    if ((SquareBB(to) & pos.State->CheckSquares[promotionPiece]) != 0)
+                    {
+                        list[size++].Move.SetNew(to - up, to, promotionPiece);
+                    }
+                }
+            }
+        }
+
+        while (promotionCapturesL != 0)
+        {
+            int to = poplsb(promotionCapturesL);
+
+            for (int promotionPiece = QUEEN; promotionPiece >= HORSIE; promotionPiece--)
+            {
+                list[size++].Move.SetNew(to - up - Direction::WEST, to, promotionPiece);
+            }
+        }
+
+        while (promotionCapturesR != 0)
+        {
+            int to = poplsb(promotionCapturesR);
+
+            for (int promotionPiece = QUEEN; promotionPiece >= HORSIE; promotionPiece--)
+            {
+                list[size++].Move.SetNew(to - up - Direction::EAST, to, promotionPiece);
+            }
+        }
+    }
+
+    ulong capturesL = Shift<UpLeft>(notPromotingPawns) & them;
+    ulong capturesR = Shift<UpRight>(notPromotingPawns) & them;
+
+    while (capturesL != 0)
+    {
+        int to = poplsb(capturesL);
+        list[size++].Move.SetNew(to - up - Direction::WEST, to);
+    }
+
+    while (capturesR != 0)
+    {
+        int to = poplsb(capturesR);
+        list[size++].Move.SetNew(to - up - Direction::EAST, to);
+    }
+
+    return size;
+}
+
+
+template <Color stm, Piece pt>
+int GenNormalQS(const Position& pos, ScoredMove* list, bool allowChecks, int size)
+{
+    // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
+    // This is far more convenient though
+
+    ulong us = pos.bb.Colors[stm];
+    ulong them = pos.bb.Colors[Not(stm)];
+    ulong occ = us | them;
+
+    ulong ourPieces = pos.bb.Pieces[pt] & pos.bb.Colors[stm];
+    while (ourPieces != 0)
+    {
+        int idx = poplsb(ourPieces);
+        ulong moves = pos.bb.AttackMask(idx, stm, pt, occ) & (them | (allowChecks ? (~us & pos.State->CheckSquares[pt]) : 0));
+
+        while (moves != 0)
+        {
+            int to = poplsb(moves);
+            list[size++].Move.SetNew(idx, to);
+        }
+    }
+
+    return size;
+}
+
+
+template <Color stm>
+int GenAllQS(const Position& pos, ScoredMove* list, int ttDepth, int size)
+{
+    ulong us = pos.bb.Colors[stm];
+    ulong them = pos.bb.Colors[Not(stm)];
+    ulong occ = us | them;
+
+    int ourKing = pos.State->KingSquares[stm];
+    int theirKing = pos.State->KingSquares[Not(stm)];
+
+    bool allowChecks = (ttDepth > Horsie::DepthQNoChecks);
+
+    ulong targets = 0;
+
+    size = GenPawnsQS<stm>(pos, list, allowChecks, size);
+    size = GenNormalQS<stm, HORSIE>(pos, list, allowChecks, size);
+    size = GenNormalQS<stm, BISHOP>(pos, list, allowChecks, size);
+    size = GenNormalQS<stm, ROOK  >(pos, list, allowChecks, size);
+    size = GenNormalQS<stm, QUEEN >(pos, list, allowChecks, size);
+
+    if ((allowChecks && (pos.State->BlockingPieces[Not(pos.ToMove)] & SquareBB(ourKing)) != 0))
+    {
+        ulong moves = PseudoAttacks[KING][ourKing] & them;
+        if (allowChecks)
+        {
+            moves |= (PseudoAttacks[KING][ourKing] & ~us & ~pos.bb.AttackMask(theirKing, Not(pos.ToMove), QUEEN, occ));
+        }
+
+        while (moves != 0)
+        {
+            int to = poplsb(moves);
+            list[size++].Move.SetNew(ourKing, to);
+        }
+
+        if (((pos.State->CastleStatus & (pos.ToMove == WHITE ? CastlingStatus::White : CastlingStatus::Black)) != CastlingStatus::None))
+        {
+            //  Only do castling moves if we are doing non-captures or we aren't in check.
+            size = GenCastlingMoves(pos, list, size);
+        }
+    }
+
+    return size;
+}
+
+template int GenerateQS<GenNonEvasions>(const Position&, ScoredMove*, int, int);
+
+template <MoveGenType GenType>
+int GenerateQS(const Position& pos, ScoredMove* moveList, int ttDepth, int size) {
+
+    Color us = pos.ToMove;
+    return pos.State->Checkers && us == WHITE ? GenAll<WHITE, GenEvasions>(pos, moveList, 0) :
+            pos.State->Checkers && us == BLACK ? GenAll<BLACK, GenEvasions>(pos, moveList, 0) :
+                                    us == WHITE ? GenAllQS<WHITE>(pos, moveList, ttDepth, 0) :
+                                                GenAllQS<BLACK>(pos, moveList, ttDepth, 0);
+}
+
 
 
 }

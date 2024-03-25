@@ -21,27 +21,11 @@ namespace Horsie {
     };
 
 
-#ifdef MOVEGEN_H_TEMPLATES
-template <Color, MoveGenType>
-int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size);
-
-template <Color, MoveGenType>
-int GenAll(const Position& pos, ScoredMove* list, int size);
-
-template <MoveGenType>
-int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong targets, int size);
-
-template <MoveGenType>
-int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size);
-
-int GenCastlingMoves(const Position& pos, ScoredMove* list, int size);
-
-#endif
-
 template<MoveGenType>
 int Generate(const Position& pos, ScoredMove* moveList, int size);
 
-
+template<MoveGenType>
+int GenerateQS(const Position& pos, ScoredMove* moveList, int ttDepth, int size);
 
 
 }
