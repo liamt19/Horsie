@@ -12,7 +12,7 @@ LDFLAGS :=
 EXE := horsie
 EVALFILE := src/incbin/iguana-epoch10.bin
 
-GXX_FLAGS:= -mavx -mavx2 -DUSE_PEXT -DUSE_POPCNT
+GXX_FLAGS:= -mavx -mavx2 -DUSE_PEXT -DUSE_POPCNT -funroll-loops
 
 COMMON_CXXFLAGS := -std=c++23 -DNETWORK_FILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
 
