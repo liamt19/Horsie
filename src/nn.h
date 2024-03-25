@@ -30,13 +30,13 @@ namespace Horsie
         const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         const int LayerBiasElements = OutputBuckets;
 
-		struct alignas(64) Network
-		{
-			std::array<short, FeatureWeightElements> FeatureWeights;
-			std::array<short, FeatureBiasElements>   FeatureBiases;
-			std::array<short, LayerWeightElements>   LayerWeights;
-			std::array<short, LayerBiasElements>     LayerBiases;
-		};
+        struct alignas(64) Network
+        {
+            std::array<short, FeatureWeightElements> FeatureWeights;
+            std::array<short, FeatureBiasElements>   FeatureBiases;
+            std::array<short, LayerWeightElements>   LayerWeights;
+            std::array<short, LayerBiasElements>     LayerBiases;
+        };
 
         extern const Network& g_network;
 
