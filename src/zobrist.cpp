@@ -9,7 +9,7 @@ namespace Zobrist {
     ulong EnPassantFileHashes[FILE_NB];
     ulong BlackHash;
 
-    void Zobrist::init() {
+    void init() {
         std::mt19937_64 rng(DefaultSeed);
         std::uniform_int_distribution<uint64_t> dis;
 

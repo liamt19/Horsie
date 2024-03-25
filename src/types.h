@@ -73,7 +73,7 @@ constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
 constexpr auto KiwiFEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10";
 
 #define N_TABS(n) \
-        for (int _n_ = 0; _n_ < n; n++) std::cout << "\t";
+        for (int _n_ = 0; _n_ < n; _n_++) std::cout << "\t";
 
 #define ENABLE_INCR_OPERATORS_ON(T) \
         inline T& operator++(T& d) { return d = T(int(d) + 1); } \
@@ -293,7 +293,7 @@ namespace Horsie {
     }
 
 
-    class Accumulator;
+    struct Accumulator;
     struct StateInfo {
     public:
 

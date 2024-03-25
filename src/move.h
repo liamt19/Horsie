@@ -110,12 +110,6 @@ namespace Horsie {
                 retVal += char(std::tolower(PieceToChar[PromotionTo()]));
             }
 
-#ifdef DEBUG
-            retVal = "[" + retVal;
-            retVal += (IsEnPassant() ? " EP" : "");
-            retVal += (IsCastle() ? " Castle" : "");
-            return retVal + "]";
-#endif
             return retVal;
         }
 

@@ -1,35 +1,42 @@
 
 # Compiler and flags
-CXX := clang++
+CXX := g++
 ARCH := -march=native
-_THIS     := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-_ROOT     := $(_THIS)
+_THIS := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+_ROOT := $(_THIS)
+
 
 LDFLAGS := 
 
-# Debug compiler flags
-DEBUG_CXXFLAGS := -std=c++20 -g3 -O0 -DDEBUG -fsanitize=address -fsanitize=undefined
 
-#BUILD_CXXFLAGS := -DNDEBUG -O3
+EXE := horsie
+EVALFILE := src/incbin/iguana-epoch10.bin
 
-BUILD_CXXFLAGS := -std=c++23 -O3 -flto -DNDEBUG
+GXX_FLAGS:= -mavx -mavx2 -DUSE_PEXT -DUSE_POPCNT
+
+COMMON_CXXFLAGS := -std=c++23 -DNETWORK_FILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
+
+
+DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -fsanitize=undefined
+BUILD_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O3 -DNDEBUG
+
 
 # Directories
 SRC_DIR := src
 BUILD_DIR := build
+
 
 # Source files
 SRCS := $(filter-out , $(wildcard src/*.cpp))
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
 
 
-EXE := horsie
-
 # Append .exe to the binary name on Windows
 ifeq ($(OS),Windows_NT)
 	CXXFLAGS += -fuse-ld=lld
     override EXE := $(EXE).exe
 endif
+
 
 # Default target
 all: CXXFLAGS += $(BUILD_CXXFLAGS)

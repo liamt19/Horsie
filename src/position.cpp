@@ -14,7 +14,7 @@
 #include "movegen.h"
 #include "zobrist.h"
 #include "search.h"
-
+#include "nn.h"
 
 #define BULK_PERFT 1
 #undef BULK_PERFT
@@ -49,6 +49,8 @@ namespace Horsie {
         }
 
         LoadFromFEN(fen);
+
+        NNUE::RefreshAccumulator(*this);
     }
 
     Position::~Position() {
@@ -68,6 +70,8 @@ namespace Horsie {
 
     void Position::MakeMove(Move move) {
         CopyBlock(State + 1, State, StateCopySize);
+
+        NNUE::MakeMoveNN(*this, move);
 
         //  Move onto the next state
         State++;
@@ -90,7 +94,7 @@ namespace Horsie {
         Color theirColor = Not(ourColor);
 
         assert(theirPiece != Piece::KING);
-        assert(theirPiece == Piece::NONE || bb.GetColorAtIndex(moveTo) != ourColor);
+        assert(theirPiece == Piece::NONE || bb.GetColorAtIndex(moveTo) != ourColor || move.IsCastle());
 
         if (ourPiece == Piece::KING)
         {
@@ -784,14 +788,6 @@ namespace Horsie {
             Move m = list[i].Move;
             std::string tos = Move::ToString(m);
 
-            if (depth == 2 && m.Data() == 3893 && i == 18) {
-                int z = 0;
-                assert(IsLegal(m));
-            }
-
-            if (depth == 3 && m.Data() == 346 && i == 22) {
-                int z = 0;
-            }
             //std::cout << "Doing move " << m << std::endl;
 
             MakeMove(m);
@@ -860,6 +856,7 @@ namespace Horsie {
         State->CastleStatus = CastlingStatus::None;
         State->HalfmoveClock = 0;
         GamePly = 0;
+        IsChess960 = false;
 
         unsigned char col, row, token;
         size_t idx;

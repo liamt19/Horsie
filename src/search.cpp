@@ -6,6 +6,7 @@
 #include "movegen.h"
 #include "precomputed.h"
 
+#include <algorithm>
 #include <chrono>
 
 #include "search_options.h"
@@ -22,12 +23,7 @@ namespace Horsie {
     constexpr int BoundUpper = (int)TTNodeType::Beta;
 
 
-    void SearchThread::Search(Position& pos) {
-
-        SearchLimits info = SearchLimits();
-        info.MaxDepth = 12;
-        info.MaxNodes = UINT64_MAX;
-        info.MaxTime = INT32_MAX;
+    void SearchThread::Search(Position& pos, SearchLimits& info) {
 
         MaxNodes = info.MaxNodes;
         SearchTimeMS = info.MaxTime;
@@ -100,7 +96,8 @@ namespace Horsie {
                 {
                     score = Negamax<RootNode>(pos, ss, alpha, beta, std::max(1, RootDepth), false);
 
-                    StableSort(RootMoves, PVIndex);
+                    //StableSort(RootMoves, PVIndex);
+                    std::stable_sort(RootMoves.begin() + PVIndex, RootMoves.end());
 
                     if (StopSearching)
                         break;
@@ -120,7 +117,8 @@ namespace Horsie {
                     window += window / 2;
                 }
 
-                StableSort(RootMoves, 0);
+                //StableSort(RootMoves, 0);
+                std::stable_sort(RootMoves.begin() + PVIndex, RootMoves.end());
 
                 //  if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1 || tm.GetSearchTime() > 3000))
                 if (IsMain)
@@ -135,13 +133,14 @@ namespace Horsie {
                     int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
 
                     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
-                    auto durCnt = (double) duration.count();
-                    int nodesPerSec = (int) (Nodes / (durCnt / 1000));
+                    auto durCnt = std::max(1.0, (double) duration.count());
+                    int nodesPerSec = (int)(Nodes / (durCnt / 1000));
+                    const double NormalizationFactor = 2.4;
 
                     std::cout << "info depth " << depth;
                     std::cout << " seldepth " << rm.Depth;
-                    std::cout << " time " << duration;
-                    std::cout << " score " << score;
+                    std::cout << " time " << durCnt;
+                    std::cout << " score " << int(score / NormalizationFactor);
                     std::cout << " nodes " << Nodes;
                     std::cout << " nps " << nodesPerSec;
                     std::cout << " pv";
@@ -243,6 +242,8 @@ namespace Horsie {
 
         int startingAlpha = alpha;
 
+        int probBeta = 0;
+
         short eval = ss->StaticEval;
 
         bool doSkip = ss->Skip != Move::Null();
@@ -290,12 +291,12 @@ namespace Horsie {
 
             }
 
-            alpha = std::max(MakeMateScore(ss->Ply), alpha);
-            beta = std::min(ScoreMate - (ss->Ply + 1), beta);
-            if (alpha >= beta)
-            {
-                return alpha;
-            }
+            //alpha = std::max(MakeMateScore(ss->Ply), alpha);
+            //beta = std::min(ScoreMate - (ss->Ply + 1), beta);
+            //if (alpha >= beta)
+            //{
+            //    return alpha;
+            //}
         }
 
         (ss + 1)->Skip = Move::Null();
@@ -388,6 +389,60 @@ namespace Horsie {
                 return score < ScoreTTWin ? score : beta;
             }
         }
+
+
+
+        probBeta = beta + (improving ? ProbCutBetaImproving : ProbCutBeta);
+        if (UseProbCut
+            && !isPV
+            && !doSkip
+            && depth >= ProbCutMinDepth
+            && std::abs(beta) < ScoreTTWin
+            && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta))
+        {
+            ScoredMove captures[MoveListSize] = {};
+            int numCaps = Generate<GenLoud>(pos, captures, 0);
+            AssignProbCutScores(pos, captures, numCaps);
+
+            for (int i = 0; i < numCaps; i++)
+            {
+                Move m = OrderNextMove(captures, numCaps, i);
+                if (!pos.IsLegal(m) || !pos.SEE_GE(m, 1))
+                {
+                    //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
+                    continue;
+                }
+
+                //int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From()), m.To());
+                int histIdx = MakePiece(ourColor, bb.GetPieceAtIndex(m.From()));
+                bool isCap = (bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle());
+
+                prefetch(TT.GetCluster(pos.HashAfter(m)));
+                ss->CurrentMove = m;
+                //ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(m.To()) != None && !m.IsCastle()) ? 1 : 0][histIdx];
+                ss->ContinuationHistory = &history->Continuations[ss->InCheck ? 1 : 0][isCap ? 1 : 0].Histories[histIdx][m.To()];
+                Nodes++;
+
+                pos.MakeMove(m);
+
+                score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
+
+                if (score >= probBeta)
+                {
+                    //  Verify at a low depth
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 4, !cutNode);
+                }
+
+                pos.UnmakeMove(m);
+
+                if (score >= probBeta)
+                {
+                    return score;
+                }
+            }
+        }
+
+
 
         if (ttMove == Move::Null()
             && cutNode
@@ -816,7 +871,7 @@ namespace Horsie {
 
         ScoredMove list[MoveListSize] = {};
         int size = Generate<MoveGenType::GenNonEvasions>(pos, list, 0);
-        AssignScores(pos, ss, thisThread->History, list, size, ttMove);
+        AssignQuiescenceScores(pos, ss, thisThread->History, list, size, ttMove);
 
         for (int i = 0; i < size; i++)
         {
@@ -837,6 +892,11 @@ namespace Horsie {
             bool isCapture = (capturedPiece != Piece::NONE && !m.IsCastle());
             bool isPromotion = m.IsPromotion();
             bool givesCheck = ((pos.State->CheckSquares[thisPiece] & SquareBB(moveTo)) != 0);
+
+            if (!(isCapture || ss->InCheck || (givesCheck && ttDepth > DepthQNoChecks)))
+            {
+                continue;
+            }
 
             movesMade++;
 
@@ -1058,6 +1118,65 @@ namespace Horsie {
 
 
 
+    void SearchThread::AssignProbCutScores(Position& pos, ScoredMove* list, int size) {
+        
+        Bitboard& bb = pos.bb;
+        for (int i = 0; i < size; i++)
+        {
+            Move m = list[i].Move;
+            list[i].Score = GetSEEValue(m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To()));
+            if (m.IsPromotion())
+            {
+                //  Gives promotions a higher score than captures.
+                //  We can assume a queen promotion is better than most captures.
+                list[i].Score += GetSEEValue(QUEEN) + 1;
+            }
+        }
+    }
+
+
+
+    void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove) {
+        Bitboard bb = pos.bb;
+        int pc = (int)pos.ToMove;
+
+        for (int i = 0; i < size; i++) {
+            Move m = list[i].Move;
+            int moveTo = m.To();
+            int moveFrom = m.From();
+
+            if (m == ttMove)
+            {
+                list[i].Score = INT32_MAX - 100000;
+            }
+            else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle())
+            {
+                int capturedPiece = bb.GetPieceAtIndex(moveTo);
+                auto hist = history.CaptureHistory[pc][bb.GetPieceAtIndex(moveFrom)][moveTo][capturedPiece];
+                list[i].Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + (hist / OrderingHistoryDivisor);
+            }
+            else {
+
+                int pt = bb.GetPieceAtIndex(moveFrom);
+                //int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
+                int contIdx = (pc * PIECE_NB) + pt;
+
+                list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 2)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 4)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 6)->ContinuationHistory).history[contIdx][moveTo];
+
+                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0)
+                {
+                    list[i].Score += OrderingGivesCheckBonus;
+                }
+            }
+        }
+    }
+
+
+
     void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove) {
         
         Bitboard bb = pos.bb;
@@ -1104,6 +1223,18 @@ namespace Horsie {
                 }
             }
         }
+    }
+
+    std::string SearchThread::Debug_GetMovesPlayed(SearchStackEntry* ss) {
+        
+        std::string moves = "";
+
+        while (ss->Ply >= 0) {
+            moves = ss->CurrentMove.SmithNotation(false) + " " + moves;
+            ss--;
+        }
+
+        return moves;
     }
 
 }

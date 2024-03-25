@@ -4,6 +4,8 @@
 #include "util.h"
 #include "enums.h"
 
+#include <cmath>
+
 constexpr bool Is64Bit = true;
 
 namespace Horsie {
@@ -111,7 +113,12 @@ namespace Horsie {
         {
             for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
             {
-                LogarithmicReductionTable[depth][moveIndex] = (int)((std::log(depth) * std::log(moveIndex) / 2.25) + 0.25);
+                if (depth == 0 || moveIndex == 0) {
+                    LogarithmicReductionTable[depth][moveIndex] = 0;
+                    continue;
+                }
+
+                LogarithmicReductionTable[depth][moveIndex] = int((std::log(depth) * std::log(moveIndex) / 2.25) + 0.25);
 
                 if (LogarithmicReductionTable[depth][moveIndex] < 1)
                 {

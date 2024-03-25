@@ -1,257 +1,275 @@
 
-#include "nn.h"
+//#ifdef _MSC_VER
+//#define PS_MSVC
+//#pragma push_macro("_MSC_VER")
+//#undef _MSC_VER
+//#endif
+//
+//#define INCBIN_PREFIX g_
+//#include "./incbin/incbin.h"
+//
+//#ifdef PS_MSVC
+//#pragma pop_macro("_MSC_VER")
+//#undef PS_MSVC
+//#endif
+//
+//INCBIN(net, NETWORK_FILE);
 
+
+#include "nn.h"
 #include "position.h"
+#include "immintrin.h"
+
+#include <fstream>
+#include <cstring>
+
 
 namespace Horsie
 {
 
     namespace NNUE {
 
+        namespace {
+            Network s_network{};
+        }
+
+        const Network& g_network = s_network;
+        
+
+        void LoadNetwork(const std::string& name) {
+            std::cout << "Loading network from " << name << std::endl;
+
+            std::ifstream stream { name, std::ios::binary };
+            stream.read(reinterpret_cast<char*>(&s_network), sizeof(Network));
+
+            //std::cout << "Output bias: " << s_network.LayerBiases[0] << std::endl;
+        }
+
+        static int32_t hsum_8x32(__m256i v);
+        static void SubAdd(__m256i* src, const __m256i* sub1, const __m256i* add1);
+        static void SubSubAdd(__m256i* src, const __m256i* sub1, const __m256i* sub2, const __m256i* add1);
+        static void SubSubAddAdd(__m256i* src, const __m256i* sub1, const __m256i* sub2, const __m256i* add1, const __m256i* add2);
+
+
+
+
+        void RefreshAccumulator(Position& pos) {
+            Accumulator& accumulator = *pos.State->Accumulator;
+            Bitboard& bb = pos.bb;
+
+#if NO
+            for (size_t i = 0; i < HiddenSize; i++)
+            {
+                accumulator.White[i] = g_network.FeatureBiases[i];
+                accumulator.Black[i] = g_network.FeatureBiases[i];
+            }
+#else
+            std::memcpy(&accumulator.White[0], &g_network.FeatureBiases[0], HiddenSize * sizeof(short));
+            std::memcpy(&accumulator.Black[0], &g_network.FeatureBiases[0], HiddenSize * sizeof(short));
+#endif
+
+            ulong occ = bb.Occupancy;
+            while (occ != 0)
+            {
+                int pieceIdx = poplsb(occ);
+
+                int pt = bb.GetPieceAtIndex(pieceIdx);
+                int pc = bb.GetColorAtIndex(pieceIdx);
+
+                const auto [wIdx, bIdx] = FeatureIndex(pc, pt, pieceIdx);
+
+#if NO
+                for (int i = 0; i < HiddenSize; i++)
+                {
+                    accumulator.White[i] = accumulator.White[i] + g_network.FeatureWeights[(wIdx / SIMD_CHUNKS) + i];
+                    accumulator.Black[i] = accumulator.Black[i] + g_network.FeatureWeights[(bIdx / SIMD_CHUNKS) + i];
+                }
+#else
+                auto white = reinterpret_cast<__m256i*>(accumulator.White);
+                auto black = reinterpret_cast<__m256i*>(accumulator.Black);
+                auto weights = reinterpret_cast<const __m256i*>(&g_network.FeatureWeights[0]);
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    _mm256_store_si256(&white[i], _mm256_add_epi16(_mm256_load_si256(&white[i]), _mm256_load_si256(&weights[wIdx + i])));
+                    _mm256_store_si256(&black[i], _mm256_add_epi16(_mm256_load_si256(&black[i]), _mm256_load_si256(&weights[bIdx + i])));
+                }
+#endif
+
+            }
+        }
+
+
+
+        void MakeMoveNN(Position& pos, Move m) {
+            Bitboard bb = pos.bb;
+
+            Accumulator* accumulator = pos.NextState()->Accumulator;
+            pos.State->Accumulator->CopyTo(accumulator);
+
+            int moveTo = m.To();
+            int moveFrom = m.From();
+
+            int us = pos.ToMove;
+            int ourPiece = bb.GetPieceAtIndex(moveFrom);
+
+            int them = Not(us);
+            int theirPiece = bb.GetPieceAtIndex(moveTo);
+
+            auto whiteAccumulation = reinterpret_cast<__m256i*>((*accumulator)[WHITE]);
+            auto blackAccumulation = reinterpret_cast<__m256i*>((*accumulator)[BLACK]);
+
+            const auto [wFrom, bFrom] = FeatureIndex(us, ourPiece, moveFrom);
+            const auto [wTo, bTo] = FeatureIndex(us, m.IsPromotion() ? m.PromotionTo() : ourPiece, moveTo);
+
+            auto FeatureWeights = reinterpret_cast<const __m256i*>(&g_network.FeatureWeights[0]);
+
+            if (m.IsCastle())
+            {
+                int rookFrom = moveTo;
+                int rookTo = m.CastlingRookSquare();
+
+                const auto [wToC, bToC] = FeatureIndex(us, ourPiece, m.CastlingKingSquare());
+
+                const auto [wRookFrom, bRookFrom] = FeatureIndex(us, ROOK, rookFrom);
+                const auto [wRookTo, bRookTo] = FeatureIndex(us, ROOK, rookTo);
+
+                SubSubAddAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wRookFrom),
+                    (FeatureWeights + wToC),
+                    (FeatureWeights + wRookTo));
+
+                SubSubAddAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bRookFrom),
+                    (FeatureWeights + bToC),
+                    (FeatureWeights + bRookTo));
+            }
+            else if (theirPiece != Piece::NONE)
+            {
+                const auto [wCap, bCap] = FeatureIndex(them, theirPiece, moveTo);
+
+                SubSubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wCap),
+                    (FeatureWeights + wTo));
+
+                SubSubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bCap),
+                    (FeatureWeights + bTo));
+            }
+            else if (m.IsEnPassant())
+            {
+                int idxPawn = moveTo - ShiftUpDir(us);
+
+                const auto [wCap, bCap] = FeatureIndex(them, PAWN, idxPawn);
+
+                SubSubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wCap),
+                    (FeatureWeights + wTo));
+
+                SubSubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bCap),
+                    (FeatureWeights + bTo));
+            }
+            else
+            {
+                SubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wTo));
+
+                SubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bTo));
+            }
+        }
+
+
 
         int GetEvaluation(Position& pos) {
-            //return 1;
-            return Pesto(pos);
+
+            Accumulator& accumulator = *pos.State->Accumulator;
+            Bitboard& bb = pos.bb;
+            
+            const __m256i ClampMin = _mm256_setzero_si256();
+            const __m256i ClampMax = _mm256_set1_epi16(QA);
+            __m256i sum = _mm256_setzero_si256();
+
+            auto  stm = reinterpret_cast<const __m256i*>(accumulator[pos.ToMove]);
+            auto nstm = reinterpret_cast<const __m256i*>(accumulator[Not(pos.ToMove)]);
+            auto layerWeights = reinterpret_cast<const __m256i*>(&g_network.LayerWeights[0]);
+
+            for (int i = 0; i < SIMD_CHUNKS; i++) {
+                __m256i clamp = _mm256_min_epi16(ClampMax, _mm256_max_epi16(ClampMin, stm[i]));
+                __m256i mult = _mm256_mullo_epi16(clamp, layerWeights[i]);
+                sum = _mm256_add_epi32(sum, _mm256_madd_epi16(mult, clamp));
+            }
+
+            for (int i = 0; i < SIMD_CHUNKS; i++) {
+                __m256i clamp = _mm256_min_epi16(ClampMax, _mm256_max_epi16(ClampMin, nstm[i]));
+                __m256i mult = _mm256_mullo_epi16(clamp, layerWeights[i + SIMD_CHUNKS]);
+                sum = _mm256_add_epi32(sum, _mm256_madd_epi16(mult, clamp));
+            }
+
+            int output = hsum_8x32(sum);
+            int retVal = (output / QA + g_network.LayerBiases[0]) * OutputScale / QAB;
+            //std::cout << "retVal: " << retVal << std::endl;
+            return retVal;
         }
 
-#define PAWN   0
-#define KNIGHT 1
-#define BISHOP 2
-#define ROOK   3
-#define QUEEN  4
-#define KING   5
 
-        /* board representation */
-#define WHITE  0
-#define BLACK  1
 
-#define WHITE_PAWN      (2*PAWN   + WHITE)
-#define BLACK_PAWN      (2*PAWN   + BLACK)
-#define WHITE_HORSIE    (2*HORSIE + WHITE)
-#define BLACK_HORSIE    (2*HORSIE + BLACK)
-#define WHITE_BISHOP    (2*BISHOP + WHITE)
-#define BLACK_BISHOP    (2*BISHOP + BLACK)
-#define WHITE_ROOK      (2*ROOK   + WHITE)
-#define BLACK_ROOK      (2*ROOK   + BLACK)
-#define WHITE_QUEEN     (2*QUEEN  + WHITE)
-#define BLACK_QUEEN     (2*QUEEN  + BLACK)
-#define WHITE_KING      (2*KING   + WHITE)
-#define BLACK_KING      (2*KING   + BLACK)
-#define EMPTY           (BLACK_KING  +  1)
-#define PCOLOR(p) ((p)&1)
-#define FLIP(sq) ((sq)^56)
-#define OTHER(side) ((side)^ 1)
-
-        int mg_value[6] = { 82, 337, 365, 477, 1025,  0 };
-        int eg_value[6] = { 94, 281, 297, 512,  936,  0 };
-
-        int mg_pawn_table[64] = {
-              0,   0,   0,   0,   0,   0,  0,   0,
-             98, 134,  61,  95,  68, 126, 34, -11,
-             -6,   7,  26,  31,  65,  56, 25, -20,
-            -14,  13,   6,  21,  23,  12, 17, -23,
-            -27,  -2,  -5,  12,  17,   6, 10, -25,
-            -26,  -4,  -4, -10,   3,   3, 33, -12,
-            -35,  -1, -20, -23, -15,  24, 38, -22,
-              0,   0,   0,   0,   0,   0,  0,   0,
-        };
-
-        int eg_pawn_table[64] = {
-              0,   0,   0,   0,   0,   0,   0,   0,
-            178, 173, 158, 134, 147, 132, 165, 187,
-             94, 100,  85,  67,  56,  53,  82,  84,
-             32,  24,  13,   5,  -2,   4,  17,  17,
-             13,   9,  -3,  -7,  -7,  -8,   3,  -1,
-              4,   7,  -6,   1,   0,  -5,  -1,  -8,
-             13,   8,   8,  10,  13,   0,   2,  -7,
-              0,   0,   0,   0,   0,   0,   0,   0,
-        };
-
-        int mg_knight_table[64] = {
-            -167, -89, -34, -49,  61, -97, -15, -107,
-             -73, -41,  72,  36,  23,  62,   7,  -17,
-             -47,  60,  37,  65,  84, 129,  73,   44,
-              -9,  17,  19,  53,  37,  69,  18,   22,
-             -13,   4,  16,  13,  28,  19,  21,   -8,
-             -23,  -9,  12,  10,  19,  17,  25,  -16,
-             -29, -53, -12,  -3,  -1,  18, -14,  -19,
-            -105, -21, -58, -33, -17, -28, -19,  -23,
-        };
-
-        int eg_knight_table[64] = {
-            -58, -38, -13, -28, -31, -27, -63, -99,
-            -25,  -8, -25,  -2,  -9, -25, -24, -52,
-            -24, -20,  10,   9,  -1,  -9, -19, -41,
-            -17,   3,  22,  22,  22,  11,   8, -18,
-            -18,  -6,  16,  25,  16,  17,   4, -18,
-            -23,  -3,  -1,  15,  10,  -3, -20, -22,
-            -42, -20, -10,  -5,  -2, -20, -23, -44,
-            -29, -51, -23, -15, -22, -18, -50, -64,
-        };
-
-        int mg_bishop_table[64] = {
-            -29,   4, -82, -37, -25, -42,   7,  -8,
-            -26,  16, -18, -13,  30,  59,  18, -47,
-            -16,  37,  43,  40,  35,  50,  37,  -2,
-             -4,   5,  19,  50,  37,  37,   7,  -2,
-             -6,  13,  13,  26,  34,  12,  10,   4,
-              0,  15,  15,  15,  14,  27,  18,  10,
-              4,  15,  16,   0,   7,  21,  33,   1,
-            -33,  -3, -14, -21, -13, -12, -39, -21,
-        };
-
-        int eg_bishop_table[64] = {
-            -14, -21, -11,  -8, -7,  -9, -17, -24,
-             -8,  -4,   7, -12, -3, -13,  -4, -14,
-              2,  -8,   0,  -1, -2,   6,   0,   4,
-             -3,   9,  12,   9, 14,  10,   3,   2,
-             -6,   3,  13,  19,  7,  10,  -3,  -9,
-            -12,  -3,   8,  10, 13,   3,  -7, -15,
-            -14, -18,  -7,  -1,  4,  -9, -15, -27,
-            -23,  -9, -23,  -5, -9, -16,  -5, -17,
-        };
-
-        int mg_rook_table[64] = {
-             32,  42,  32,  51, 63,  9,  31,  43,
-             27,  32,  58,  62, 80, 67,  26,  44,
-             -5,  19,  26,  36, 17, 45,  61,  16,
-            -24, -11,   7,  26, 24, 35,  -8, -20,
-            -36, -26, -12,  -1,  9, -7,   6, -23,
-            -45, -25, -16, -17,  3,  0,  -5, -33,
-            -44, -16, -20,  -9, -1, 11,  -6, -71,
-            -19, -13,   1,  17, 16,  7, -37, -26,
-        };
-
-        int eg_rook_table[64] = {
-            13, 10, 18, 15, 12,  12,   8,   5,
-            11, 13, 13, 11, -3,   3,   8,   3,
-             7,  7,  7,  5,  4,  -3,  -5,  -3,
-             4,  3, 13,  1,  2,   1,  -1,   2,
-             3,  5,  8,  4, -5,  -6,  -8, -11,
-            -4,  0, -5, -1, -7, -12,  -8, -16,
-            -6, -6,  0,  2, -9,  -9, -11,  -3,
-            -9,  2,  3, -1, -5, -13,   4, -20,
-        };
-
-        int mg_queen_table[64] = {
-            -28,   0,  29,  12,  59,  44,  43,  45,
-            -24, -39,  -5,   1, -16,  57,  28,  54,
-            -13, -17,   7,   8,  29,  56,  47,  57,
-            -27, -27, -16, -16,  -1,  17,  -2,   1,
-             -9, -26,  -9, -10,  -2,  -4,   3,  -3,
-            -14,   2, -11,  -2,  -5,   2,  14,   5,
-            -35,  -8,  11,   2,   8,  15,  -3,   1,
-             -1, -18,  -9,  10, -15, -25, -31, -50,
-        };
-
-        int eg_queen_table[64] = {
-             -9,  22,  22,  27,  27,  19,  10,  20,
-            -17,  20,  32,  41,  58,  25,  30,   0,
-            -20,   6,   9,  49,  47,  35,  19,   9,
-              3,  22,  24,  45,  57,  40,  57,  36,
-            -18,  28,  19,  47,  31,  34,  39,  23,
-            -16, -27,  15,   6,   9,  17,  10,   5,
-            -22, -23, -30, -16, -16, -23, -36, -32,
-            -33, -28, -22, -43,  -5, -32, -20, -41,
-        };
-
-        int mg_king_table[64] = {
-            -65,  23,  16, -15, -56, -34,   2,  13,
-             29,  -1, -20,  -7,  -8,  -4, -38, -29,
-             -9,  24,   2, -16, -20,   6,  22, -22,
-            -17, -20, -12, -27, -30, -25, -14, -36,
-            -49,  -1, -27, -39, -46, -44, -33, -51,
-            -14, -14, -22, -46, -44, -30, -15, -27,
-              1,   7,  -8, -64, -43, -16,   9,   8,
-            -15,  36,  12, -54,   8, -28,  24,  14,
-        };
-
-        int eg_king_table[64] = {
-            -74, -35, -18, -18, -11,  15,   4, -17,
-            -12,  17,  14,  17,  17,  38,  23,  11,
-             10,  17,  23,  15,  20,  45,  44,  13,
-             -8,  22,  24,  27,  26,  33,  26,   3,
-            -18,  -4,  21,  24,  27,  23,   9, -11,
-            -19,  -3,  11,  21,  23,  16,   7,  -9,
-            -27, -11,   4,  13,  14,   4,  -5, -17,
-            -53, -34, -21, -11, -28, -14, -24, -43
-        };
-
-        int* mg_pesto_table[6] =
+        std::pair<int, int> FeatureIndex(int pc, int pt, int sq)
         {
-            mg_pawn_table,
-            mg_knight_table,
-            mg_bishop_table,
-            mg_rook_table,
-            mg_queen_table,
-            mg_king_table
-        };
+            const int ColorStride = 64 * 6;
+            const int PieceStride = 64;
 
-        int* eg_pesto_table[6] =
+            int whiteIndex = pc * ColorStride + pt * PieceStride + sq;
+            int blackIndex = Not(pc) * ColorStride + pt * PieceStride + (sq ^ 56);
+
+            return { whiteIndex * SIMD_CHUNKS, blackIndex * SIMD_CHUNKS };
+        }
+
+
+        //  https://stackoverflow.com/questions/63106143/simd-c-avx2-intrinsics-getting-sum-of-m256i-vector-with-16bit-integers
+        static int32_t hsum_8x32(__m256i v)
         {
-            eg_pawn_table,
-            eg_knight_table,
-            eg_bishop_table,
-            eg_rook_table,
-            eg_queen_table,
-            eg_king_table
-        };
+            // silly GCC uses a longer AXV512VL instruction if AVX512 is enabled :/
+            __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
 
-        int gamephaseInc[12] = { 0,0,1,1,1,1,2,2,4,4,0,0 };
-        int mg_table[12][64];
-        int eg_table[12][64];
+            __m128i hi64 = _mm_unpackhi_epi64(sum128, sum128);                  // 3-operand non-destructive AVX lets us save a byte without needing a movdqa
+            __m128i sum64 = _mm_add_epi32(hi64, sum128);
+            __m128i hi32 = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
+            __m128i sum32 = _mm_add_epi32(sum64, hi32);
+            return _mm_cvtsi128_si32(sum32);       // movd
+        }
 
-        void init_tables()
+        static void SubSubAddAdd(__m256i* src, const __m256i* sub1, const __m256i* sub2, const __m256i* add1, const __m256i* add2)
         {
-            int pc, p, sq;
-            for (p = PAWN, pc = WHITE_PAWN; p <= KING; pc += 2, p++) {
-                for (sq = 0; sq < 64; sq++) {
-                    mg_table[pc][sq] = mg_value[p] + mg_pesto_table[p][sq];
-                    eg_table[pc][sq] = eg_value[p] + eg_pesto_table[p][sq];
-                    mg_table[pc + 1][sq] = mg_value[p] + mg_pesto_table[p][FLIP(sq)];
-                    eg_table[pc + 1][sq] = eg_value[p] + eg_pesto_table[p][FLIP(sq)];
-                }
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(_mm256_add_epi16(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
             }
         }
 
-        int Pesto(Position& pos) {
-
-            int side2move = pos.ToMove;
-            int mg[2];
-            int eg[2];
-            int gamePhase = 0;
-
-            mg[WHITE] = 0;
-            mg[BLACK] = 0;
-            eg[WHITE] = 0;
-            eg[BLACK] = 0;
-
-            /* evaluate each piece */
-            for (int sq = 0; sq < 64; ++sq) {
-
-                int type = pos.bb.GetPieceAtIndex(sq);
-                int col = pos.bb.GetColorAtIndex(sq);
-
-                if (type == Piece::NONE)
-                    continue;
-
-                int pc = (2 * type) + col;
-                mg[col] += mg_table[pc][sq];
-                eg[col] += eg_table[pc][sq];
-                gamePhase += gamephaseInc[pc];
+        static void SubSubAdd(__m256i* src, const __m256i* sub1, const __m256i* sub2, const __m256i* add1)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(src[i], add1[i]), sub1[i]), sub2[i]);
             }
-
-            /* tapered eval */
-            int mgScore = mg[side2move] - mg[OTHER(side2move)];
-            int egScore = eg[side2move] - eg[OTHER(side2move)];
-            int mgPhase = gamePhase;
-            if (mgPhase > 24) mgPhase = 24; /* in case of early promotion */
-            int egPhase = 24 - mgPhase;
-            return (mgScore * mgPhase + egScore * egPhase) / 24;
-
         }
 
-
+        static void SubAdd(__m256i* src, const __m256i* sub1, const __m256i* add1)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = _mm256_sub_epi16(_mm256_add_epi16(src[i], add1[i]), sub1[i]);
+            }
+        }
     }
 
 }

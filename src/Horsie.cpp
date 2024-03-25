@@ -2,6 +2,8 @@
 #include <chrono>
 #include <sstream>
 #include <iostream>
+#include <filesystem>
+#include <list>
 
 #include "zobrist.h"
 #include "precomputed.h"
@@ -9,7 +11,8 @@
 #include "movegen.h"
 #include "tt.h"
 #include "nn.h"
-#include <list>
+
+
 
 using namespace Horsie;
 using namespace Horsie::Search;
@@ -27,12 +30,20 @@ void HandleListMovesCommand(Position& pos);
 void HandleGoCommand(Position& pos, std::istringstream& is);
 void HandleEvalCommand(Position& pos);
 
+SearchThread thread = SearchThread();
+
 int main()
 {
+#ifdef NETWORK_FILE
+    std::string netFile = NETWORK_FILE;
+#else
+    std::string netFile = (std::filesystem::current_path() / "src/incbin/iguana-epoch10.bin").string();
+#endif
+
     Precomputed::init();
     Zobrist::init();
-    NNUE::init_tables();
-    TT.Initialize(16);
+    NNUE::LoadNetwork(netFile);
+    TT.Initialize(32);
 
     Position pos = Position(InitialFEN);
 
@@ -166,12 +177,20 @@ void HandleListMovesCommand(Position& pos) {
 
 
 void HandleGoCommand(Position& pos, std::istringstream& is) {
-    SearchThread thread = SearchThread();
+   
     thread.IsMain = true;
-
     thread.Reset();
+
+    SearchLimits info = SearchLimits();
+    info.MaxDepth = 12;
+    info.MaxNodes = UINT64_MAX;
+    info.MaxTime = INT32_MAX;
+
+    if (is && is.peek() != EOF)
+        is >> info.MaxDepth;
+
     cout << "Calling Search" << endl;
-    thread.Search(pos);
+    thread.Search(pos, info);
     cout << "Search finished" << endl;
 }
 
@@ -189,7 +208,7 @@ void HandleEvalCommand(Position& pos) {
         int eval = NNUE::GetEvaluation(pos);
         pos.UnmakeMove(m);
 
-        moves.push_back({ m, eval });
+        moves.push_back({ m, (eval * -1) });
     }
 
     moves.sort([](const ScoredMove& l, const ScoredMove& r) { return l.Score > r.Score; });

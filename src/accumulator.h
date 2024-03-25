@@ -9,16 +9,10 @@ constexpr int ByteSize = 1536 * sizeof(short);
 
 namespace Horsie {
 
-    class Accumulator {
+    struct Accumulator {
     public:
-
-        short* White;
-        short* Black;
-
-        Accumulator() {
-            White = (short*)AlignedAllocZeroed(ByteSize, AllocAlignment);
-            Black = (short*)AlignedAllocZeroed(ByteSize, AllocAlignment);
-        }
+        short White[1536] = {};
+        short Black[1536] = {};
 
         constexpr short* operator[](int c) { return c == 0 ? White : Black; }
 
@@ -26,11 +20,6 @@ namespace Horsie {
         {
             CopyBlock(target->White, White, ByteSize);
             CopyBlock(target->Black, Black, ByteSize);
-        }
-
-        ~Accumulator() {
-            AlignedFree(White);
-            AlignedFree(Black);
         }
     };
 

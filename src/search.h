@@ -108,7 +108,7 @@ namespace Horsie {
             bool Quit;
             bool IsMain = false;
 
-            std::chrono::steady_clock::time_point TimeStart = std::chrono::high_resolution_clock::now();
+            std::chrono::system_clock::time_point TimeStart = std::chrono::system_clock::now();
             ulong SearchTimeMS = 0;
             ulong MaxNodes = 0;
             bool StopSearching = false;
@@ -121,7 +121,7 @@ namespace Horsie {
             Move CurrentMove() const { return RootMoves[PVIndex].Move; }
 
 
-            void Search(Position& pos);
+            void Search(Position& pos, SearchLimits& info);
 
             template <SearchNodeType NodeType>
             int Negamax(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode);
@@ -134,6 +134,8 @@ namespace Horsie {
             inline int StatBonus(int depth) const { return std::min((StatBonusMult * depth) - StatBonusSub, StatBonusMax); }
             inline int StatMalus(int depth) const { return std::min((StatMalusMult * depth) - StatMalusSub, StatMalusMax); }
 
+            void AssignProbCutScores(Position& pos, ScoredMove* list, int size);
+            void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove);
             void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove);
             Move OrderNextMove(ScoredMove* moves, int size, int listIndex);
 
@@ -142,13 +144,14 @@ namespace Horsie {
             void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus);
             void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount);
 
+            std::string Debug_GetMovesPlayed(SearchStackEntry* ss);
 
             bool CheckTime() const {
 
                 if (Nodes >= MaxNodes)
                     return true;
                 
-                auto now = std::chrono::high_resolution_clock::now();
+                auto now = std::chrono::system_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - TimeStart);
 
                 return (duration.count() > SearchTimeMS);

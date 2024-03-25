@@ -13,22 +13,22 @@ namespace Horsie {
 
     static bool UCI_Chess960 = false;
 
-    const bool UseSingularExtensions = false;
+    const bool UseSingularExtensions = true;
     static int SingularExtensionsMinDepth = 7;
     static int SingularExtensionsNumerator = 9;
     static int SingularExtensionsBeta = 22;
     static int SingularExtensionsDepthAugment = -1;
 
-    const bool UseNullMovePruning = false;
+    const bool UseNullMovePruning = true;
     static int NMPMinDepth = 6;
     static int NMPReductionBase = 5;
     static int NMPReductionDivisor = 5;
 
-    const bool UseReverseFutilityPruning = false;
+    const bool UseReverseFutilityPruning = true;
     static int ReverseFutilityPruningMaxDepth = 7;
     static int ReverseFutilityPruningPerDepth = 47;
 
-    const bool UseProbCut = false;
+    const bool UseProbCut = true;
     static int ProbCutBeta = 191;
     static int ProbCutBetaImproving = 100;
     static int ProbCutMinDepth = 2;

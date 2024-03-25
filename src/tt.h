@@ -6,10 +6,15 @@
 #include "types.h"
 #include "move.h"
 
+#include <cstring>
+
+
 
 #ifdef _MSC_VER
 #include <__msvc_int128.hpp>
 using uint128_t = std::_Unsigned128;
+#else
+using uint128_t = unsigned __int128;
 #endif
 
 
