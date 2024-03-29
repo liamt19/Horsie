@@ -4,6 +4,8 @@
 #include <iostream>
 #include <filesystem>
 #include <list>
+#include <thread>
+#include <barrier>
 
 #include "zobrist.h"
 #include "precomputed.h"
@@ -27,10 +29,17 @@ void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleBenchCommand(Position& pos);
 void HandleListMovesCommand(Position& pos);
+SearchLimits ParseGoParameters(Position& pos, std::istringstream& is);
 void HandleGoCommand(Position& pos, std::istringstream& is);
+void HandleStopCommand();
 void HandleEvalCommand(Position& pos);
+void HandleUCICommand();
+void HandleNewGameCommand(Position& pos);
+
+
 
 SearchThread thread = SearchThread();
+std::barrier is_sync_barrier(2);
 
 int main()
 {
@@ -47,6 +56,7 @@ int main()
 
     Position pos = Position(InitialFEN);
 
+    std::thread searcher;
     std::string token, cmd;
 
     do
@@ -59,23 +69,47 @@ int main()
         token.clear();  // Avoid a stale if getline() returns nothing or a blank line
         is >> std::skipws >> token;
 
-        if (token == "quit" || token == "stop")
+        if (token == "quit")
             break;
 
         if (token == "position")
             HandleSetPosition(pos, is);
+
         else if (token == "d")
             HandleDisplayPosition(pos);
+
         else if (token == "perft")
             HandlePerftCommand(pos, is);
+
         else if (token == "bench")
             HandleBenchCommand(pos);
+
         else if (token == "list")
             HandleListMovesCommand(pos);
-        else if (token == "go")
-            HandleGoCommand(pos, is);
+
+        else if (token == "go") {
+            //HandleGoCommand(pos, is);
+            searcher = std::thread(HandleGoCommand, std::ref(pos), std::ref(is));
+            is_sync_barrier.arrive_and_wait();
+            //std::thread searcher = std::thread(HandleEvalCommand, pos);
+        }
+            
+
         else if (token == "eval")
             HandleEvalCommand(pos);
+
+        else if (token == "uci")
+            HandleUCICommand();
+
+        else if (token == "isready")
+            std::cout << "readyok" << std::endl;
+
+        else if (token == "stop")
+            HandleStopCommand();
+
+        else if (token == "ucinewgame")
+            HandleNewGameCommand(pos);
+
 
 
     } while (true);
@@ -97,12 +131,29 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
         is >> token;  // Consume the "moves" token, if any
     }
     else {
-        fen += token + " ";
+        if (token != "fen") {
+            //  Handle either "position fen <...>" or "position <...>"
+            fen += token + " ";
+        }
+
         while (is >> token && token != "moves")
             fen += token + " ";
     }
 
     pos.LoadFromFEN(fen);
+
+    while (is >> token)
+    {
+        bool found = false;
+        Move m = pos.TryFindMove(token, found);
+        if (found) {
+            pos.MakeMove(m);
+        }
+        else {
+            std::cout << "Move " << token << " not found!" << std::endl;
+        }
+    }
+
 }
 
 
@@ -176,23 +227,66 @@ void HandleListMovesCommand(Position& pos) {
 }
 
 
+SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
+    SearchLimits limits = SearchLimits();
+    std::string token;
+
+    limits.MaxDepth = MaxDepth;
+    limits.MaxNodes = UINT64_MAX;
+    limits.MaxSearchTime = INT32_MAX;
+    limits.MoveTime = 0;
+    limits.Increment = 0;
+
+    while (is >> token)
+        if ((pos.ToMove == WHITE && token == "wtime") || (pos.ToMove == BLACK && token == "btime"))
+            is >> limits.PlayerTime;
+
+        else if ((pos.ToMove == WHITE && token == "winc") || (pos.ToMove == BLACK && token == "binc"))
+            is >> limits.Increment;
+
+        else if (token == "depth")
+            is >> limits.MaxDepth;
+
+        else if (token == "nodes")
+            is >> limits.MaxNodes;
+
+        else if (token == "movetime")
+            is >> limits.MoveTime;
+
+        else if (token == "movestogo")
+            is >> limits.MovesToGo;
+
+    return limits;
+}
+
+
 void HandleGoCommand(Position& pos, std::istringstream& is) {
    
     thread.IsMain = true;
     thread.Reset();
 
-    SearchLimits info = SearchLimits();
-    info.MaxDepth = 18;
-    info.MaxNodes = UINT64_MAX;
-    info.MaxTime = INT32_MAX;
+    SearchLimits limits = ParseGoParameters(pos, is);
+    is_sync_barrier.arrive_and_wait();
 
-    if (is && is.peek() != EOF)
-        is >> info.MaxDepth;
+    thread.TimeStart = std::chrono::system_clock::now();
 
-    cout << "Calling Search" << endl;
-    thread.Search(pos, info);
-    cout << "Search finished" << endl;
+    if (!limits.HasMoveTime() && limits.HasPlayerTime()) {
+        thread.MakeMoveTime(limits);
+    }
+    else if (limits.HasMoveTime()) {
+        limits.MaxSearchTime = limits.MoveTime;
+    }
+    else {
+        limits.MaxSearchTime = INT32_MAX;
+    }
+
+    //cout << "Calling Search" << endl;
+    thread.Search(pos, limits);
+    std::cout << "bestmove " << Move::ToString(thread.RootMoves[0].Move) << std::endl;
+    //cout << "Search finished" << endl;
 }
+
+
 
 void HandleEvalCommand(Position& pos) {
     cout << "Evaluation: " << NNUE::GetEvaluation(pos) << endl << endl;
@@ -216,6 +310,25 @@ void HandleEvalCommand(Position& pos) {
     for (ScoredMove m : moves) {
         cout << Move::ToString(m.Move) << ": " << m.Score << endl;
     }
+}
 
 
+
+
+void HandleStopCommand() {
+    thread.StopSearching = true;
+}
+
+
+
+void HandleUCICommand() {
+    std::cout << "id name Horsie" << std::endl;
+    std::cout << "option name Hash type spin default 1 min 1 max 1" << std::endl;
+    std::cout << "option name Threads type spin default 1 min 1 max 1" << std::endl;
+}
+
+
+
+void HandleNewGameCommand(Position& pos) {
+    pos.LoadFromFEN(InitialFEN);
 }

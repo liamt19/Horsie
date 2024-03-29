@@ -1,4 +1,6 @@
 
+#define NO_PV_LEN 1
+
 #include "search.h"
 #include "position.h"
 #include "nn.h"
@@ -25,7 +27,7 @@ namespace Horsie {
     void SearchThread::Search(Position& pos, SearchLimits& info) {
 
         MaxNodes = info.MaxNodes;
-        SearchTimeMS = info.MaxTime;
+        SearchTimeMS = info.MaxSearchTime;
 
         History.Clear();
 
@@ -36,6 +38,7 @@ namespace Horsie {
             (ss + i)->Clear();
             (ss + i)->Ply = (short)i;
             (ss + i)->PV = (Move*)AlignedAllocZeroed((MaxPly * sizeof(Move)), AllocAlignment);
+            (ss + i)->PVLength = 0;
             (ss + i)->ContinuationHistory = &History.Continuations[0][0].Histories[0][0];
         }
 
@@ -57,8 +60,6 @@ namespace Horsie {
 
         int multiPV = std::min(MultiPV, int(RootMoves.size()));
         RootMove lastBestRootMove = RootMove(Move::Null());
-
-        auto timeStart = std::chrono::high_resolution_clock::now();
 
         int maxDepth = IsMain ? MaxDepth : MaxPly;
         while (++RootDepth < maxDepth)
@@ -129,19 +130,22 @@ namespace Horsie {
 
                     RootMove rm = RootMoves[0];
 
+                    if (StopSearching) {
+                        rm = lastBestRootMove;
+                    }
+
                     bool moveSearched = rm.Score != -ScoreInfinite;
                     int depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
                     int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
 
-                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - TimeStart);
                     auto durCnt = std::max(1.0, (double) duration.count());
                     int nodesPerSec = (int)(Nodes / (durCnt / 1000));
-                    const double NormalizationFactor = 2.4;
 
                     std::cout << "info depth " << depth;
                     std::cout << " seldepth " << rm.Depth;
                     std::cout << " time " << durCnt;
-                    std::cout << " score " << int(score / NormalizationFactor);
+                    std::cout << " score " << FormatMoveScore(moveScore);
                     std::cout << " nodes " << Nodes;
                     std::cout << " nps " << nodesPerSec;
                     std::cout << " pv";
@@ -171,8 +175,6 @@ namespace Horsie {
                 //  so that the move we send is based on an entire depth being searched instead of only a portion of it.
                 RootMoves[0] = lastBestRootMove;
 
-                std::cout << "Stopping search" << std::endl;
-
                 for (int i = -10; i < MaxSearchStackPly; i++)
                 {
                     AlignedFree((ss + i)->PV);
@@ -194,10 +196,10 @@ namespace Horsie {
                 }
             }
 
-            //if (SoftTimeUp(tm))
-            //{
-            //    break;
-            //}
+            if (SoftTimeUp())
+            {
+                break;
+            }
 
             if (!StopSearching)
             {
@@ -261,7 +263,7 @@ namespace Horsie {
             //  SearchPool.StopThreads = true;
             //}
 
-            if (CheckTime())
+            if (CheckTime() || (Nodes >= MaxNodes))
             {
                 StopSearching = true;
             }
@@ -459,12 +461,12 @@ namespace Horsie {
 
         bool didSkip = false;
 
-        Move captureMoves[16] = {};
-        Move quietMoves[16] = {};
+        Move captureMoves[16];
+        Move quietMoves[16];
 
         bool skipQuiets = false;
 
-        ScoredMove list[MoveListSize] = {};
+        ScoredMove list[MoveListSize];
         int size = Generate<MoveGenType::GenNonEvasions>(pos, list, 0);
         AssignScores(pos, ss, *history, list, size, ttMove);
 
@@ -567,7 +569,7 @@ namespace Horsie {
 
             pos.MakeMove(m);
             
-#ifdef _DEBUG
+#if defined(_DEBUG) && defined(TREE)
             N_TABS(ss->Ply);
             std::cout << "NM " << m << std::endl;
 #endif
@@ -578,7 +580,8 @@ namespace Horsie {
             if (isPV)
             {
                 //System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
-                std::memset((ss + 1)->PV, 0, (MaxPly * sizeof(Move)));
+                //std::memset((ss + 1)->PV, 0, (MaxPly * sizeof(Move)));
+                (ss + 1)->PVLength = 0;
             }
 
             int newDepth = depth + extend;
@@ -646,6 +649,7 @@ namespace Horsie {
             if (isPV && (playedMoves == 1 || score > alpha))
             {
                 (ss + 1)->PV[0] = Move::Null();
+                (ss + 1)->PVLength = 0;
                 score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth - 1, false);
             }
 
@@ -685,11 +689,23 @@ namespace Horsie {
                     rm.PV.resize(1);
                     //Array.Fill(rm.PV, Move.Null, 1, MaxPly - rm.PVLength);
 
+#if defined(NO_PV_LEN)
                     for (Move* childMove = (ss + 1)->PV; *childMove != Move::Null(); ++childMove)
                     {
                         //rm.PV[rm.PVLength++] = *childMove;
                         rm.PV.push_back(*childMove);
                     }
+#else
+                    for (int i = 0; i < (ss + 1)->PVLength; i++)
+                    {
+                        Move* childMove = ((ss + 1)->PV + i);
+
+                        if (*childMove == Move::Null())
+                            break;
+
+                        rm.PV.push_back(*childMove);
+                    }
+#endif
                 }
                 else
                 {
@@ -707,7 +723,26 @@ namespace Horsie {
 
                     if (isPV && !isRoot)
                     {
+#if defined(NO_PV_LEN)
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
+#else
+                        Move* pv = ss->PV;
+                        Move* childPV = (ss + 1)->PV;
+
+                        *pv++ = m;
+                        ss->PVLength++;
+
+                        if (childPV != nullptr) {
+                            for (size_t j = 0; j < (ss + 1)->PVLength; j++)
+                            {
+                                if (*childPV == Move::Null())
+                                    break;
+
+                                *pv++ = *childPV++;
+                                ss->PVLength++;
+                            }
+                        }
+#endif
                     }
 
                     if (score >= beta)
@@ -954,7 +989,7 @@ namespace Horsie {
 
             pos.MakeMove(m);
 
-#ifdef _DEBUG
+#if defined(_DEBUG) && defined(TREE)
             N_TABS(ss->Ply);
             std::cout << "QS " << m << std::endl;
 #endif
@@ -973,7 +1008,26 @@ namespace Horsie {
 
                     if (isPV)
                     {
+#if defined(NO_PV_LEN)
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
+#else
+                        Move* pv = ss->PV;
+                        Move* childPV = (ss + 1)->PV;
+
+                        *pv++ = m;
+                        ss->PVLength++;
+
+                        if (childPV != nullptr) {
+                            for (size_t j = 0; j < (ss + 1)->PVLength; j++)
+                            {
+                                if (*childPV == Move::Null())
+                                    break;
+
+                                *pv++ = *childPV++;
+                                ss->PVLength++;
+                            }
+                        }
+#endif
                     }
 
                     if (score >= beta)

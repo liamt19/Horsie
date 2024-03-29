@@ -17,6 +17,8 @@ namespace Horsie {
     static const int DepthQChecks = 0;
     static const int DepthQNoChecks = -1;
 
+    static const int SEARCH_TIME_BUFFER = 25;
+
     enum SearchNodeType {
         PVNode,
         NonPVNode,
@@ -32,7 +34,25 @@ namespace Horsie {
         public:
             int MaxDepth = Horsie::MaxDepth;
             ulong MaxNodes = UINT64_MAX;
-            int MaxTime = INT32_MAX;
+            int MaxSearchTime = INT32_MAX;
+            int Increment = 0;
+            int MovesToGo = 20;
+
+            int MoveTime = 0;
+            const bool HasMoveTime() const { return MoveTime != 0; }
+
+            int PlayerTime = 0;
+            const bool HasPlayerTime() const { return PlayerTime != 0; }
+
+            void PrintLimits() const {
+				std::cout << "MaxDepth:      " << MaxDepth << std::endl;
+				std::cout << "MaxNodes:      " << MaxNodes << std::endl;
+				std::cout << "MaxSearchTime: " << MaxSearchTime << std::endl;
+				std::cout << "Increment:     " << Increment << std::endl;
+				std::cout << "MovesToGo:     " << MovesToGo << std::endl;
+				std::cout << "MoveTime:      " << MoveTime << std::endl;
+				std::cout << "PlayerTime:    " << PlayerTime << std::endl;
+			}
         };
 
         struct SearchStackEntry {
@@ -50,6 +70,7 @@ namespace Horsie {
             //uint8_t _pad0[1];
             Move* PV;
             //uint8_t _pad1[8];
+            int PVLength;
             Move Killer0;
             //uint8_t _pad3[4];
             Move Killer1;
@@ -64,6 +85,7 @@ namespace Horsie {
                 DoubleExtensions = 0;
                 StaticEval = ScoreNone;
 
+                PVLength = 0;
                 if (PV != nullptr)
                 {
                     AlignedFree(PV);
@@ -119,6 +141,9 @@ namespace Horsie {
 
             std::vector<RootMove> RootMoves;
             HistoryTable History;
+
+            bool HasSoftTime = false;
+            int SoftTimeLimit = 0;
             ulong NodeTable[64][64];
 
             Move CurrentMove() const { return RootMoves[PVIndex].Move; }
@@ -149,15 +174,60 @@ namespace Horsie {
 
             std::string Debug_GetMovesPlayed(SearchStackEntry* ss);
 
-            bool CheckTime() const {
 
-                if (Nodes >= MaxNodes)
-                    return true;
-                
+
+            long long GetSearchTime() const {
                 auto now = std::chrono::system_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - TimeStart);
+                return duration.count();
+            }
 
-                return (duration.count() > SearchTimeMS);
+            bool CheckTime() const {
+                //auto now = std::chrono::system_clock::now();
+                //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - TimeStart);
+                //return (duration.count() > SearchTimeMS);
+
+                return (GetSearchTime() > SearchTimeMS - SEARCH_TIME_BUFFER);
+            }
+
+            void MakeMoveTime(SearchLimits& limits) {
+                int newSearchTime = limits.Increment + (limits.PlayerTime / 2);
+
+                if (limits.MovesToGo != -1)
+                {
+                    newSearchTime = std::max(newSearchTime, limits.Increment + (limits.PlayerTime / limits.MovesToGo));
+                }
+
+                if (newSearchTime > limits.PlayerTime)
+                {
+                    newSearchTime = limits.PlayerTime;
+                }
+
+                //  Values from Clarity
+                SoftTimeLimit = 0.6 * ((limits.PlayerTime / limits.MovesToGo) + (limits.Increment * 3 / 4));
+
+                limits.MaxSearchTime = newSearchTime;
+            }
+
+            bool SoftTimeUp() const
+            {
+                if (!HasSoftTime)
+                    return false;
+
+                //  Base values taken from Clarity
+                double multFactor = 1.0;
+                if (RootDepth > 7)
+                {
+                    double proportion = NodeTable[RootMoves[0].Move.From()][RootMoves[0].Move.To()] / (double)Nodes;
+                    multFactor = (1.5 - proportion) * 1.25;
+                }
+
+                if (GetSearchTime() >= SoftTimeLimit * multFactor)
+                {
+                    return true;
+                }
+
+                return false;
             }
 
             void Reset() {

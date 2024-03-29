@@ -45,6 +45,8 @@ namespace Horsie {
         constexpr StateInfo* NextState() const { return (State != _SentinelEnd) ? State + 1 : NULL; }
 
 
+        Move TryFindMove(const std::string& moveStr, bool& found) const;
+
         void MakeMove(Move move);
         void UnmakeMove(Move move);
         void MakeNullMove();

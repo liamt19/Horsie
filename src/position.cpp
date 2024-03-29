@@ -1,5 +1,7 @@
 
+#include <cctype>
 #include <algorithm>
+#include <string_view>
 #include <string>
 #include <sstream>
 #include <cstring>
@@ -67,6 +69,33 @@ namespace Horsie {
         AlignedFree(_stateBlock);
 
     }
+
+    Move Position::TryFindMove(const std::string& moveStr, bool& found) const {
+        Move move = Move::Null();
+        found = false;
+
+        auto eq_pred = [&](char a, char b) {
+            return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
+            };
+
+        ScoredMove list[MoveListSize];
+        int size = Generate<GenLegal>(*this, list, 0);
+        for (int i = 0; i < size; i++)
+        {
+            Move m = list[i].Move;
+
+            std::string lhs = m.SmithNotation(IsChess960);
+            if (std::equal(lhs.begin(), lhs.end(), moveStr.begin(), moveStr.end(), eq_pred)) {
+
+                found = true;
+                return m;
+            }
+        }
+
+        std::cout << "No move '" << moveStr << "' found";
+        return move;
+    }
+
 
     void Position::MakeMove(Move move) {
         CopyBlock(State + 1, State, StateCopySize);

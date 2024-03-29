@@ -120,6 +120,27 @@ namespace Horsie {
 #endif
     }
 
+    inline std::string FormatMoveScore(int score)
+    {
+        if (IsScoreMate(score))
+        {
+            //  "mateIn" is returned in plies, but we want it in actual moves
+            if (score > 0)
+            {
+                return "mate " + std::to_string((ScoreMate - score + 1) / 2);
+            }
+            else
+            {
+                return "mate " + std::to_string((-ScoreMate - score) / 2);
+            }
+        }
+        else
+        {
+            const double NormalizeEvalFactor = 2.4;
+            return "cp " + std::to_string((int)(score / NormalizeEvalFactor));
+        }
+    }
+
 
 
     const std::string EtherealFENs_D5[] = {
