@@ -265,6 +265,12 @@ namespace Horsie {
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline int StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
+    
+    inline const std::string IndexToString(int sq) { 
+        int x, y;
+        IndexToCoord(sq, x, y);
+        return std::string { char('a' + x), char('1' + y) }; 
+    }
 
     inline const std::string PieceToString(Piece n) {
         switch (n) {

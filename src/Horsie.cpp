@@ -31,7 +31,7 @@ void HandleBenchCommand(Position& pos);
 void HandleListMovesCommand(Position& pos);
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is);
 void HandleGoCommand(Position& pos, std::istringstream& is);
-void HandleStopCommand();
+void HandleStopCommand(std::thread& searchThread);
 void HandleEvalCommand(Position& pos);
 void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
@@ -46,7 +46,7 @@ int main()
 #ifdef NETWORK_FILE
     std::string netFile = NETWORK_FILE;
 #else
-    std::string netFile = (std::filesystem::current_path() / "src/incbin/iguana-epoch10.bin").string();
+    std::string netFile = (std::filesystem::current_path() / "nn.bin").string();
 #endif
 
     Precomputed::init();
@@ -89,8 +89,11 @@ int main()
 
         else if (token == "go") {
             //HandleGoCommand(pos, is);
+            std::cout << "token is go 1" << std::endl;
             searcher = std::thread(HandleGoCommand, std::ref(pos), std::ref(is));
+            std::cout << "token is go 2" << std::endl;
             is_sync_barrier.arrive_and_wait();
+            std::cout << "token is go 3" << std::endl;
             //std::thread searcher = std::thread(HandleEvalCommand, pos);
         }
             
@@ -105,7 +108,7 @@ int main()
             std::cout << "readyok" << std::endl;
 
         else if (token == "stop")
-            HandleStopCommand();
+            HandleStopCommand(searcher);
 
         else if (token == "ucinewgame")
             HandleNewGameCommand(pos);
@@ -264,12 +267,12 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
    
     thread.IsMain = true;
     thread.Reset();
-
+    std::cout << "HandleGoCommand 1" << std::endl;
     SearchLimits limits = ParseGoParameters(pos, is);
     is_sync_barrier.arrive_and_wait();
 
     thread.TimeStart = std::chrono::system_clock::now();
-
+    std::cout << "HandleGoCommand 2" << std::endl;
     if (!limits.HasMoveTime() && limits.HasPlayerTime()) {
         thread.MakeMoveTime(limits);
     }
@@ -280,8 +283,11 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
         limits.MaxSearchTime = INT32_MAX;
     }
 
-    //cout << "Calling Search" << endl;
-    thread.Search(pos, limits);
+    std::cout << "Getting FEN" << std::endl;
+    std::string fen = pos.GetFEN();
+    std::cout << "Searching with '" << fen << "'" << std::endl;
+    Position posCopy = Position(fen);
+    thread.Search(posCopy, limits);
     std::cout << "bestmove " << Move::ToString(thread.RootMoves[0].Move) << std::endl;
     //cout << "Search finished" << endl;
 }
@@ -315,8 +321,9 @@ void HandleEvalCommand(Position& pos) {
 
 
 
-void HandleStopCommand() {
+void HandleStopCommand(std::thread& searchThread) {
     thread.StopSearching = true;
+    searchThread.join();
 }
 
 
@@ -325,10 +332,13 @@ void HandleUCICommand() {
     std::cout << "id name Horsie" << std::endl;
     std::cout << "option name Hash type spin default 1 min 1 max 1" << std::endl;
     std::cout << "option name Threads type spin default 1 min 1 max 1" << std::endl;
+    std::cout << "uciok" << std::endl;
 }
 
 
 
 void HandleNewGameCommand(Position& pos) {
     pos.LoadFromFEN(InitialFEN);
+    thread.History.Clear();
+    TT.Clear();
 }

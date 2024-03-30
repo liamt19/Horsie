@@ -54,6 +54,20 @@ namespace Horsie {
         };
     }
 
+    inline char PieceToFEN(int pt)
+    {
+        switch (pt)
+        {
+        case PAWN  : return 'p';
+        case HORSIE: return 'n';
+        case BISHOP: return 'b';
+        case ROOK  : return 'r';
+        case QUEEN : return 'q';
+        case KING: return 'k';
+        default: return ' ';
+        };
+    }
+
     constexpr int GetPieceValue(int pt) {
         switch (pt) {
         case PAWN: return 199;

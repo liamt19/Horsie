@@ -952,12 +952,96 @@ namespace Horsie {
         MaterialCountNonPawn[Color::WHITE] = bb.MaterialCount(Color::WHITE, true);
         MaterialCountNonPawn[Color::BLACK] = bb.MaterialCount(Color::BLACK, true);
         
+        NNUE::RefreshAccumulator(*this);
+
         //std::cout << *this << std::endl;
     }
 
     std::string Position::GetFEN() const {
-        return "meow";
+        std::stringstream fen;
+
+        for (int y = 7; y >= 0; y--)
+        {
+            int i = 0;
+            for (int x = 0; x <= 7; x++)
+            {
+                int index = CoordToIndex(x, y);
+
+                int pt = bb.GetPieceAtIndex(index);
+                if (pt != Piece::NONE) {
+
+                    if (i != 0)
+                    {
+                        fen << std::to_string(i);
+                        i = 0;
+                    }
+
+                    char c = PieceToFEN(pt);
+
+                    if (bb.GetColorAtIndex(index) == WHITE) {
+                        c = toupper(c);
+                    }
+                    
+                    fen << c;
+                    continue;
+                }
+                else {
+                    assert((bb.Occupancy & SquareBB(index)) == 0);
+                    i++;
+                }
+
+                if (x == 7)
+                {
+                    fen << std::to_string(i);
+                }
+            }
+            if (y != 0)
+            {
+                fen << "/";
+            }
+        }
+
+        fen << (ToMove == Color::WHITE ? " w " : " b ");
+
+        if (State->CastleStatus != CastlingStatus::None)
+        {
+            if ((State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None)
+            {
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus::WK])) : 'K');
+            }
+            if ((State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None)
+            {
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus::WQ])) : 'Q');
+            }
+            if ((State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None)
+            {
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus::BK])) : 'k');
+            }
+            if ((State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None)
+            {
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus::BQ])) : 'q');
+            }
+        }
+        else
+        {
+            fen << "-";
+        }
+
+        if (State->EPSquare != EP_NONE)
+        {
+            fen << " " << IndexToString(State->EPSquare);
+        }
+        else
+        {
+            fen << " -";
+        }
+
+        fen << " " << std::to_string(State->HalfmoveClock) << " " << std::to_string(FullMoves);
+
+        return fen.str();
     }
+
+
 
     std::ostream& operator<<(std::ostream& os, const Position& pos) {
 

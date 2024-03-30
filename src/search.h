@@ -205,6 +205,7 @@ namespace Horsie {
 
                 //  Values from Clarity
                 SoftTimeLimit = 0.6 * ((limits.PlayerTime / limits.MovesToGo) + (limits.Increment * 3 / 4));
+                HasSoftTime = true;
 
                 limits.MaxSearchTime = newSearchTime;
             }
@@ -233,6 +234,8 @@ namespace Horsie {
             void Reset() {
                 Nodes = 0;
                 PVIndex = RootDepth = SelDepth = CompletedDepth = CheckupCount = 0;
+                SoftTimeLimit = 0;
+                HasSoftTime = StopSearching = false;
             }
 
         private:
