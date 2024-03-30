@@ -1,20 +1,6 @@
 
-//#ifdef _MSC_VER
-//#define PS_MSVC
-//#pragma push_macro("_MSC_VER")
-//#undef _MSC_VER
-//#endif
-//
-//#define INCBIN_PREFIX g_
-//#include "./incbin/incbin.h"
-//
-//#ifdef PS_MSVC
-//#pragma pop_macro("_MSC_VER")
-//#undef PS_MSVC
-//#endif
-//
-//INCBIN(net, NETWORK_FILE);
-
+#define INCBIN_PREFIX g_
+#include "./incbin/incbin.h"
 
 #include "nn.h"
 #include "position.h"
@@ -23,6 +9,9 @@
 #include <fstream>
 #include <cstring>
 
+#if defined(_MSC_VER)
+#include "incbin/incbin_at_home.h"
+#endif
 
 namespace Horsie
 {
@@ -30,20 +19,16 @@ namespace Horsie
     namespace NNUE {
 
         namespace {
-            Network s_network{};
+#if defined(_MSC_VER)
+            //Network s_network{};
+            const Network* s_network = reinterpret_cast<const Network*>(incbin_rawData);
+#else
+            INCBIN(net, NETWORK_FILE);
+            const Network* s_network = reinterpret_cast<const Network*>(g_netData);
+#endif
         }
 
-        const Network& g_network = s_network;
-        
-
-        void LoadNetwork(const std::string& name) {
-            std::cout << "Loading network from " << name << std::endl;
-
-            std::ifstream stream { name, std::ios::binary };
-            stream.read(reinterpret_cast<char*>(&s_network), sizeof(Network));
-
-            //std::cout << "Output bias: " << s_network.LayerBiases[0] << std::endl;
-        }
+        const Network& g_network = *s_network;
 
         static int32_t hsum_8x32(__m256i v);
         static void SubAdd(__m256i* src, const __m256i* sub1, const __m256i* add1);

@@ -43,15 +43,8 @@ std::barrier is_sync_barrier(2);
 
 int main()
 {
-#ifdef NETWORK_FILE
-    std::string netFile = NETWORK_FILE;
-#else
-    std::string netFile = (std::filesystem::current_path() / "nn.bin").string();
-#endif
-
     Precomputed::init();
     Zobrist::init();
-    NNUE::LoadNetwork(netFile);
     TT.Initialize(32);
 
     Position pos = Position(InitialFEN);
