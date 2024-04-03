@@ -19,11 +19,13 @@
 #include "nn.h"
 
 #define BULK_PERFT 1
-#undef BULK_PERFT
+//#undef BULK_PERFT
 
 namespace Horsie {
 
+#if defined(_DEBUG)
     static int PositionNumber = 0;
+#endif
 
     Position::Position(const std::string& fen) {
         GamePly = 0;
@@ -31,8 +33,11 @@ namespace Horsie {
 
         bb = Bitboard();
 
+#if defined(_DEBUG)
         dbg_ThisPositionNumber = PositionNumber++;
         std::cout << "Creating position " << dbg_ThisPositionNumber << std::endl;
+#endif
+
         _stateBlock = (StateInfo*)AlignedAllocZeroed((sizeof(StateInfo) * StateStackSize), AllocAlignment);
 
         _SentinelStart = &_stateBlock[0];
@@ -57,13 +62,9 @@ namespace Horsie {
 
     Position::~Position() {
 
-        for (int i = 0; i < StateStackSize; i++)
-        {
-            //Accumulator acc = *(_SentinelStart + i)->Accumulator;
-            //delete acc;
-        }
-
+#if defined(_DEBUG)
         std::cout << "Destroying position " << dbg_ThisPositionNumber << std::endl;
+#endif
 
         AlignedFree(_accumulatorBlock);
         AlignedFree(_stateBlock);
@@ -319,90 +320,90 @@ namespace Horsie {
     }
 
     void Position::UnmakeMove(Move move) {
-            int moveFrom = move.From();
-            int moveTo = move.To();
+        int moveFrom = move.From();
+        int moveTo = move.To();
 
-            //  Assume that "we" just made the last move, and "they" are undoing it.
-            Piece ourPiece = (Piece) bb.GetPieceAtIndex(moveTo);
-            Color ourColor = Not(ToMove);
-            Color theirColor = ToMove;
+        //  Assume that "we" just made the last move, and "they" are undoing it.
+        Piece ourPiece = (Piece) bb.GetPieceAtIndex(moveTo);
+        Color ourColor = Not(ToMove);
+        Color theirColor = ToMove;
 
-            GamePly--;
+        GamePly--;
 
-            if (move.IsPromotion())
+        if (move.IsPromotion())
+        {
+            //  Remove the promotion piece and replace it with a pawn
+            bb.RemovePiece(moveTo, ourColor, ourPiece);
+
+            ourPiece = Piece::PAWN;
+
+            bb.AddPiece(moveTo, ourColor, ourPiece);
+
+            MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo());
+        }
+        else if (move.IsCastle())
+        {
+            //  Put both pieces back
+            DoCastling(ourColor, moveFrom, moveTo, true);
+        }
+
+        if (!move.IsCastle())
+        {
+            //  Put our piece back to the square it came from.
+            bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+        }
+
+        if (State->CapturedPiece != Piece::NONE)
+        {
+            //  CapturedPiece is set for captures and en passant, so check which it was
+            if (move.IsEnPassant())
             {
-                //  Remove the promotion piece and replace it with a pawn
-                bb.RemovePiece(moveTo, ourColor, ourPiece);
+                //  If the move was an en passant, put the captured pawn back
 
-                ourPiece = Piece::PAWN;
-
-                bb.AddPiece(moveTo, ourColor, ourPiece);
-
-                MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo());
+                int idxPawn = moveTo + ShiftUpDir(ToMove);
+                bb.AddPiece(idxPawn, theirColor, Piece::PAWN);
             }
-            else if (move.IsCastle())
+            else
             {
-                //  Put both pieces back
-                DoCastling(ourColor, moveFrom, moveTo, true);
-            }
+                //  Otherwise it was a capture, so put the captured piece back
+                bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
 
-            if (!move.IsCastle())
-            {
-                //  Put our piece back to the square it came from.
-                bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
-            }
-
-            if (State->CapturedPiece != Piece::NONE)
-            {
-                //  CapturedPiece is set for captures and en passant, so check which it was
-                if (move.IsEnPassant())
+                if (State->CapturedPiece != Pawn)
                 {
-                    //  If the move was an en passant, put the captured pawn back
-
-                    int idxPawn = moveTo + ShiftUpDir(ToMove);
-                    bb.AddPiece(idxPawn, theirColor, Piece::PAWN);
-                }
-                else
-                {
-                    //  Otherwise it was a capture, so put the captured piece back
-                    bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
-
-                    if (State->CapturedPiece != Pawn)
-                    {
-                        MaterialCountNonPawn[theirColor] += GetPieceValue(State->CapturedPiece);
-                    }
+                    MaterialCountNonPawn[theirColor] += GetPieceValue(State->CapturedPiece);
                 }
             }
+        }
 
-            if (ourColor == Color::BLACK)
-            {
-                //  If ourColor == Color.Black (and ToMove == White), then we incremented FullMoves when this move was made.
-                FullMoves--;
-            }
+        if (ourColor == Color::BLACK)
+        {
+            //  If ourColor == Color.Black (and ToMove == White), then we incremented FullMoves when this move was made.
+            FullMoves--;
+        }
 
-            State--;
+        State--;
 
-            switch (popcount(State->Checkers))
-            {
-                case 0:
-                    InCheck = false;
-                    InDoubleCheck = false;
-                    idxChecker = SQUARE_NB;
-                    break;
-                case 1:
-                    InCheck = true;
-                    InDoubleCheck = false;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-                case 2:
-                    InCheck = false;
-                    InDoubleCheck = true;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-            }
+        switch (popcount(State->Checkers))
+        {
+            case 0:
+                InCheck = false;
+                InDoubleCheck = false;
+                idxChecker = SQUARE_NB;
+                break;
+            case 1:
+                InCheck = true;
+                InDoubleCheck = false;
+                idxChecker = lsb(State->Checkers);
+                break;
+            case 2:
+                InCheck = false;
+                InDoubleCheck = true;
+                idxChecker = lsb(State->Checkers);
+                break;
+        }
 
 
-            ToMove = Not(ToMove);
+        ToMove = Not(ToMove);
     }
 
     void Position::MakeNullMove()
@@ -773,16 +774,16 @@ namespace Horsie {
 
 
     ulong Position::Perft(int depth) {
-#ifndef BULK_PERFT
+#if !defined(BULK_PERFT)
         if (depth == 0) {
             return 1;
         }
 #endif
         
-        ScoredMove movelist[MoveListSize] = {};
+        ScoredMove movelist[MoveListSize];
         int size = Generate<GenLegal>(*this, &movelist[0], 0);
 
-#ifdef BULK_PERFT
+#if defined(BULK_PERFT)
         if (depth == 1) {
             return size;
         }
@@ -801,56 +802,8 @@ namespace Horsie {
     }
 
 
-
-
-    Move PerftMoves[16];
-    ulong Position::DebugPerft(int depth) {
-        ScoredMove movelist[MoveListSize] = {};
-        ScoredMove* list = &movelist[0];
-        int size = Generate<GenLegal>(*this, list, 0);
-
-        StateInfo temp = StateInfo();
-        CopyBlock(&temp, State, StateCopySize);
-
-        ulong n = 0;
-        for (int i = 0; i < size; i++) {
-            Move m = list[i].Move;
-            std::string tos = Move::ToString(m);
-
-            //std::cout << "Doing move " << m << std::endl;
-
-            MakeMove(m);
-            PerftMoves[depth] = m;
-            n += DebugPerft(depth - 1);
-            UnmakeMove(m);
-            PerftMoves[depth] = Move::Null();
-
-            for (int n = 0; n < 6; n++) {
-                assert(State->CheckSquares[n] == temp.CheckSquares[n]);
-            }
-
-            for (int n = 0; n < 2; n++) {
-                assert(State->KingSquares[n] == temp.KingSquares[n]);
-                assert(State->BlockingPieces[n] == temp.BlockingPieces[n]);
-                assert(State->Pinners[n] == temp.Pinners[n]);
-                assert(State->Xrays[n] == temp.Xrays[n]);
-            }
-
-            assert(State->Hash == temp.Hash);
-            assert(State->Checkers == temp.Checkers);
-            assert(State->CastleStatus == temp.CastleStatus);
-            assert(State->HalfmoveClock == temp.HalfmoveClock);
-            assert(State->EPSquare == temp.EPSquare);
-            assert(State->CapturedPiece == temp.CapturedPiece);
-
-            //std::cout << "Unmade move " << m << std::endl;
-        }
-
-        return n;
-    }
-
     ulong Position::SplitPerft(int depth) {
-        ScoredMove movelist[MoveListSize] = {};
+        ScoredMove movelist[MoveListSize];
         ScoredMove* list = &movelist[0];
         int size = Generate<GenLegal>(*this, list, 0);
 
@@ -859,12 +812,9 @@ namespace Horsie {
             Move m = list[i].Move;
 
             MakeMove(m);
-            PerftMoves[depth] = m;
             n = Perft(depth - 1);
             total += n;
             UnmakeMove(m);
-
-            PerftMoves[depth] = Move::Null();
 
             std::cout << Move::ToString(m) << ": " << n << std::endl;
         }

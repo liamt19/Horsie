@@ -134,7 +134,7 @@ namespace Horsie {
             bool IsMain = false;
 
             std::chrono::system_clock::time_point TimeStart = std::chrono::system_clock::now();
-            ulong SearchTimeMS = 0;
+            int SearchTimeMS = 0;
             ulong MaxNodes = 0;
             bool StopSearching = false;
 
@@ -187,7 +187,8 @@ namespace Horsie {
                 //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - TimeStart);
                 //return (duration.count() > SearchTimeMS);
 
-                return (GetSearchTime() > SearchTimeMS - SEARCH_TIME_BUFFER);
+                const auto time = GetSearchTime();
+                return (time > SearchTimeMS - SEARCH_TIME_BUFFER);
             }
 
             void MakeMoveTime(SearchLimits& limits) {

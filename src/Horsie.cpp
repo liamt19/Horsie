@@ -45,9 +45,11 @@ int main()
 {
     Precomputed::init();
     Zobrist::init();
-    TT.Initialize(32);
+    TT.Initialize(TranspositionTable::DefaultTTSize);
 
     Position pos = Position(InitialFEN);
+
+    std::cout << "Horsie 0.0" << std::endl << std::endl;
 
     std::thread searcher;
     std::string token, cmd;
@@ -81,13 +83,15 @@ int main()
             HandleListMovesCommand(pos);
 
         else if (token == "go") {
-            //HandleGoCommand(pos, is);
-            std::cout << "token is go 1" << std::endl;
+            
+            if (searcher.joinable())
+				searcher.join();
+
             searcher = std::thread(HandleGoCommand, std::ref(pos), std::ref(is));
-            std::cout << "token is go 2" << std::endl;
+            
+            //  The HandleGoCommand function is going to call ParseGoParameters, 
+            //  so wait for it to finish doing that before getline is called again and modifies the input stream
             is_sync_barrier.arrive_and_wait();
-            std::cout << "token is go 3" << std::endl;
-            //std::thread searcher = std::thread(HandleEvalCommand, pos);
         }
             
 
@@ -169,9 +173,15 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
     cout << "\nSplitPerft(" << depth << "): " << endl;
     auto timeStart = std::chrono::high_resolution_clock::now();
     ulong nodes = pos.SplitPerft(depth);
+    auto timeEnd = std::chrono::high_resolution_clock::now();
 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
-     cout << "\nTotal: " << nodes << " in " << duration << endl << endl;
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart);
+    auto dur = duration.count();
+    auto durSeconds = duration.count() / 1000;
+    auto durMillis = duration.count() % 1000;
+
+    auto nps = (nodes / ((double)dur / 1000));
+     cout << "\nTotal: " << nodes << " in " << durSeconds << "." << durMillis << "s (" << (ulong)nps << " nps)" << endl << endl;
 }
 
 
@@ -260,12 +270,11 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
    
     thread.IsMain = true;
     thread.Reset();
-    std::cout << "HandleGoCommand 1" << std::endl;
     SearchLimits limits = ParseGoParameters(pos, is);
     is_sync_barrier.arrive_and_wait();
 
     thread.TimeStart = std::chrono::system_clock::now();
-    std::cout << "HandleGoCommand 2" << std::endl;
+
     if (!limits.HasMoveTime() && limits.HasPlayerTime()) {
         thread.MakeMoveTime(limits);
     }
@@ -276,13 +285,10 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
         limits.MaxSearchTime = INT32_MAX;
     }
 
-    std::cout << "Getting FEN" << std::endl;
     std::string fen = pos.GetFEN();
-    std::cout << "Searching with '" << fen << "'" << std::endl;
     Position posCopy = Position(fen);
     thread.Search(posCopy, limits);
     std::cout << "bestmove " << Move::ToString(thread.RootMoves[0].Move) << std::endl;
-    //cout << "Search finished" << endl;
 }
 
 
@@ -323,7 +329,7 @@ void HandleStopCommand(std::thread& searchThread) {
 
 void HandleUCICommand() {
     std::cout << "id name Horsie" << std::endl;
-    std::cout << "option name Hash type spin default 1 min 1 max 1" << std::endl;
+    std::cout << "option name Hash type spin default " << TranspositionTable::DefaultTTSize << " min 1 max " << TranspositionTable::MaxSize << std::endl;
     std::cout << "option name Threads type spin default 1 min 1 max 1" << std::endl;
     std::cout << "uciok" << std::endl;
 }

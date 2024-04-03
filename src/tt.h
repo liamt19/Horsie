@@ -31,6 +31,7 @@ constexpr int EntriesPerCluster = 3;
 
 
 
+
 namespace Horsie {
 
     enum class TTNodeType
@@ -116,6 +117,9 @@ namespace Horsie {
         TTCluster* Clusters = nullptr;
         ushort Age = 0;
         ulong ClusterCount = 0;
+
+        static const int DefaultTTSize = 16;
+        static const int MaxSize = 1048576;
     };
 
     extern TranspositionTable TT;
