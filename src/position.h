@@ -47,7 +47,10 @@ namespace Horsie {
 
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 
+        template<bool UpdateNN>
         void MakeMove(Move move);
+        void MakeMove(Move move);
+
         void UnmakeMove(Move move);
         void MakeNullMove();
         void UnmakeNullMove();

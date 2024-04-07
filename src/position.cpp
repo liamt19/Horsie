@@ -97,11 +97,18 @@ namespace Horsie {
         return move;
     }
 
+    void Position::MakeMove(Move move) {
+        MakeMove<true>(move);
+    }
 
+    template<bool UpdateNN>
     void Position::MakeMove(Move move) {
         CopyBlock(State + 1, State, StateCopySize);
 
-        NNUE::MakeMoveNN(*this, move);
+        constexpr bool doUpdate = UpdateNN;
+        if (doUpdate) {
+            NNUE::MakeMoveNN(*this, move);
+        }
 
         //  Move onto the next state
         State++;
@@ -482,17 +489,7 @@ namespace Horsie {
                 break;
         }
 
-        for (size_t i = 0; i <= 5; i++)
-        {
-            ulong m = State->CheckSquares[i] & (bb.Colors[Not(ToMove)] & bb.Pieces[i]);
-            if (m && idxChecker == SQUARE_NB) {
-                assert(false);
-            }
-        }
-
         SetCheckInfo();
-
-        
 
         State->Hash = Zobrist::GetHash(*this);
     }
@@ -793,7 +790,7 @@ namespace Horsie {
         for (int i = 0; i < size; i++) {
             Move m = movelist[i].Move;
 
-            MakeMove(m);
+            MakeMove<false>(m);
             n += Perft(depth - 1);
             UnmakeMove(m);
         }
@@ -811,7 +808,7 @@ namespace Horsie {
         for (int i = 0; i < size; i++) {
             Move m = list[i].Move;
 
-            MakeMove(m);
+            MakeMove<false>(m);
             n = Perft(depth - 1);
             total += n;
             UnmakeMove(m);
