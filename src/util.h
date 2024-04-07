@@ -83,7 +83,7 @@ namespace Horsie {
         switch (pt) {
         case PAWN: return 112;
         case HORSIE: return 794;
-        case BISHOP: return 864;
+        case BISHOP: return 868;
         case ROOK: return 1324;
         case QUEEN: return 2107;
         default: return 0;

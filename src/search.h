@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <chrono>
+#include <algorithm>
 
 #include "move.h"
 #include "history.h"
@@ -244,7 +245,10 @@ namespace Horsie {
         };
 
 
-        static void StableSort(std::vector<RootMove> items, int offset = 0, int end = -1) {
+        static void StableSort(std::vector<RootMove>& items, int offset = 0, int end = -1) {
+            
+            std::stable_sort(items.begin() + offset, items.end());
+            return;
             
             if (end == -1)
             {

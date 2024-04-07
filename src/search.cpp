@@ -8,7 +8,6 @@
 #include "movegen.h"
 #include "precomputed.h"
 
-#include <algorithm>
 #include <chrono>
 
 #include "search_options.h"
@@ -71,7 +70,7 @@ namespace Horsie {
             if (StopSearching)
                 break;
 
-            for (RootMove rm : RootMoves)
+            for (RootMove& rm : RootMoves)
             {
                 rm.PreviousScore = rm.Score;
             }
@@ -98,8 +97,7 @@ namespace Horsie {
                 {
                     score = Negamax<RootNode>(pos, ss, alpha, beta, std::max(1, RootDepth), false);
 
-                    //StableSort(RootMoves, PVIndex);
-                    std::stable_sort(RootMoves.begin() + PVIndex, RootMoves.end());
+                    StableSort(RootMoves, PVIndex);
 
                     if (StopSearching)
                         break;
@@ -119,8 +117,7 @@ namespace Horsie {
                     window += window / 2;
                 }
 
-                //StableSort(RootMoves, 0);
-                std::stable_sort(RootMoves.begin() + PVIndex, RootMoves.end());
+                StableSort(RootMoves, 0);
 
                 //  if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1 || tm.GetSearchTime() > 3000))
                 if (IsMain)
