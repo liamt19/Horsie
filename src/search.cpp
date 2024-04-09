@@ -151,13 +151,10 @@ namespace Horsie {
                     for (int j = 0; j < rm.PV.size(); j++)
                     {
                         if (rm.PV[j] == Move::Null())
-                        {
                             break;
-                        }
 
                         std::cout << " " + rm.PV[j].SmithNotation(pos.IsChess960);
                     }
-
 
                     std::cout << std::endl;
                 }
@@ -686,26 +683,13 @@ namespace Horsie {
                     rm.Depth = SelDepth;
 
                     rm.PV.resize(1);
-                    //Array.Fill(rm.PV, Move.Null, 1, MaxPly - rm.PVLength);
 
-#if defined(NO_PV_LEN)
                     for (Move* childMove = (ss + 1)->PV; *childMove != Move::Null(); ++childMove)
                     {
                         //rm.PV[rm.PVLength++] = *childMove;
                         rm.PV.push_back(*childMove);
                     }
-#else
-                    for (int i = 0; i < (ss + 1)->PVLength; i++)
-                    {
-                        Move* childMove = ((ss + 1)->PV + i);
-
-                        if (*childMove == Move::Null())
-                            break;
-
-                        rm.PV.push_back(*childMove);
                     }
-#endif
-                }
                 else
                 {
                     rm.Score = -ScoreInfinite;
@@ -722,27 +706,8 @@ namespace Horsie {
 
                     if (isPV && !isRoot)
                     {
-#if defined(NO_PV_LEN)
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
-#else
-                        Move* pv = ss->PV;
-                        Move* childPV = (ss + 1)->PV;
-
-                        *pv++ = m;
-                        ss->PVLength++;
-
-                        if (childPV != nullptr) {
-                            for (size_t j = 0; j < (ss + 1)->PVLength; j++)
-                            {
-                                if (*childPV == Move::Null())
-                                    break;
-
-                                *pv++ = *childPV++;
-                                ss->PVLength++;
                             }
-                        }
-#endif
-                    }
 
                     if (score >= beta)
                     {
@@ -905,10 +870,6 @@ namespace Horsie {
         int movesMade = 0;
         int checkEvasions = 0;
 
-
-        //int size = pos.GenPseudoLegalQS(list, ttDepth);
-        //AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
-
         ScoredMove list[MoveListSize] = {};
         int size = GenerateQS<MoveGenType::GenNonEvasions>(pos, list, ttDepth, 0);
         AssignQuiescenceScores(pos, ss, thisThread->History, list, size, ttMove);
@@ -1007,27 +968,8 @@ namespace Horsie {
 
                     if (isPV)
                     {
-#if defined(NO_PV_LEN)
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
-#else
-                        Move* pv = ss->PV;
-                        Move* childPV = (ss + 1)->PV;
-
-                        *pv++ = m;
-                        ss->PVLength++;
-
-                        if (childPV != nullptr) {
-                            for (size_t j = 0; j < (ss + 1)->PVLength; j++)
-                            {
-                                if (*childPV == Move::Null())
-                                    break;
-
-                                *pv++ = *childPV++;
-                                ss->PVLength++;
                             }
-                        }
-#endif
-                    }
 
                     if (score >= beta)
                     {
