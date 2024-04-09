@@ -13,6 +13,7 @@
 #include "movegen.h"
 #include "tt.h"
 #include "nn.h"
+#include "search_bench.h"
 
 
 
@@ -27,7 +28,8 @@ int main();
 void HandleSetPosition(Position& pos, std::istringstream& is);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
-void HandleBenchCommand(Position& pos);
+void HandleBenchCommand(std::istringstream& is);
+void HandleBenchPerftCommand(Position& pos);
 void HandleListMovesCommand(Position& pos);
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is);
 void HandleGoCommand(Position& pos, std::istringstream& is);
@@ -77,7 +79,7 @@ int main()
             HandlePerftCommand(pos, is);
 
         else if (token == "bench")
-            HandleBenchCommand(pos);
+            HandleBenchCommand(is);
 
         else if (token == "list")
             HandleListMovesCommand(pos);
@@ -186,7 +188,7 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
 
 
 
-void HandleBenchCommand(Position& pos) {
+void HandleBenchPerftCommand(Position& pos) {
     auto timeStart = std::chrono::high_resolution_clock::now();
 
     for (std::string entry : EtherealFENs_D5)
@@ -208,6 +210,16 @@ void HandleBenchCommand(Position& pos) {
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
     cout << "Done in " << duration << endl;
+}
+
+
+void HandleBenchCommand(std::istringstream& is) {
+
+    int depth = 12;
+    if (is && is.peek() != EOF)
+        is >> depth;
+
+    Horsie::DoBench(depth);
 }
 
 
