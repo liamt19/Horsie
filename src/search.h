@@ -7,6 +7,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <functional>
 
 #include "move.h"
 #include "history.h"
@@ -139,7 +140,7 @@ namespace Horsie {
             ulong MaxNodes = 0;
             bool StopSearching = false;
 
-
+            std::function<void()> OnDepthFinish;
             std::vector<RootMove> RootMoves;
             HistoryTable History;
 

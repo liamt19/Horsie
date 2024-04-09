@@ -122,10 +122,11 @@ namespace Horsie {
                 //  if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1 || tm.GetSearchTime() > 3000))
                 if (IsMain)
                 {
-                    //info.OnDepthFinish?.Invoke(ref info);
-                    //std::cout << "depth done" << std::endl;
-
-                    RootMove rm = RootMoves[0];
+                    if (OnDepthFinish) {
+                        OnDepthFinish();
+                    }
+                    else {
+                        RootMove& rm = RootMoves[0];
 
                     if (StopSearching) {
                         rm = lastBestRootMove;
@@ -160,6 +161,7 @@ namespace Horsie {
 
                     std::cout << std::endl;
                 }
+            }
             }
 
             if (!IsMain)
