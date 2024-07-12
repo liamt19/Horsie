@@ -29,16 +29,16 @@ int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WK]) == 0
             && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WK]) & us) != 0)
         {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WK]);
-            list[size - 1].Move.SetCastle();
+            list[size++].move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WK]);
+            list[size - 1].move.SetCastle();
         }
 
         if ((pos.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::WQ]) == 0
             && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::WQ]) & us) != 0)
         {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WQ]);
-            list[size - 1].Move.SetCastle();
+            list[size++].move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::WQ]);
+            list[size - 1].move.SetCastle();
         }
     }
     else if (pos.ToMove == BLACK && (ourKing == (int)Square::E8 || pos.IsChess960))
@@ -47,16 +47,16 @@ int GenCastlingMoves(const Position& pos, ScoredMove* list, int size)
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BK]) == 0
             && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BK]) & us) != 0)
         {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BK]);
-            list[size - 1].Move.SetCastle();
+            list[size++].move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BK]);
+            list[size - 1].move.SetCastle();
         }
 
         if ((pos.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None
             && (occ & pos.CastlingRookPaths[(int)CastlingStatus::BQ]) == 0
             && (bb.Pieces[ROOK] & SquareBB(pos.CastlingRookSquares[(int)CastlingStatus::BQ]) & us) != 0)
         {
-            list[size++].Move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BQ]);
-            list[size - 1].Move.SetCastle();
+            list[size++].move.SetNew(ourKing, pos.CastlingRookSquares[(int)CastlingStatus::BQ]);
+            list[size - 1].move.SetCastle();
         }
     }
 
@@ -105,7 +105,7 @@ int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool is
 
     for (int promotionPiece = lowPiece; promotionPiece <= highPiece; promotionPiece++)
     {
-        list[size++].Move.SetNew(from, promotionSquare, promotionPiece);
+        list[size++].move.SetNew(from, promotionSquare, promotionPiece);
     }
 
     return size;
@@ -173,13 +173,13 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
         while (moves != 0)
         {
             int to = poplsb(moves);
-            list[size++].Move = Move(to - up, to);
+            list[size++].move = Move(to - up, to);
         }
 
         while (twoMoves != 0)
         {
             int to = poplsb(twoMoves);
-            list[size++].Move.SetNew(to - up - up, to);
+            list[size++].move.SetNew(to - up - up, to);
         }
     }
 
@@ -230,13 +230,13 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
         while (capturesL != 0)
         {
             int to = poplsb(capturesL);
-            list[size++].Move.SetNew(to - up - Direction::WEST, to);
+            list[size++].move.SetNew(to - up - Direction::WEST, to);
         }
 
         while (capturesR != 0)
         {
             int to = poplsb(capturesR);
-            list[size++].Move.SetNew(to - up - Direction::EAST, to);
+            list[size++].move.SetNew(to - up - Direction::EAST, to);
         }
 
         if (pos.State->EPSquare != EP_NONE)
@@ -252,8 +252,8 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
             {
                 int from = poplsb(mask);
 
-                list[size++].Move.SetNew(from, pos.State->EPSquare);
-                list[size - 1].Move.SetEnPassant();
+                list[size++].move.SetNew(from, pos.State->EPSquare);
+                list[size - 1].move.SetEnPassant();
             }
         }
     }
@@ -269,9 +269,6 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
 template <Color stm>
 int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong targets, int size)
 {
-    // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
-    // This is far more convenient though
-
     Bitboard bb = pos.bb;
     ulong us = bb.Colors[stm];
     ulong them = bb.Colors[Not(stm)];
@@ -291,7 +288,7 @@ int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong 
         while (moves != 0)
         {
             int to = poplsb(moves);
-            list[size++].Move.SetNew(idx, to);
+            list[size++].move.SetNew(idx, to);
         }
     }
 
@@ -347,7 +344,7 @@ int GenAll(const Position& pos, ScoredMove* list, int size) {
         while (moves != 0)
         {
             int to = poplsb(moves);
-            list[size++].Move.SetNew(ourKing, to);
+            list[size++].move.SetNew(ourKing, to);
         }
 
         if ((quiets || nonEvasions) && ((pos.State->CastleStatus & (stm == WHITE ? CastlingStatus::White : CastlingStatus::Black)) != CastlingStatus::None))
@@ -395,7 +392,7 @@ int Generate<GenLegal>(const Position& pos, ScoredMove* moveList, int size) {
 
     while (curr != end)
     {
-        if (!pos.IsLegal(curr->Move, ourKing, theirKing, pinned))
+        if (!pos.IsLegal(curr->move, ourKing, theirKing, pinned))
         {
             *curr = *--end;
             numMoves--;
@@ -452,13 +449,13 @@ int GenPawnsQS(const Position& pos, ScoredMove* list, bool allowChecks, int size
         while (moves != 0)
         {
             int to = poplsb(moves);
-            list[size++].Move = Move(to - up, to);
+            list[size++].move = Move(to - up, to);
         }
 
         while (twoMoves != 0)
         {
             int to = poplsb(twoMoves);
-            list[size++].Move.SetNew(to - up - up, to);
+            list[size++].move.SetNew(to - up - up, to);
         }
     }
 
@@ -476,7 +473,7 @@ int GenPawnsQS(const Position& pos, ScoredMove* list, bool allowChecks, int size
                 {
                     if ((SquareBB(to) & pos.State->CheckSquares[promotionPiece]) != 0)
                     {
-                        list[size++].Move.SetNew(to - up, to, promotionPiece);
+                        list[size++].move.SetNew(to - up, to, promotionPiece);
                     }
                 }
             }
@@ -488,7 +485,7 @@ int GenPawnsQS(const Position& pos, ScoredMove* list, bool allowChecks, int size
 
             for (int promotionPiece = QUEEN; promotionPiece >= HORSIE; promotionPiece--)
             {
-                list[size++].Move.SetNew(to - up - Direction::WEST, to, promotionPiece);
+                list[size++].move.SetNew(to - up - Direction::WEST, to, promotionPiece);
             }
         }
 
@@ -498,7 +495,7 @@ int GenPawnsQS(const Position& pos, ScoredMove* list, bool allowChecks, int size
 
             for (int promotionPiece = QUEEN; promotionPiece >= HORSIE; promotionPiece--)
             {
-                list[size++].Move.SetNew(to - up - Direction::EAST, to, promotionPiece);
+                list[size++].move.SetNew(to - up - Direction::EAST, to, promotionPiece);
             }
         }
     }
@@ -509,13 +506,13 @@ int GenPawnsQS(const Position& pos, ScoredMove* list, bool allowChecks, int size
     while (capturesL != 0)
     {
         int to = poplsb(capturesL);
-        list[size++].Move.SetNew(to - up - Direction::WEST, to);
+        list[size++].move.SetNew(to - up - Direction::WEST, to);
     }
 
     while (capturesR != 0)
     {
         int to = poplsb(capturesR);
-        list[size++].Move.SetNew(to - up - Direction::EAST, to);
+        list[size++].move.SetNew(to - up - Direction::EAST, to);
     }
 
     return size;
@@ -541,7 +538,7 @@ int GenNormalQS(const Position& pos, ScoredMove* list, bool allowChecks, int siz
         while (moves != 0)
         {
             int to = poplsb(moves);
-            list[size++].Move.SetNew(idx, to);
+            list[size++].move.SetNew(idx, to);
         }
     }
 
@@ -580,7 +577,7 @@ int GenAllQS(const Position& pos, ScoredMove* list, int ttDepth, int size)
         while (moves != 0)
         {
             int to = poplsb(moves);
-            list[size++].Move.SetNew(ourKing, to);
+            list[size++].move.SetNew(ourKing, to);
         }
 
         if (((pos.State->CastleStatus & (pos.ToMove == WHITE ? CastlingStatus::White : CastlingStatus::Black)) != CastlingStatus::None))

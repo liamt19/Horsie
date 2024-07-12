@@ -103,14 +103,14 @@ namespace Horsie {
         struct RootMove {
 
             explicit RootMove(Move m) : PV(1, m) {
-                Move = m;
+                move = m;
                 Score = PreviousScore = AverageScore = -ScoreInfinite;
                 Depth = 0;
             }
             bool operator==(const Move& m) const { return PV[0] == m; }
             bool operator<(const RootMove& m) const { return m.Score != Score ? m.Score < Score : m.PreviousScore < PreviousScore; }
             
-            Move Move;
+            Move move;
             int Score;
             int PreviousScore;
             int AverageScore;
@@ -148,7 +148,7 @@ namespace Horsie {
             int SoftTimeLimit = 0;
             ulong NodeTable[64][64];
 
-            Move CurrentMove() const { return RootMoves[PVIndex].Move; }
+            Move CurrentMove() const { return RootMoves[PVIndex].move; }
 
 
             void Search(Position& pos, SearchLimits& info);
@@ -222,7 +222,7 @@ namespace Horsie {
                 double multFactor = 1.0;
                 if (RootDepth > 7)
                 {
-                    double proportion = NodeTable[RootMoves[0].Move.From()][RootMoves[0].Move.To()] / (double)Nodes;
+                    double proportion = NodeTable[RootMoves[0].move.From()][RootMoves[0].move.To()] / (double)Nodes;
                     multFactor = (1.5 - proportion) * 1.25;
                 }
 

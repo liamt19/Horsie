@@ -53,7 +53,7 @@ namespace Horsie {
         int rmsSize = Generate<GenLegal>(pos, &rms[0], 0);
         for (size_t i = 0; i < rmsSize; i++)
         {
-            RootMove rm = RootMove(rms[i].Move);
+            RootMove rm = RootMove(rms[i].move);
             RootMoves.push_back(rm);
         }
 
@@ -179,7 +179,7 @@ namespace Horsie {
                 return;
             }
 
-            lastBestRootMove.Move = RootMoves[0].Move;
+            lastBestRootMove.move = RootMoves[0].move;
             lastBestRootMove.Score = RootMoves[0].Score;
             lastBestRootMove.Depth = RootMoves[0].Depth;
             lastBestRootMove.PV.clear();
@@ -667,7 +667,7 @@ namespace Horsie {
                 int rmIndex = 0;
                 for (int j = 0; j < RootMoves.size(); j++)
                 {
-                    if (RootMoves[j].Move == m)
+                    if (RootMoves[j].move == m)
                     {
                         rmIndex = j;
                         break;
@@ -689,7 +689,7 @@ namespace Horsie {
                         //rm.PV[rm.PVLength++] = *childMove;
                         rm.PV.push_back(*childMove);
                     }
-                    }
+                }
                 else
                 {
                     rm.Score = -ScoreInfinite;
@@ -1115,7 +1115,7 @@ namespace Horsie {
         //(moves[maxIndex], moves[listIndex]) = (moves[listIndex], moves[maxIndex]);
         std::swap(moves[maxIndex], moves[listIndex]);
 
-        return moves[listIndex].Move;
+        return moves[listIndex].move;
     }
 
 
@@ -1125,7 +1125,7 @@ namespace Horsie {
         Bitboard& bb = pos.bb;
         for (int i = 0; i < size; i++)
         {
-            Move m = list[i].Move;
+            Move m = list[i].move;
             list[i].Score = GetSEEValue(m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To()));
             if (m.IsPromotion())
             {
@@ -1143,7 +1143,7 @@ namespace Horsie {
         int pc = (int)pos.ToMove;
 
         for (int i = 0; i < size; i++) {
-            Move m = list[i].Move;
+            Move m = list[i].move;
             int moveTo = m.To();
             int moveFrom = m.From();
 
@@ -1185,7 +1185,7 @@ namespace Horsie {
         int pc = (int) pos.ToMove;
 
         for (int i = 0; i < size; i++) {
-            Move m = list[i].Move;
+            Move m = list[i].move;
             int moveTo = m.To();
             int moveFrom = m.From();
 

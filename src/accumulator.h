@@ -4,6 +4,7 @@
 #define ACCUMULATOR_H
 
 #include "types.h"
+#include <array>
 
 constexpr int ByteSize = 1536 * sizeof(short);
 
@@ -11,15 +12,21 @@ namespace Horsie {
 
     struct alignas(64) Accumulator {
     public:
-        short White[1536] = {};
-        short Black[1536] = {};
+        std::array<std::array<short, 1536>, 2> Sides;
+        std::array<bool, 2> NeedsRefresh;
 
-        constexpr short* operator[](int c) { return c == 0 ? White : Black; }
+        const std::array<short, 1536> operator[](const int c) { return Sides[c]; }
 
         void CopyTo(Accumulator* target) const
         {
-            CopyBlock(target->White, White, ByteSize);
-            CopyBlock(target->Black, Black, ByteSize);
+            target->Sides = Sides;
+            target->NeedsRefresh = NeedsRefresh;
+        }
+
+        void CopyTo(Accumulator* target, const int c) const
+        {
+            target->Sides[c] = Sides[c];
+            target->NeedsRefresh[c] = NeedsRefresh[c];
         }
     };
 

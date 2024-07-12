@@ -9,6 +9,8 @@
 #include "bitboard.h"
 #include "search.h"
 
+#include "nn.h"
+
 constexpr int StateStackSize = 1024;
 
 namespace Horsie {
@@ -30,6 +32,7 @@ namespace Horsie {
         int idxChecker;
 
         StateInfo* State;
+        BucketCache CachedBuckets[InputBuckets * 2];
 
         bool UpdateNN;
 
@@ -41,8 +44,8 @@ namespace Horsie {
 
         constexpr bool Checked() const { return InCheck || InDoubleCheck; }
         constexpr StateInfo* StartingState() const { return _SentinelStart; }
-        constexpr StateInfo* PreviousState() const { return (State == _SentinelStart) ? NULL : _stateBlock - 1; }
-        constexpr StateInfo* NextState() const { return (State != _SentinelEnd) ? State + 1 : NULL; }
+        constexpr StateInfo* PreviousState() const { return State - 1; }
+        constexpr StateInfo* NextState() const { return State + 1; }
 
 
         Move TryFindMove(const std::string& moveStr, bool& found) const;

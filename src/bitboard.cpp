@@ -13,6 +13,11 @@ namespace Horsie {
         Reset();
     }
 
+    void Bitboard::CopyTo(Bitboard& other) const {
+        CopyBlock(other.Pieces, Pieces, sizeof(ulong) * PIECE_NB);
+        CopyBlock(other.Colors, Colors, sizeof(ulong) * COLOR_NB);
+    }
+
     void Bitboard::Reset()
     {
         for (int i = 0; i < 6; i++)

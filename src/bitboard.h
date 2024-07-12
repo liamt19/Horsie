@@ -35,7 +35,7 @@ namespace Horsie {
         constexpr ulong KingMask(int pc) const { return Colors[pc] & Pieces[Piece::KING]; }
         constexpr bool Occupied(int idx) const { return PieceTypes[idx] != Piece::NONE; }
 
-
+        void CopyTo(Bitboard& other) const;
         void Reset();
         void AddPiece(int idx, int pc, int pt);
         void RemovePiece(int idx, int pc, int pt);
@@ -47,6 +47,12 @@ namespace Horsie {
         ulong AttackersToMajors(int idx, ulong occupied) const;
         ulong AttackMask(int idx, int pc, int pt, ulong occupied) const;
         ulong AttackMask(int pc, int pt) const;
+    };
+
+    struct Accumulator;
+    struct BucketCache {
+        Bitboard Boards[2];
+        Accumulator* accumulator;
     };
 }
 

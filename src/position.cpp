@@ -47,12 +47,12 @@ namespace Horsie {
         _accumulatorBlock = (Accumulator*)AlignedAllocZeroed((sizeof(Accumulator) * StateStackSize), AllocAlignment);
         for (int i = 0; i < StateStackSize; i++)
         {
-            (_stateBlock + i)->Accumulator = _accumulatorBlock + i;
+            (_stateBlock + i)->accumulator = _accumulatorBlock + i;
         }
 
         for (int i = 0; i < StateStackSize; i++)
         {
-            *(_stateBlock + i)->Accumulator = Accumulator();
+            *(_stateBlock + i)->accumulator = Accumulator();
         }
 
         LoadFromFEN(fen);
@@ -83,7 +83,7 @@ namespace Horsie {
         int size = Generate<GenLegal>(*this, list, 0);
         for (int i = 0; i < size; i++)
         {
-            Move m = list[i].Move;
+            Move m = list[i].move;
 
             std::string lhs = m.SmithNotation(IsChess960);
             if (std::equal(lhs.begin(), lhs.end(), moveStr.begin(), moveStr.end(), eq_pred)) {
@@ -416,7 +416,7 @@ namespace Horsie {
     void Position::MakeNullMove()
     {
         CopyBlock(State + 1, State, StateCopySize);
-        State->Accumulator->CopyTo(NextState()->Accumulator);
+        State->accumulator->CopyTo(NextState()->accumulator);
 
         State++;
 
@@ -788,7 +788,7 @@ namespace Horsie {
 
         ulong n = 0;
         for (int i = 0; i < size; i++) {
-            Move m = movelist[i].Move;
+            Move m = movelist[i].move;
 
             MakeMove<false>(m);
             n += Perft(depth - 1);
@@ -806,7 +806,7 @@ namespace Horsie {
 
         ulong n, total = 0;
         for (int i = 0; i < size; i++) {
-            Move m = list[i].Move;
+            Move m = list[i].move;
 
             MakeMove<false>(m);
             n = Perft(depth - 1);

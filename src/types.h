@@ -316,7 +316,7 @@ namespace Horsie {
         int EPSquare = EP_NONE;
         int CapturedPiece = Piece::NONE;
 
-        Accumulator* Accumulator;
+        Accumulator* accumulator;
     };
 
     constexpr static int StateCopySize = sizeof(StateInfo) - sizeof(ulong);

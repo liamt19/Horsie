@@ -45,6 +45,7 @@ std::barrier is_sync_barrier(2);
 
 int main()
 {
+    NNUE::LoadNetwork("D:\\Programming\\Horsie\\src\\incbin\\L1536x5x8_cos51_from315_dfrc08b-680.bin");
     Precomputed::init();
     Zobrist::init();
     TT.Initialize(TranspositionTable::DefaultTTSize);
@@ -209,7 +210,11 @@ void HandleBenchPerftCommand(Position& pos) {
     }
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
+#if defined(_MSC_VER)
     cout << "Done in " << duration << endl;
+#else
+    cout << "Done in " << duration.count() << endl;
+#endif
 }
 
 
@@ -230,7 +235,7 @@ void HandleListMovesCommand(Position& pos) {
 
     cout << "Pseudo: ";
     for (size_t i = 0; i < pseudoSize; i++)
-        cout << Move::ToString(pseudos[i].Move) << " ";
+        cout << Move::ToString(pseudos[i].move) << " ";
     cout << endl;
 
     ScoredMove legals[MoveListSize] = {};
@@ -239,7 +244,7 @@ void HandleListMovesCommand(Position& pos) {
     cout << "Legal: ";
     for (size_t i = 0; i < legalsSize; i++)
     {
-        cout << Move::ToString(legals[i].Move) << " ";
+        cout << Move::ToString(legals[i].move) << " ";
     }
     cout << endl;
 }
@@ -300,7 +305,7 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
     std::string fen = pos.GetFEN();
     Position posCopy = Position(fen);
     thread.Search(posCopy, limits);
-    std::cout << "bestmove " << Move::ToString(thread.RootMoves[0].Move) << std::endl;
+    std::cout << "bestmove " << Move::ToString(thread.RootMoves[0].move) << std::endl;
 }
 
 
@@ -314,7 +319,7 @@ void HandleEvalCommand(Position& pos) {
 
     for (size_t i = 0; i < legalsSize; i++)
     {
-        Move m = legals[i].Move;
+        Move m = legals[i].move;
         pos.MakeMove(m);
         int eval = NNUE::GetEvaluation(pos);
         pos.UnmakeMove(m);
@@ -325,7 +330,7 @@ void HandleEvalCommand(Position& pos) {
     moves.sort([](const ScoredMove& l, const ScoredMove& r) { return l.Score > r.Score; });
 
     for (ScoredMove m : moves) {
-        cout << Move::ToString(m.Move) << ": " << m.Score << endl;
+        cout << Move::ToString(m.move) << ": " << m.Score << endl;
     }
 }
 

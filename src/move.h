@@ -133,7 +133,7 @@ namespace Horsie {
 
 
     struct ScoredMove {
-        Move Move;
+        Move move;
         int Score;
     };
 
@@ -143,7 +143,7 @@ namespace Horsie {
         std::stringstream buffer;
         for (int i = 0; i < size; i++)
         {
-			buffer << Move::ToString(moves[i].Move) << ": " << moves[i].Score << "\n";
+			buffer << Move::ToString(moves[i].move) << ": " << moves[i].Score << "\n";
 		}
 
 		return buffer.str();
