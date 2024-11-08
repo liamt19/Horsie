@@ -6,6 +6,7 @@
 #include <string>
 #include <cassert>
 
+#include "nnue/accumulator.h"
 #include "util.h"
 
 #define Pawn PAWN
@@ -44,15 +45,13 @@ namespace Horsie {
         int MaterialCount(int pc, bool excludePawns) const;
         ulong BlockingPieces(int pc, ulong* pinners, ulong* xrayers) const;
         ulong AttackersTo(int idx, ulong occupied) const;
-        ulong AttackersToMajors(int idx, ulong occupied) const;
         ulong AttackMask(int idx, int pc, int pt, ulong occupied) const;
-        ulong AttackMask(int pc, int pt) const;
     };
 
-    struct Accumulator;
+    //struct Accumulator;
     struct BucketCache {
         Bitboard Boards[2];
-        Accumulator* accumulator;
+        Accumulator Accumulator;
     };
 }
 

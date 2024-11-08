@@ -12,7 +12,7 @@
 #include "position.h"
 #include "movegen.h"
 #include "tt.h"
-#include "nn.h"
+#include "nnue/nn.h"
 #include "search_bench.h"
 
 
@@ -45,7 +45,7 @@ std::barrier is_sync_barrier(2);
 
 int main()
 {
-    NNUE::LoadNetwork("D:\\Programming\\Horsie\\src\\incbin\\L1536x5x8_cos51_from315_dfrc08b-680.bin");
+    NNUE::LoadNetwork("C:\\Programming\\Horsie\\src\\incbin\\net-009-250.bin");
     Precomputed::init();
     Zobrist::init();
     TT.Initialize(TranspositionTable::DefaultTTSize);
@@ -78,6 +78,9 @@ int main()
 
         else if (token == "perft")
             HandlePerftCommand(pos, is);
+
+        else if (token == "benchperft" || token == "b")
+            HandleBenchPerftCommand(pos);
 
         else if (token == "bench")
             HandleBenchCommand(is);

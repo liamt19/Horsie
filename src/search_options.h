@@ -38,7 +38,7 @@ namespace Horsie {
 
     static int HistoryReductionMultiplier = 3;
 
-    static int FutilityExchangeBase = 181;
+    static int QSFutileMargin = 181;
 
     static int ExtraCutNodeReductionMinDepth = 5;
 

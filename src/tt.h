@@ -71,10 +71,11 @@ namespace Horsie {
 
         void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false);
 
+        static constexpr int DepthNone = -6;
+
     private:
         static constexpr int KeyShift = 64 - (sizeof(ushort) * 8);
         static constexpr int DepthOffset = 7;
-        static constexpr int DepthNone = -6;
     };
 
 

@@ -3,7 +3,7 @@
 
 #include "search.h"
 #include "position.h"
-#include "nn.h"
+#include "nnue/nn.h"
 #include "tt.h"
 #include "movegen.h"
 #include "precomputed.h"
@@ -43,7 +43,6 @@ namespace Horsie {
 
         for (int sq = 0; sq < SQUARE_NB; sq++)
         {
-            //Array.Clear(NodeTable[sq]);
             std::memset(NodeTable[sq], 0, sizeof(NodeTable[sq]));
         }
 
@@ -120,45 +119,44 @@ namespace Horsie {
                 StableSort(RootMoves, 0);
 
                 //  if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1 || tm.GetSearchTime() > 3000))
-                if (IsMain)
-                {
+                if (IsMain) {
                     if (OnDepthFinish) {
                         OnDepthFinish();
                     }
                     else {
                         RootMove& rm = RootMoves[0];
 
-                    if (StopSearching) {
-                        rm = lastBestRootMove;
+                        if (StopSearching) {
+                            rm = lastBestRootMove;
+                        }
+
+                        bool moveSearched = rm.Score != -ScoreInfinite;
+                        int depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
+                        int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - TimeStart);
+                        auto durCnt = std::max(1.0, (double) duration.count());
+                        int nodesPerSec = (int)(Nodes / (durCnt / 1000));
+
+                        std::cout << "info depth " << depth;
+                        std::cout << " seldepth " << rm.Depth;
+                        std::cout << " time " << durCnt;
+                        std::cout << " score " << FormatMoveScore(moveScore);
+                        std::cout << " nodes " << Nodes;
+                        std::cout << " nps " << nodesPerSec;
+                        std::cout << " pv";
+
+                        for (int j = 0; j < rm.PV.size(); j++)
+                        {
+                            if (rm.PV[j] == Move::Null())
+                                break;
+
+                            std::cout << " " + rm.PV[j].SmithNotation(pos.IsChess960);
+                        }
+
+                        std::cout << std::endl;
                     }
-
-                    bool moveSearched = rm.Score != -ScoreInfinite;
-                    int depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
-                    int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
-
-                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - TimeStart);
-                    auto durCnt = std::max(1.0, (double) duration.count());
-                    int nodesPerSec = (int)(Nodes / (durCnt / 1000));
-
-                    std::cout << "info depth " << depth;
-                    std::cout << " seldepth " << rm.Depth;
-                    std::cout << " time " << durCnt;
-                    std::cout << " score " << FormatMoveScore(moveScore);
-                    std::cout << " nodes " << Nodes;
-                    std::cout << " nps " << nodesPerSec;
-                    std::cout << " pv";
-
-                    for (int j = 0; j < rm.PV.size(); j++)
-                    {
-                        if (rm.PV[j] == Move::Null())
-                            break;
-
-                        std::cout << " " + rm.PV[j].SmithNotation(pos.IsChess960);
-                    }
-
-                    std::cout << std::endl;
                 }
-            }
             }
 
             if (!IsMain)
@@ -400,7 +398,7 @@ namespace Horsie {
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta))
         {
             ScoredMove captures[MoveListSize] = {};
-            int numCaps = Generate<GenLoud>(pos, captures, 0);
+            int numCaps = Generate<GenNoisy>(pos, captures, 0);
             AssignProbCutScores(pos, captures, numCaps);
 
             for (int i = 0; i < numCaps; i++)
@@ -463,7 +461,7 @@ namespace Horsie {
         bool skipQuiets = false;
 
         ScoredMove list[MoveListSize];
-        int size = Generate<MoveGenType::GenNonEvasions>(pos, list, 0);
+        int size = Generate<PseudoLegal>(pos, list, 0);
         AssignScores(pos, ss, *history, list, size, ttMove);
 
         for (int i = 0; i < size; i++)
@@ -773,6 +771,7 @@ namespace Horsie {
         //HistoryTable history = this->History;
         Move bestMove = Move::Null();
 
+        const int us = pos.ToMove;
         int score = -ScoreMate - MaxPly;
         short bestScore = -ScoreInfinite;
         short futility = -ScoreInfinite;
@@ -784,85 +783,64 @@ namespace Horsie {
         TTEntry* tte;
 
         ss->InCheck = pos.Checked();
-        tte = TT.Probe(pos.State->Hash, ss->TTHit);
+        tte = TT.Probe(pos.Hash(), ss->TTHit);
         int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
         short ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         Move ttMove = ss->TTHit ? tte->BestMove : Move::Null();
         bool ttPV = ss->TTHit && tte->PV();
 
-        if (isPV)
-        {
+        if (isPV) {
             ss->PV[0] = Move::Null();
-        }
-
-
-        if (pos.IsDraw())
-        {
-            return ScoreDraw;
-        }
-
-        if (ss->Ply >= MaxSearchStackPly - 1)
-        {
-            return ss->InCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
-        }
-
-        if (isPV)
-        {
             SelDepth = std::max(SelDepth, ss->Ply + 1);
         }
 
+
+        if (pos.IsDraw()) {
+            return ScoreDraw;
+        }
+
+        if (ss->Ply >= MaxSearchStackPly - 1) {
+            return ss->InCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
+        }
+
         if (!isPV
-            && tte->Depth() >= ttDepth
             && ttScore != ScoreNone
-            && (tte->Bound() & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
-        {
+            && (tte->Bound() & (ttScore >= beta ? BoundLower : BoundUpper)) != 0) {
             return ttScore;
         }
 
-        if (ss->InCheck)
-        {
+        if (ss->InCheck) {
             eval = ss->StaticEval = -ScoreInfinite;
         }
-        else
-        {
-            if (ss->TTHit)
-            {
-                eval = ss->StaticEval = tte->StatEval();
-                if (eval == ScoreNone)
-                {
-                    eval = ss->StaticEval = NNUE::GetEvaluation(pos);
-                }
+        else {
+            if (ss->TTHit) {
+                eval = ss->StaticEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-                if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
-                {
+                if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
                     eval = ttScore;
                 }
             }
-            else
-            {
-                if ((ss - 1)->CurrentMove == Move::Null())
-                {
-                    eval = ss->StaticEval = (short)(-(ss - 1)->StaticEval);
-                }
-                else
-                {
-                    eval = ss->StaticEval = NNUE::GetEvaluation(pos);
-                }
+            else {
+                eval = ss->StaticEval = ((ss - 1)->CurrentMove == Move::Null()) ? (short)(-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
             }
 
-            if (eval >= beta)
-            {
+            if (eval >= beta) {
+                if (!ss->TTHit)
+                    tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), ss->StaticEval, false);
+
+                if (std::abs(eval) < ScoreTTWin) 
+                    eval = (short)((4 * eval + beta) / 5);
+
                 return eval;
             }
 
-            if (eval > alpha)
-            {
+            if (eval > alpha) {
                 alpha = eval;
             }
 
             bestScore = eval;
 
-            futility = (short)(std::min(ss->StaticEval, bestScore) + FutilityExchangeBase);
+            futility = (short)(std::min(ss->StaticEval, bestScore) + QSFutileMargin);
         }
 
         int prevSquare = (ss - 1)->CurrentMove == Move::Null() ? SQUARE_NB : (ss - 1)->CurrentMove.To();
@@ -871,7 +849,7 @@ namespace Horsie {
         int checkEvasions = 0;
 
         ScoredMove list[MoveListSize] = {};
-        int size = GenerateQS<MoveGenType::GenNonEvasions>(pos, list, ttDepth, 0);
+        int size = GenerateQS<PseudoLegal>(pos, list, 0);
         AssignQuiescenceScores(pos, ss, thisThread->History, list, size, ttMove);
 
         for (int i = 0; i < size; i++)

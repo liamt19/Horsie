@@ -5,11 +5,12 @@
 
 #include "types.h"
 #include "move.h"
-#include "accumulator.h"
+#include "nnue/accumulator.h"
 #include "bitboard.h"
 #include "search.h"
 
-#include "nn.h"
+#include "nnue/nn.h"
+#include "nnue/arch.h"
 
 constexpr int StateStackSize = 1024;
 
@@ -47,6 +48,17 @@ namespace Horsie {
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
 
+        constexpr ulong Hash() const { return State->Hash; }
+        
+        constexpr bool CanCastle(ulong boardOcc, ulong ourOcc, CastlingStatus cr) const {
+            return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
+        }
+
+        constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
+        constexpr bool CastlingImpeded(ulong boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[(int)cr]); }
+        constexpr bool HasCastlingRook(ulong ourOcc, CastlingStatus cr) const { return (bb.Pieces[Rook] & SquareBB(CastlingRookSquares[(int)cr]) & ourOcc); }
+        constexpr bool HasNonPawnMaterial(int pc) const { return (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc])); }
+        constexpr bool IsCapture(Move m) const { return ((bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle()) || m.IsEnPassant()); }
 
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 

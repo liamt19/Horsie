@@ -12,9 +12,8 @@ namespace Horsie {
     class Position;
 
     enum MoveGenType {
-        GenLoud,
-        GenQuiets,
-        GenQChecks,
+        PseudoLegal,
+        GenNoisy,
         GenEvasions,
         GenNonEvasions,
         GenLegal
@@ -23,9 +22,6 @@ namespace Horsie {
 
 template<MoveGenType>
 int Generate(const Position& pos, ScoredMove* moveList, int size);
-
-template<MoveGenType>
-int GenerateQS(const Position& pos, ScoredMove* moveList, int ttDepth, int size);
 
 
 }

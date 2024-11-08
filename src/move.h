@@ -10,10 +10,15 @@
 #include <iostream> 
 #include <sstream>   
 
-constexpr int FlagEnPassant = 0b000001 << 14;
-constexpr int FlagCastle = 0b000010 << 14;
-constexpr int FlagPromotion = 0b000011 << 14;
-constexpr int SpecialFlagsMask = 0b000011 << 14;
+
+constexpr int FlagEnPassant = 0b0001 << 12;
+constexpr int FlagCastle    = 0b0010 << 12;
+constexpr int FlagPromotion = 0b0011 << 12;
+constexpr int SpecialFlagsMask  = 0b0011 << 12;
+constexpr int FlagPromoKnight   = 0b00 << 14 | FlagPromotion;
+constexpr int FlagPromoBishop   = 0b01 << 14 | FlagPromotion;
+constexpr int FlagPromoRook     = 0b10 << 14 | FlagPromotion;
+constexpr int FlagPromoQueen    = 0b11 << 14 | FlagPromotion;
 
 namespace Horsie {
 
@@ -24,40 +29,19 @@ namespace Horsie {
     public:
         Move() = default;
         constexpr explicit Move(ushort d) : data(d) {}
-        constexpr Move(int from, int to) : data((ushort)((from << 6) + to)) {}
+        constexpr Move(int from, int to, int flags = 0) : data((ushort)(to | (from << 6) | flags)) {}
 
-        static constexpr Move make(int from, int to) {
-            return Move((int)to | ((int)from << 6));
-        }
-        
-        static constexpr Move make(int from, int to, Piece promotionTo) {
-            return Move((int)to | ((int)from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
-        }
-
-        constexpr void SetNew(int from, int to) { data = ((int)to | ((int)from << 6)); }
-        constexpr void SetNew(int from, int to, int promotionTo) { data = ((int)to | ((int)from << 6) | ((promotionTo - 1) << 12) | FlagPromotion); }
-
-        constexpr int From() const {
-            //assert(IsOK());
-            return int((data >> 6) & 0x3F);
-        }
-
-        constexpr int To() const {
-            //assert(IsOK());
-            return int(data & 0x3F);
-        }
+        constexpr int To() const { return int(data & 0x3F); }
+        constexpr int From() const { return int((data >> 6) & 0x3F); }
 
         constexpr int Data() const { return data; }
         constexpr int GetMoveMask() const { return data & 0xFFF; }
 
-        constexpr void SetEnPassant() { data |= FlagEnPassant; }
-        constexpr void SetCastle() { data |= FlagCastle; }
-
         constexpr bool IsEnPassant() const { return ((data & SpecialFlagsMask) == FlagEnPassant); }
-        constexpr bool IsCastle() const { return ((data & SpecialFlagsMask) == FlagCastle); }
+        constexpr bool IsCastle() const {    return ((data & SpecialFlagsMask) == FlagCastle); }
         constexpr bool IsPromotion() const { return ((data & SpecialFlagsMask) == FlagPromotion); }
 
-        constexpr Piece PromotionTo() const { return Piece(((data >> 12) & 0x3) + 1); }
+        constexpr Piece PromotionTo() const { return Piece(((data >> 14) & 0x3) + 1); }
 
         static constexpr Move Null() { return Move(0); }
 

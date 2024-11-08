@@ -11,12 +11,12 @@
 #include "types.h"
 #include "position.h"
 #include "move.h"
-#include "accumulator.h"
+#include "nnue/accumulator.h"
 #include "precomputed.h"
 #include "movegen.h"
 #include "zobrist.h"
 #include "search.h"
-#include "nn.h"
+#include "nnue/nn.h"
 
 #define BULK_PERFT 1
 //#undef BULK_PERFT

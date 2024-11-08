@@ -146,13 +146,6 @@ namespace Horsie {
             | (PawnAttackMasks[BLACK][(int)idx] & Colors[WHITE] & Pieces[PAWN]);
     }
 
-    ulong Bitboard::AttackersToMajors(int idx, ulong occupied) const
-    {
-        return (attacks_bb<BISHOP>(idx, occupied) & (Pieces[BISHOP] | Pieces[QUEEN]))
-            | (attacks_bb<ROOK>(idx, occupied) & (Pieces[ROOK] | Pieces[QUEEN]))
-            | (PseudoAttacks[HORSIE][(int)idx] & Pieces[HORSIE]);
-    }
-
     ulong Bitboard::AttackMask(int idx, int pc, int pt, ulong occupied) const
     {
         switch (pt)
@@ -166,19 +159,6 @@ namespace Horsie {
         default:
             return 0;
         };
-    }
-
-
-    ulong Bitboard::AttackMask(int pc, int pt) const
-    {
-        ulong mask = 0;
-        ulong occ = Occupancy;
-        ulong pieces = Colors[pc] & Pieces[pt];
-        while (pieces != 0)
-        {
-            mask |= AttackMask(poplsb(pieces), pc, pt, occ);
-        }
-        return mask;
     }
 
 }
