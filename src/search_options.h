@@ -13,67 +13,68 @@ namespace Horsie {
 
     static bool UCI_Chess960 = false;
 
+    const bool ShallowPruning = true;
     const bool UseSingularExtensions = true;
-    static int SingularExtensionsMinDepth = 7;
-    static int SingularExtensionsNumerator = 9;
-    static int SingularExtensionsBeta = 22;
-    static int SingularExtensionsDepthAugment = -1;
-
-    const bool UseNullMovePruning = true;
-    static int NMPMinDepth = 6;
-    static int NMPReductionBase = 5;
-    static int NMPReductionDivisor = 5;
-
-    const bool UseReverseFutilityPruning = true;
-    static int ReverseFutilityPruningMaxDepth = 7;
-    static int ReverseFutilityPruningPerDepth = 47;
-
+    const bool UseNMP = true;
+    const bool UseRFP = true;
     const bool UseProbCut = true;
-    static int ProbCutBeta = 191;
-    static int ProbCutBetaImproving = 100;
+
+    static int SEMinDepth = 5;
+    static int SENumerator = 11;
+    static int SEDoubleMargin = 24;
+    static int SETripleMargin = 96;
+    static int SETripleCapSub = 75;
+    static int SEDepthAdj = -1;
+
+    static int NMPMinDepth = 6;
+    static int NMPBaseRed = 4;
+    static int NMPDepthDiv = 4;
+    static int NMPEvalDiv = 181;
+    static int NMPEvalMin = 2;
+
+    static int RFPMaxDepth = 6;
+    static int RFPMargin = 47;
+
+    static int ProbCutBeta = 256;
+    static int ProbcutBetaImp = 101;
     static int ProbCutMinDepth = 2;
 
-    static int LMRExtensionThreshold = 131;
-    static int LMRExchangeBase = 216;
+    static int ShallowSEEMargin = 216;
+    static int ShallowMaxDepth = 9;
 
-    static int HistoryReductionMultiplier = 3;
+    static int LMRQuietDiv = 12288;
+    static int LMRCaptureDiv = 10288;
+    static int LMRExtMargin = 128;
 
-    static int QSFutileMargin = 181;
+    static int QSFutileMargin = 183;
+    static int QSSeeMargin = 81;
 
-    static int ExtraCutNodeReductionMinDepth = 5;
-
-    static int AspirationWindowMargin = 11;
-
-    static int HistoryCaptureBonusMargin = 158;
-    static int OrderingGivesCheckBonus = 10345;
+    static int OrderingGivesCheckBonus = 9546;
     static int OrderingVictimValueMultiplier = 14;
-    static int OrderingHistoryDivisor = 11;
 
-    static int StatBonusMult = 170;
-    static int StatBonusSub = 95;
-    static int StatBonusMax = 1822;
+    static int IIRMinDepth = 4;
+    static int AspWindow = 11;
+    static int HistoryCaptureBonusMargin = 158;
 
-    static int StatMalusMult = 466;
-    static int StatMalusSub = 97;
-    static int StatMalusMax = 1787;
+    static int StatBonusMult = 184;
+    static int StatBonusSub = 80;
+    static int StatBonusMax = 1667;
 
-    static int SEEValue_Pawn = 112;
-    static int SEEValue_Knight = 794;
-    static int SEEValue_Bishop = 868;
-    static int SEEValue_Rook = 1324;
-    static int SEEValue_Queen = 2107;
+    static int StatMalusMult = 611;
+    static int StatMalusSub = 111;
+    static int StatMalusMax = 1663;
 
-    static int ValuePawn = 199;
-    static int ValueKnight = 920;
-    static int ValueBishop = 1058;
-    static int ValueRook = 1553;
-    static int ValueQueen = 3127;
+    static int SEEValue_Pawn = 105;
+    static int SEEValue_Knight = 900;
+    static int SEEValue_Bishop = 1054;
+    static int SEEValue_Rook = 1332;
+    static int SEEValue_Queen = 2300;
 
-
-    inline int GetReverseFutilityMargin(int depth, bool improving)
-    {
-        return (depth - (improving ? 1 : 0)) * ReverseFutilityPruningPerDepth;
-    }
+    static int ValuePawn = 171;
+    static int ValueKnight = 794;
+    static int ValueBishop = 943;
+    static int ValueRook = 1620;
+    static int ValueQueen = 2994;
 
 }
 

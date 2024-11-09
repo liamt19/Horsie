@@ -22,7 +22,7 @@ namespace Horsie {
 
 template<MoveGenType>
 int Generate(const Position& pos, ScoredMove* moveList, int size);
-
+int GenerateQS(const Position& pos, ScoredMove* moveList, int size);
 
 }
 

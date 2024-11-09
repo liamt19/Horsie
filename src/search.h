@@ -4,6 +4,7 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
+#include <array>
 #include <vector>
 #include <chrono>
 #include <algorithm>
@@ -36,6 +37,7 @@ namespace Horsie {
         public:
             int MaxDepth = Horsie::MaxDepth;
             ulong MaxNodes = UINT64_MAX;
+            ulong SoftNodeLimit = UINT64_MAX;
             int MaxSearchTime = INT32_MAX;
             int Increment = 0;
             int MovesToGo = 20;
@@ -59,30 +61,24 @@ namespace Horsie {
 
         struct SearchStackEntry {
         public:
-            Move CurrentMove;
-            Move Skip;
+            Move* PV;
             PieceToHistory* ContinuationHistory;
-            int StatScore;
-            int DoubleExtensions;
+            short DoubleExtensions;
             short Ply;
             short StaticEval;
+            Move KillerMove;
+            Move CurrentMove;
+            Move Skip;
             bool InCheck;
             bool TTPV;
             bool TTHit;
-            //uint8_t _pad0[1];
-            Move* PV;
-            //uint8_t _pad1[8];
             int PVLength;
-            Move Killer0;
-            //uint8_t _pad3[4];
-            Move Killer1;
-            //uint8_t _pad4[4];
+
 
             void Clear() {
-                CurrentMove = Skip = Killer0 = Killer1 = Move::Null();
+                CurrentMove = Skip = KillerMove = Move::Null();
                 ContinuationHistory = nullptr;
 
-                StatScore = 0;
                 Ply = 0;
                 DoubleExtensions = 0;
                 StaticEval = ScoreNone;
@@ -141,12 +137,12 @@ namespace Horsie {
             bool StopSearching = false;
 
             std::function<void()> OnDepthFinish;
-            std::vector<RootMove> RootMoves;
+            std::vector<RootMove> RootMoves{};
             HistoryTable History;
 
             bool HasSoftTime = false;
             int SoftTimeLimit = 0;
-            ulong NodeTable[64][64];
+            std::array<std::array<ulong, 64>, 64> NodeTable{};
 
             Move CurrentMove() const { return RootMoves[PVIndex].move; }
 
@@ -157,10 +153,12 @@ namespace Horsie {
             int Negamax(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode);
 
             template <SearchNodeType NodeType>
-            int QSearch(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth);
+            int QSearch(Position& pos, SearchStackEntry* ss, int alpha, int beta);
 
+            void UpdateCorrectionHistory(Position& pos, int diff, int depth);
+            short AdjustEval(Position& pos, int us, short rawEval);
 
-
+            inline int GetRFPMargin(int depth, bool improving) const { return (depth - (improving)) * RFPMargin; }
             inline int StatBonus(int depth) const { return std::min((StatBonusMult * depth) - StatBonusSub, StatBonusMax); }
             inline int StatMalus(int depth) const { return std::min((StatMalusMult * depth) - StatMalusSub, StatMalusMax); }
 
@@ -211,27 +209,6 @@ namespace Horsie {
                 HasSoftTime = true;
 
                 limits.MaxSearchTime = newSearchTime;
-            }
-
-            bool SoftTimeUp() const
-            {
-                if (!HasSoftTime)
-                    return false;
-
-                //  Base values taken from Clarity
-                double multFactor = 1.0;
-                if (RootDepth > 7)
-                {
-                    double proportion = NodeTable[RootMoves[0].move.From()][RootMoves[0].move.To()] / (double)Nodes;
-                    multFactor = (1.5 - proportion) * 1.25;
-                }
-
-                if (GetSearchTime() >= SoftTimeLimit * multFactor)
-                {
-                    return true;
-                }
-
-                return false;
             }
 
             void Reset() {

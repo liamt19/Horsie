@@ -43,6 +43,7 @@ namespace Horsie {
 
         constexpr Piece PromotionTo() const { return Piece(((data >> 14) & 0x3) + 1); }
 
+        constexpr bool IsNull() const { return data != 0; }
         static constexpr Move Null() { return Move(0); }
 
         constexpr bool operator==(const Move& m) const { return data == m.data; }

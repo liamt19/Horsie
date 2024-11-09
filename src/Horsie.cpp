@@ -30,6 +30,7 @@ void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleBenchCommand(std::istringstream& is);
 void HandleBenchPerftCommand(Position& pos);
+void HandleMoveCommand(Position& pos, std::istringstream& is);
 void HandleListMovesCommand(Position& pos);
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is);
 void HandleGoCommand(Position& pos, std::istringstream& is);
@@ -45,7 +46,7 @@ std::barrier is_sync_barrier(2);
 
 int main()
 {
-    NNUE::LoadNetwork("C:\\Programming\\Horsie\\src\\incbin\\net-009-250.bin");
+    NNUE::LoadNetwork("C:\\Programming\\Horsie\\src\\incbin\\net-013-16l8.bin");
     Precomputed::init();
     Zobrist::init();
     TT.Initialize(TranspositionTable::DefaultTTSize);
@@ -87,6 +88,9 @@ int main()
 
         else if (token == "list")
             HandleListMovesCommand(pos);
+
+        else if (token == "move")
+            HandleMoveCommand(pos, is);
 
         else if (token == "go") {
             
@@ -230,6 +234,21 @@ void HandleBenchCommand(std::istringstream& is) {
     Horsie::DoBench(depth);
 }
 
+
+void HandleMoveCommand(Position& pos, std::istringstream& is) {
+    
+    std::string moveStr;
+    if (is && is.peek() != EOF)
+        is >> moveStr;
+    bool found;
+    Move m = pos.TryFindMove(moveStr, found);
+    if (found) {
+        pos.MakeMove<true>(m);
+    }
+    else {
+        cout << "Failed to find '" << moveStr << "'" << endl;
+    }
+}
 
 
 void HandleListMovesCommand(Position& pos) {

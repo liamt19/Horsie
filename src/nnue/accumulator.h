@@ -4,18 +4,20 @@
 #define ACCUMULATOR_H
 
 #include "../types.h"
+#include "arch.h"
+
 #include <array>
 
-constexpr int ByteSize = 1536 * sizeof(short);
+constexpr int ByteSize = HiddenSize * sizeof(short);
 
 namespace Horsie {
 
     struct alignas(64) Accumulator {
     public:
-        std::array<std::array<short, 1536>, 2> Sides;
+        std::array<std::array<short, HiddenSize>, 2> Sides;
         std::array<bool, 2> NeedsRefresh;
 
-        const std::array<short, 1536> operator[](const int c) { return Sides[c]; }
+        const std::array<short, HiddenSize> operator[](const int c) { return Sides[c]; }
 
         void CopyTo(Accumulator* target) const
         {

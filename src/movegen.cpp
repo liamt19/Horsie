@@ -237,13 +237,13 @@ int Generate(const Position& pos, ScoredMove* moveList, int size) {
 }
 
 
-template <MoveGenType GenType>
+
 int GenerateQS(const Position& pos, ScoredMove* moveList, int size) {
     return pos.State->Checkers ? GenAll<GenEvasions>(pos, moveList, 0) :
                                  GenAll<GenNoisy>   (pos, moveList, 0);
 }
 
-template int GenerateQS<PseudoLegal>(const Position&, ScoredMove*, int);
+
 template int Generate<PseudoLegal>(const Position&, ScoredMove*, int);
 template int Generate<GenNoisy>(const Position&, ScoredMove*, int);
 template int Generate<GenEvasions>(const Position&, ScoredMove*, int);

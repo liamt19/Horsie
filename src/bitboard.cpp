@@ -74,29 +74,11 @@ namespace Horsie {
         return (int) lsb(KingMask(pc));
     }
 
-    int Bitboard::MaterialCount(int pc, bool excludePawns) const
-    {
-        int mat = 0;
-        ulong temp = Colors[pc];
-        while (temp != 0)
-        {
-            int idx = poplsb(temp);
 
-            int pt = GetPieceAtIndex((int)idx);
-            if (!(excludePawns && pt == Piece::PAWN))
-            {
-                mat += GetPieceValue(Piece(pt));
-            }
-        }
-
-        return mat;
-    }
-
-    ulong Bitboard::BlockingPieces(int pc, ulong* pinners, ulong* xrayers) const
+    ulong Bitboard::BlockingPieces(int pc, ulong* pinners) const
     {
         ulong blockers = 0UL;
         *pinners = 0;
-        *xrayers = 0;
 
         ulong temp;
         ulong us = Colors[pc];
@@ -110,26 +92,18 @@ namespace Horsie {
 
         ulong occ = us | them;
 
-        while (candidates != 0)
-        {
+        while (candidates != 0) {
             int idx = poplsb(candidates);
 
             temp = BetweenBB[ourKing][(int)idx] & occ;
 
-            if (temp != 0 && !MoreThanOne(temp))
-            {
+            if (temp != 0 && !MoreThanOne(temp)) {
                 //  If there is one and only one piece between the candidate and our king, that piece is a blocker
                 blockers |= temp;
 
-                if ((temp & us) != 0)
-                {
+                if ((temp & us) != 0) {
                     //  If the blocker is ours, then the candidate on the square "idx" is a pinner
                     *pinners |= SquareBB(idx);
-                }
-                else
-                {
-                    //  If the blocker isn't ours, then it will cause a discovered check if it moves
-                    *xrayers |= SquareBB(idx);
                 }
             }
         }

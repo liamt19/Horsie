@@ -39,14 +39,14 @@ namespace Horsie
 
 
         constexpr int KingBuckets[] = {
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
+             0,  1,  2,  3, 19, 18, 17, 16,
+             4,  5,  6,  7, 23, 22, 21, 20,
+             8,  9, 10, 11, 27, 26, 25, 24,
+             8,  9, 10, 11, 27, 26, 25, 24,
+            12, 12, 13, 13, 29, 29, 28, 28,
+            12, 12, 13, 13, 29, 29, 28, 28,
+            14, 14, 15, 15, 31, 31, 30, 30,
+            14, 14, 15, 15, 31, 31, 30, 30,
         };
 
 
@@ -59,11 +59,11 @@ namespace Horsie
 
 
         static int32_t hsum_8x32(__m256i v);
-        static void Sub(const __m256i* src, __m256i* dst, const __m256i* sub1);
-        static void Add(const __m256i* src, __m256i* dst, const __m256i* add1);
-        static void SubAdd(const __m256i* src, __m256i* dst, const __m256i* sub1, const __m256i* add1);
-        static void SubSubAdd(const __m256i* src, __m256i* dst, const __m256i* sub1, const __m256i* sub2, const __m256i* add1);
-        static void SubSubAddAdd(const __m256i* src, __m256i* dst, const __m256i* sub1, const __m256i* sub2, const __m256i* add1, const __m256i* add2);
+        static void Sub(const short* src, short* dst, const short* sub1);
+        static void Add(const short* src, short* dst, const short* add1);
+        static void SubAdd(const short* src, short* dst, const short* sub1, const short* add1);
+        static void SubSubAdd(const short* src, short* dst, const short* sub1, const short* sub2, const short* add1);
+        static void SubSubAddAdd(const short* src, short* dst, const short* sub1, const short* sub2, const short* add1, const short* add2);
 
 
     }

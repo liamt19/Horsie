@@ -61,23 +61,39 @@ namespace Zobrist {
         hash ^= BlackHash;
     }
 
-    ulong GetHash(Horsie::Position& position) {
+    ulong GetHash(Horsie::Position& position, ulong* pawnHash, ulong* nonPawnHash) {
         ulong hash = 0;
 
-        Horsie::Bitboard bb = position.bb;
+        Horsie::Bitboard& bb = position.bb;
         ulong white = bb.Colors[Color::WHITE];
         ulong black = bb.Colors[Color::BLACK];
 
         while (white != 0)
         {
             int idx = (int)poplsb(white);
-            hash ^= ColorPieceSquareHashes[Color::WHITE][bb.GetPieceAtIndex(idx)][idx];
+            int pt = bb.GetPieceAtIndex(idx);
+            hash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
+
+            if (pt == PAWN) {
+                *pawnHash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
+            }
+            else {
+                *nonPawnHash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
+            }
         }
 
         while (black != 0)
         {
             int idx = (int)poplsb(black);
-            hash ^= ColorPieceSquareHashes[Color::BLACK][bb.GetPieceAtIndex(idx)][idx];
+            int pt = bb.GetPieceAtIndex(idx);
+            hash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
+
+            if (pt == PAWN) {
+                *pawnHash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
+            }
+            else {
+                *nonPawnHash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
+            }
         }
 
         if ((position.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None)

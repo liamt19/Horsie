@@ -3,12 +3,14 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <bit> 
 #include <stdint.h>
 #include <cassert>
 
 #include "util.h"
 #include "enums.h"
 
+using usize = std::size_t;
 using ushort = uint16_t;
 using ulong = uint64_t;
 using sbyte = int8_t;
@@ -136,13 +138,8 @@ constexpr bool HasPext = false;
     }
 
 
-    inline int popcount(ulong b) {
-
-#if defined(_MSC_VER)
-        return int(__popcnt64(b));
-#else
-        return __builtin_popcountll(b);
-#endif
+    constexpr inline int popcount(ulong b) {
+        return std::popcount(b);
     }
 
     // Returns the least significant bit in a non-zero bitboard.
@@ -319,16 +316,18 @@ namespace Horsie {
     public:
 
         ulong CheckSquares[PIECE_NB];
-        int KingSquares[2];
         ulong BlockingPieces[2];
         ulong Pinners[2];
-        ulong Xrays[2];
-        ulong Hash = 0;
+        int KingSquares[2];
         ulong Checkers = 0;
-        CastlingStatus CastleStatus = CastlingStatus::None;
+        ulong Hash = 0;
+        ulong PawnHash = 0;
+        ulong NonPawnHash[2];
         int HalfmoveClock = 0;
         int EPSquare = EP_NONE;
         int CapturedPiece = Piece::NONE;
+        int PliesFromNull = 0;
+        CastlingStatus CastleStatus = CastlingStatus::None;
 
         Accumulator* accumulator;
     };

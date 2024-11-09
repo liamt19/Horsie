@@ -8,6 +8,7 @@
 #include "nnue/accumulator.h"
 #include "bitboard.h"
 #include "search.h"
+#include "zobrist.h"
 
 #include "nnue/nn.h"
 #include "nnue/arch.h"
@@ -25,15 +26,12 @@ namespace Horsie {
 
         Bitboard bb;
         Color ToMove;
-        int MaterialCountNonPawn[2];
         int FullMoves;
         int GamePly;
-        bool InCheck;
-        bool InDoubleCheck;
-        int idxChecker;
+
 
         StateInfo* State;
-        BucketCache CachedBuckets[InputBuckets * 2];
+        std::array<BucketCache, InputBuckets * 2> CachedBuckets;
 
         bool UpdateNN;
 
@@ -43,12 +41,16 @@ namespace Horsie {
         bool IsChess960;
         int dbg_ThisPositionNumber;
 
-        constexpr bool Checked() const { return InCheck || InDoubleCheck; }
+        constexpr bool InCheck()       const { return popcount(State->Checkers) == 1; }
+        constexpr bool InDoubleCheck() const { return popcount(State->Checkers) == 2; }
+        constexpr bool Checked()       const { return popcount(State->Checkers) != 0; }
         constexpr StateInfo* StartingState() const { return _SentinelStart; }
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
 
         constexpr ulong Hash() const { return State->Hash; }
+        constexpr ulong PawnHash() const { return State->PawnHash; }
+        constexpr ulong NonPawnHash(int pc) const { return State->NonPawnHash[pc]; }
         
         constexpr bool CanCastle(ulong boardOcc, ulong ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
@@ -60,6 +62,9 @@ namespace Horsie {
         constexpr bool HasNonPawnMaterial(int pc) const { return (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc])); }
         constexpr bool IsCapture(Move m) const { return ((bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle()) || m.IsEnPassant()); }
 
+        void RemoveCastling(CastlingStatus cr) const;
+        void UpdateHash(int pc, int pt, int sq) const;
+        constexpr CastlingStatus GetCastlingForRook(int sq) const;
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 
         template<bool UpdateNN>
@@ -76,7 +81,7 @@ namespace Horsie {
         void SetCheckInfo();
         void SetCastlingStatus(int c, int rfrom);
 
-        ulong HashAfter(Move m);
+        ulong HashAfter(Move m) const;
 
         bool IsPseudoLegal(Move move) const;
         bool IsLegal(Move move) const;

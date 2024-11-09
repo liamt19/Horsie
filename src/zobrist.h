@@ -25,7 +25,7 @@ namespace Zobrist {
     void ToggleSquare(ulong& hash, int color, int pt, int idx);
     void EnPassant(ulong& hash, int file);
     void ChangeToMove(ulong& hash);
-    ulong GetHash(Horsie::Position& position);
+    ulong GetHash(Horsie::Position& position, ulong* pawnHash, ulong* nonPawnHash);
 }
 
 #endif

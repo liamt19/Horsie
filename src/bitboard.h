@@ -43,7 +43,7 @@ namespace Horsie {
         void MoveSimple(int from, int to, int pieceColor, int pieceType);
         int KingIndex(int pc) const;
         int MaterialCount(int pc, bool excludePawns) const;
-        ulong BlockingPieces(int pc, ulong* pinners, ulong* xrayers) const;
+        ulong BlockingPieces(int pc, ulong* pinners) const;
         ulong AttackersTo(int idx, ulong occupied) const;
         ulong AttackMask(int idx, int pc, int pt, ulong occupied) const;
     };
