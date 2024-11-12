@@ -9,7 +9,7 @@ _ROOT := $(_THIS)
 LDFLAGS := 
 
 
-EXE := horsie1
+EXE := horsie
 EVALFILE := src/incbin/net-013-16l8.bin
 
 GXX_FLAGS:= -mavx -mavx2 -DUSE_PEXT -DUSE_POPCNT -funroll-loops
@@ -17,7 +17,7 @@ GXX_FLAGS:= -mavx -mavx2 -DUSE_PEXT -DUSE_POPCNT -funroll-loops
 COMMON_CXXFLAGS := -std=c++23 -DEVALFILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
 
 
-DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -fsanitize=undefined
+DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 BUILD_CXXFLAGS := $(COMMON_CXXFLAGS) -O3 -DNDEBUG
 
 

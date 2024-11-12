@@ -11,7 +11,7 @@
 #include "util.h"
 #include "enums.h"
 
-using usize = std::size_t;
+using nuint = std::size_t;
 using ushort = uint16_t;
 using ulong = uint64_t;
 using sbyte = int8_t;

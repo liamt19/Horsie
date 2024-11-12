@@ -43,14 +43,12 @@ namespace Horsie {
 
         constexpr Piece PromotionTo() const { return Piece(((data >> 14) & 0x3) + 1); }
 
-        constexpr bool IsNull() const { return data != 0; }
+        constexpr bool IsNull() const { return data == 0; }
         static constexpr Move Null() { return Move(0); }
 
         constexpr bool operator==(const Move& m) const { return data == m.data; }
         constexpr bool operator!=(const Move& m) const { return data != m.data; }
         constexpr explicit operator bool() const { return data != 0; }
-
-        constexpr bool IsOK() const { return Null().data != data; }
 
         constexpr int CastlingKingSquare() const {
             if (From() < (int)Square::A2) {

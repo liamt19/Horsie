@@ -119,7 +119,6 @@ namespace Horsie {
         case BISHOP:
             return BishopMagics[(int)s].attacks[BishopMagics[(int)s].index(occupied)];
         case ROOK:
-            
             return RookMagics[(int)s].attacks[RookMagics[(int)s].index(occupied)];
         case QUEEN:
             return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);

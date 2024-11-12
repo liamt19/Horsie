@@ -9,6 +9,7 @@
 
 #include "zobrist.h"
 #include "precomputed.h"
+#include "cuckoo.h"
 #include "position.h"
 #include "movegen.h"
 #include "tt.h"
@@ -20,6 +21,7 @@
 using namespace Horsie;
 using namespace Horsie::Search;
 using namespace Horsie::NNUE;
+using namespace Horsie::Cuckoo;
 
 using std::cout;
 using std::endl;
@@ -49,6 +51,7 @@ int main()
     NNUE::LoadNetwork("C:\\Programming\\Horsie\\src\\incbin\\net-013-16l8.bin");
     Precomputed::init();
     Zobrist::init();
+    Cuckoo::init();
     TT.Initialize(TranspositionTable::DefaultTTSize);
 
     Position pos = Position(InitialFEN);

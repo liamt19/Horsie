@@ -61,6 +61,8 @@ namespace Horsie
                     
             for (size_t i = 0; i < LayerBiasElements; i++) 
                 net.LayerBiases[i] = network->LayerBiases[i];
+
+            g_network = &net;
 #endif
 
             

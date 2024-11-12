@@ -15,8 +15,11 @@
 #include "precomputed.h"
 #include "movegen.h"
 #include "zobrist.h"
+#include "cuckoo.h"
 #include "search.h"
 #include "nnue/nn.h"
+
+using namespace Horsie::Cuckoo;
 
 #define BULK_PERFT 1
 //#undef BULK_PERFT
@@ -993,6 +996,45 @@ namespace Horsie {
         }
 
         return res != 0;
+    }
+
+    bool Position::HasCycle(int ply) const
+    {
+        StateInfo* st = State;
+        int dist = std::min(st->HalfmoveClock, st->PliesFromNull);
+
+        if (dist < 3)
+            return false;
+
+        const auto HashFromStack = [&](int i) { return _SentinelStart[GamePly - i].Hash; };
+
+        int slot;
+        ulong other = ~(HashFromStack(0) ^ HashFromStack(1));
+        for (int i = 3; i <= dist; i += 2)
+        {
+            other ^= ~(HashFromStack(i) ^ HashFromStack(i - 1));
+
+            auto diff = st->Hash ^ HashFromStack(i);
+
+            if (diff != keys[(slot = hash1(diff))] &&
+                diff != keys[(slot = hash2(diff))])
+                continue;
+
+            Move m = moves[slot];
+            int moveFrom = m.From();
+            int moveTo = m.To();
+
+            if ((bb.Occupancy & LineBB[moveFrom][moveTo]) == 0)
+            {
+                if (ply > i)
+                    return true;
+
+                int pc = (bb.GetPieceAtIndex(moveFrom) != Piece::NONE) ? bb.GetColorAtIndex(moveFrom) : bb.GetColorAtIndex(moveTo);
+                return pc == ToMove;
+            }
+        }
+
+        return false;
     }
 
 }

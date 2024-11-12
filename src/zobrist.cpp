@@ -1,6 +1,12 @@
+
 #include "zobrist.h"
 
+#define LIZARD_HASHES 1
 
+#if defined(LIZARD_HASHES)
+#include <cstring>
+#include <fstream>
+#endif
 
 namespace Zobrist {
 
@@ -12,8 +18,6 @@ namespace Zobrist {
     void init() {
         std::mt19937_64 rng(DefaultSeed);
         std::uniform_int_distribution<uint64_t> dis;
-
-        BlackHash = dis(rng);
 
         for (int i = 0; i < COLOR_NB; i++) {
             for (int j = 0; j < PIECE_NB; j++) {
@@ -33,7 +37,23 @@ namespace Zobrist {
             EnPassantFileHashes[i] = dis(rng);
         }
 
+        BlackHash = dis(rng);
 
+#if defined(LIZARD_HASHES)
+        std::ifstream stream("zobrist.txt", std::ios::binary);
+
+        auto psq = reinterpret_cast<ulong*>(&ColorPieceSquareHashes);
+        for (size_t i = 0; i < 2 * 6 * 64; i++)
+            stream >> psq[i];
+
+        for (size_t i = 0; i < 4; i++)
+            stream >> CastlingRightsHashes[i];
+
+        for (size_t i = 0; i < 8; i++)
+            stream >> EnPassantFileHashes[i];
+
+        stream >> BlackHash;
+#endif
     }
 
     void Castle(ulong& hash, CastlingStatus prev, CastlingStatus toRemove) {

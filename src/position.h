@@ -98,6 +98,7 @@ namespace Horsie {
 
         std::string GetFEN() const;
         bool SEE_GE(Move m, int threshold = 1) const;
+        bool HasCycle(int ply) const;
 
 
         inline int PawnCorrectionIndex(int pc) const {

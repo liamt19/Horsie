@@ -1,6 +1,7 @@
 
 #define NO_PV_LEN 1
-#define TREE 0
+#define TREE
+#undef TREE
 
 #include "search.h"
 #include "position.h"
@@ -253,8 +254,14 @@ namespace Horsie {
             return QSearch<NodeType>(pos, ss, alpha, beta);
         }
 
+        if (!isRoot && alpha < ScoreDraw && pos.HasCycle(ss->Ply))
+        {
+            alpha = MakeDrawScore(Nodes);
+            if (alpha >= beta)
+                return alpha;
+        }
+
         Bitboard& bb = pos.bb;
-        //SearchThread thisThread = pos.Owner;
         HistoryTable* history = &History;
 
         Move bestMove = Move::Null();
@@ -771,9 +778,15 @@ namespace Horsie {
         
         constexpr bool isPV = NodeType != SearchNodeType::NonPVNode;
 
+        if (alpha < ScoreDraw && pos.HasCycle(ss->Ply))
+        {
+            alpha = MakeDrawScore(Nodes);
+            if (alpha >= beta)
+                return alpha;
+        }
+
         Bitboard& bb = pos.bb;
         SearchThread* thisThread = this;
-        //HistoryTable history = this->History;
         Move bestMove = Move::Null();
 
         const int us = pos.ToMove;

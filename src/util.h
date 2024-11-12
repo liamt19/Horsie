@@ -91,6 +91,10 @@ namespace Horsie {
         }
     }
 
+    constexpr int MakeDrawScore(ulong nodes) {
+        return -1 + (int)(nodes & 2);
+    }
+
     constexpr int MakeMateScore(int ply) {
         return -ScoreMate + ply;
     }

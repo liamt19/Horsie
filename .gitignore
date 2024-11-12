@@ -45,3 +45,4 @@
 /x64/Debug
 *.bin
 /obj
+/horsie
