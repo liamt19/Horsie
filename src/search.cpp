@@ -40,11 +40,10 @@ namespace Horsie {
             (ss + i)->Ply = (short)i;
             (ss + i)->PV = (Move*)AlignedAllocZeroed((MaxPly * sizeof(Move)), AllocAlignment);
             (ss + i)->PVLength = 0;
-            (ss + i)->ContinuationHistory = &History.Continuations[0][0].Histories[0][0];
+            (ss + i)->ContinuationHistory = &History.Continuations[0][0][0][0];
         }
 
         NodeTable = {};
-
 
         RootMoves.clear();
         ScoredMove rms[MoveListSize] = {};
@@ -386,7 +385,7 @@ namespace Horsie {
         {
             int reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, NMPEvalMin);
             ss->CurrentMove = Move::Null();
-            ss->ContinuationHistory = &history->Continuations[0][0].Histories[0][0];
+            ss->ContinuationHistory = &history->Continuations[0][0][0][0];
 
             pos.MakeNullMove();
             prefetch(TT.GetCluster(pos.Hash()));
@@ -433,7 +432,7 @@ namespace Horsie {
                 bool isCap = (bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle());
 
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCap].Histories[histIdx][m.To()];
+                ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCap][histIdx][m.To()];
                 Nodes++;
 
                 pos.MakeMove(m);
@@ -584,7 +583,7 @@ namespace Horsie {
 
             ss->DoubleExtensions = (short)((ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0));
             ss->CurrentMove = m;
-            ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCapture].Histories[histIdx][moveTo];
+            ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCapture][histIdx][moveTo];
             Nodes++;
 
             pos.MakeMove(m);
@@ -621,9 +620,9 @@ namespace Horsie {
 
                 int mHist = 2 * (isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()]);    
                 int histScore = mHist +
-                                2 * (*(ss - 1)->ContinuationHistory).history[histIdx][moveTo] +
-                                    (*(ss - 2)->ContinuationHistory).history[histIdx][moveTo] +
-                                    (*(ss - 4)->ContinuationHistory).history[histIdx][moveTo];
+                                2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
+                                    (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
+                                    (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
 
                 R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
@@ -918,7 +917,7 @@ namespace Horsie {
             int histIdx = MakePiece(us, ourPiece);
 
             ss->CurrentMove = m;
-            ss->ContinuationHistory = &thisThread->History.Continuations[ss->InCheck][isCapture].Histories[histIdx][moveTo];
+            ss->ContinuationHistory = &thisThread->History.Continuations[ss->InCheck][isCapture][histIdx][moveTo];
             thisThread->Nodes++;
 
             pos.MakeMove(m);
@@ -993,8 +992,9 @@ namespace Horsie {
             //int idx = HistoryTable.CapIndex(thisColor, thisPiece, moveTo, capturedPiece);
             //history.ApplyBonus(history.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
 
-            history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] += (short)(bonus - 
-           (history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] * std::abs(bonus) / HistoryClamp));
+           /*history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] += (short)(bonus -
+           (history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] * std::abs(bonus) / HistoryClamp));*/
+            history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] << bonus;
             
         }
         else
@@ -1011,16 +1011,19 @@ namespace Horsie {
                 return;
             }
 
-            history.MainHistory[thisColor][bestMove.GetMoveMask()] += (short)(bonus -
-           (history.MainHistory[thisColor][bestMove.GetMoveMask()] * std::abs(bonus) / HistoryClamp));
+            /*history.MainHistory[thisColor][bestMove.GetMoveMask()] += (short)(bonus -
+            (history.MainHistory[thisColor][bestMove.GetMoveMask()] * std::abs(bonus) / HistoryClamp));*/
+            history.MainHistory[thisColor][bestMove.GetMoveMask()] << bonus;
             UpdateContinuations(ss, thisColor, thisPiece, moveTo, bonus);
+
 
             for (int i = 0; i < quietCount; i++) {
                 Move m = quietMoves[i];
                 thisPiece = bb.GetPieceAtIndex(m.From());
 
-                history.MainHistory[thisColor][m.GetMoveMask()] += (short)(-malus -
-               (history.MainHistory[thisColor][m.GetMoveMask()] * std::abs(-malus) / HistoryClamp));
+                /*history.MainHistory[thisColor][m.GetMoveMask()] += (short)(-malus -
+               (history.MainHistory[thisColor][m.GetMoveMask()] * std::abs(-malus) / HistoryClamp));*/
+                history.MainHistory[thisColor][m.GetMoveMask()] << -malus;
 
                 UpdateContinuations(ss, thisColor, thisPiece, m.To(), -malus);
             }
@@ -1028,13 +1031,12 @@ namespace Horsie {
 
         for (int i = 0; i < captureCount; i++) {
             Move m = captureMoves[i];
-
-            moveTo = m.To();
             thisPiece = bb.GetPieceAtIndex(m.From());
             capturedPiece = bb.GetPieceAtIndex(m.To());
 
-            history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] += (short)(-malus -
-           (history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] * std::abs(-malus) / HistoryClamp));
+            /*history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] += (short)(-malus -
+           (history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] * std::abs(-malus) / HistoryClamp));*/
+            history.CaptureHistory[thisColor][thisPiece][m.To()][capturedPiece] << -malus;
         }
 
     }
@@ -1043,33 +1045,28 @@ namespace Horsie {
     short SearchThread::AdjustEval(Position& pos, int us, short rawEval) {
         rawEval = (short)(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
-#ifdef NO
-        const auto pawn = History.PawnCorrection[pos, us] / CorrectionGrain;
-        const auto nonPawn = (History.NonPawnCorrection[pos, us, Color::WHITE] + History.NonPawnCorrection[pos, us, Color::BLACK]) / CorrectionGrain;
+        const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
+        const auto nonPawn = (History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] + History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384]) / CorrectionGrain;
         const auto corr = (pawn * 200 + nonPawn * 100) / 300;
 
         return (short)(rawEval + corr);
-#endif
-        return rawEval;
     }
 
 
     void SearchThread::UpdateCorrectionHistory(Position& pos, int diff, int depth) {
-#ifdef NO
         const auto scaledWeight = std::min((depth * depth) + 1, 128);
 
-        auto pawnCh = History.PawnCorrection[pos, pos.ToMove];
+        auto& pawnCh = History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384];
         const auto pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        pawnCh = std::clamp(pawnBonus, -CorrectionMax, CorrectionMax);
+        pawnCh = (short)std::clamp(pawnBonus, -CorrectionMax, CorrectionMax);
 
-        auto nonPawnChW = History.NonPawnCorrection[pos, pos.ToMove, Color::BLACK];
+        auto& nonPawnChW = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::WHITE) % 16384];
         const auto nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
         nonPawnChW = std::clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
 
-        auto nonPawnChB = History.NonPawnCorrection[pos, pos.ToMove, Color::BLACK];
+        auto& nonPawnChB = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384];
         const auto nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
         nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
-#endif
     }
 
 
@@ -1084,8 +1081,7 @@ namespace Horsie {
 
             if ((ss - i)->CurrentMove != Move::Null())
             {
-                (*(ss - i)->ContinuationHistory).history[piece][sq] += (short)(bonus -
-               ((*(ss - i)->ContinuationHistory).history[piece][sq] * std::abs(bonus) / HistoryClamp));
+                (*(ss - i)->ContinuationHistory)[piece][sq] << bonus;
             }
         }
     }
@@ -1145,17 +1141,17 @@ namespace Horsie {
             }
             else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
                 int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                auto hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
+                auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
                 list[i].Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + hist;
             }
             else {
                 int contIdx = MakePiece(pc, pt);
 
                 list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 2)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 4)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 6)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
 
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
                     list[i].Score += OrderingGivesCheckBonus;
@@ -1189,17 +1185,17 @@ namespace Horsie {
             }
             else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
                 int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                auto hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
+                auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
                 list[i].Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + hist;
             }
             else {
                 int contIdx = MakePiece(pc, pt);
 
                 list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 2)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 4)->ContinuationHistory).history[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 6)->ContinuationHistory).history[contIdx][moveTo];
+                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
 
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
                     list[i].Score += OrderingGivesCheckBonus;

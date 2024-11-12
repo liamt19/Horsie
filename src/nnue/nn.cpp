@@ -42,8 +42,24 @@ namespace Horsie
             for (size_t i = 0; i < LayerBiasElements; i++)
                 net.LayerBiases[i] = read_little_endian<int16_t>(stream);
 
-#endif
+#else
+            const Network* network = reinterpret_cast<const Network*>(gEVALData);
 
+            for (size_t i = 0; i < FeatureWeightElements * InputBuckets; i++)
+                net.FeatureWeights[i] = network->FeatureWeights[i];
+
+            for (size_t i = 0; i < FeatureBiasElements; i++)
+                net.FeatureBiases[i] = network->FeatureBiases[i];
+
+            const int16_t* buff = reinterpret_cast<const int16_t*>(network->LayerWeights.data()->data());
+            size_t indx = 0;
+            for (size_t i = 0; i < LayerWeightElements; i++)
+                for (size_t bucket = 0; bucket < OutputBuckets; bucket++)
+                    net.LayerWeights[bucket][i] = buff[indx++];
+                    
+            for (size_t i = 0; i < LayerBiasElements; i++) 
+                net.LayerBiases[i] = network->LayerBiases[i];
+#endif
         }
 
 
@@ -85,7 +101,7 @@ namespace Horsie
 
             BucketCache& cache = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
             Bitboard& entryBB = cache.Boards[perspective];
-            Accumulator& entryAcc = cache.Accumulator;
+            Accumulator& entryAcc = cache.accumulator;
 
             accumulator.CopyTo(&entryAcc, perspective);
             bb.CopyTo(entryBB);
@@ -102,7 +118,7 @@ namespace Horsie
 
             BucketCache rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
             Bitboard& entryBB = rtEntry.Boards[perspective];
-            Accumulator& entryAcc = rtEntry.Accumulator;
+            Accumulator& entryAcc = rtEntry.accumulator;
 
             auto ourAccumulation = entryAcc[perspective];
             accumulator.NeedsRefresh[perspective] = false;

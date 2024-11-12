@@ -19,6 +19,10 @@ namespace Horsie {
     const bool UseRFP = true;
     const bool UseProbCut = true;
 
+    const int CorrectionScale = 1024;
+    const int CorrectionGrain = 256;
+    const int CorrectionMax = CorrectionGrain * 64;
+
     static int SEMinDepth = 5;
     static int SENumerator = 11;
     static int SEDoubleMargin = 24;

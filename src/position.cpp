@@ -37,7 +37,7 @@ namespace Horsie {
         dbg_ThisPositionNumber = PositionNumber++;
         std::cout << "Creating position " << dbg_ThisPositionNumber << std::endl;
 #endif
-        //CachedBuckets = std::array<BucketCache, InputBuckets * 2>();
+
         _stateBlock = (StateInfo*)AlignedAllocZeroed((sizeof(StateInfo) * StateStackSize), AllocAlignment);
 
         _SentinelStart = &_stateBlock[0];

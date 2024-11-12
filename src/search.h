@@ -138,11 +138,11 @@ namespace Horsie {
 
             std::function<void()> OnDepthFinish;
             std::vector<RootMove> RootMoves{};
-            HistoryTable History;
+            HistoryTable History{};
 
             bool HasSoftTime = false;
             int SoftTimeLimit = 0;
-            std::array<std::array<ulong, 64>, 64> NodeTable{};
+            Util::NDArray<ulong, 64, 64> NodeTable{};
 
             Move CurrentMove() const { return RootMoves[PVIndex].move; }
 
@@ -205,7 +205,7 @@ namespace Horsie {
                 }
 
                 //  Values from Clarity
-                SoftTimeLimit = 0.6 * ((limits.PlayerTime / limits.MovesToGo) + (limits.Increment * 3 / 4));
+                SoftTimeLimit = (int)(0.6 * ((static_cast<double>(limits.PlayerTime) / limits.MovesToGo) + (limits.Increment * 3 / 4.0)));
                 HasSoftTime = true;
 
                 limits.MaxSearchTime = newSearchTime;
@@ -230,7 +230,7 @@ namespace Horsie {
             
             if (end == -1)
             {
-                end = items.size();
+                end = (int)items.size();
             }
 
             for (int i = offset; i < end; i++)

@@ -6,6 +6,7 @@
 #include <bit> 
 #include <stdint.h>
 #include <cassert>
+#include <stdlib.h>
 
 #include "util.h"
 #include "enums.h"
@@ -179,11 +180,17 @@ constexpr bool HasPext = false;
 
 namespace Horsie {
 
-
+#if defined(_MSC_VER)
 #define AlignedFree _aligned_free
-#define AlignedAllocZeroed _aligned_malloc
+#define AlignedAllocZeroed(a, b) _aligned_malloc(a, b)
 #define MemClear memset
 #define CopyBlock memcpy
+#else
+#define AlignedFree std::free
+#define AlignedAllocZeroed(a, b) aligned_alloc(b, a)
+#define MemClear memset
+#define CopyBlock memcpy
+#endif
 
     constexpr size_t AllocAlignment = 64;
 

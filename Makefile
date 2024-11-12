@@ -9,12 +9,12 @@ _ROOT := $(_THIS)
 LDFLAGS := 
 
 
-EXE := horsie
-EVALFILE := src/incbin/iguana-epoch10.bin
+EXE := horsie1
+EVALFILE := src/incbin/net-013-16l8.bin
 
 GXX_FLAGS:= -mavx -mavx2 -DUSE_PEXT -DUSE_POPCNT -funroll-loops
 
-COMMON_CXXFLAGS := -std=c++23 -DNETWORK_FILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
+COMMON_CXXFLAGS := -std=c++23 -DEVALFILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
 
 
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -fsanitize=undefined
@@ -27,7 +27,9 @@ BUILD_DIR := build
 
 
 # Source files
-SRCS := $(filter-out , $(wildcard src/*.cpp))
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/nnue/*.cpp)
+
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
 
 
@@ -61,8 +63,10 @@ debug: $(EXE)
 
 # Clean the build
 clean:
-	-rmdir /s /q $(BUILD_DIR)
-	-del $(EXE)
+	-rm -rf $(BUILD_DIR)
+	mkdir $(BUILD_DIR)
+	mkdir $(BUILD_DIR)/nnue
+	-rm $(EXE)
 
 # Phony targets
 .PHONY: all debug clean pgo-generate

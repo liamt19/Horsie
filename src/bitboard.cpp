@@ -3,6 +3,8 @@
 #include "types.h"
 #include "precomputed.h"
 
+#include <cstring>
+
 #define KnightMasks horsie_masks
 #define GetBishopMoves get_bishop_moves
 #define GetRookMoves get_rook_moves

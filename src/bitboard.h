@@ -42,7 +42,6 @@ namespace Horsie {
         void RemovePiece(int idx, int pc, int pt);
         void MoveSimple(int from, int to, int pieceColor, int pieceType);
         int KingIndex(int pc) const;
-        int MaterialCount(int pc, bool excludePawns) const;
         ulong BlockingPieces(int pc, ulong* pinners) const;
         ulong AttackersTo(int idx, ulong occupied) const;
         ulong AttackMask(int idx, int pc, int pt, ulong occupied) const;
@@ -51,7 +50,7 @@ namespace Horsie {
     //struct Accumulator;
     struct BucketCache {
         Bitboard Boards[2];
-        Accumulator Accumulator;
+        Accumulator accumulator;
     };
 }
 

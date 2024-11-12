@@ -99,6 +99,15 @@ namespace Horsie {
         std::string GetFEN() const;
         bool SEE_GE(Move m, int threshold = 1) const;
 
+
+        inline int PawnCorrectionIndex(int pc) const {
+            return (pc * 16384) + (int)(PawnHash() % 16384);
+        }
+
+        inline int NonPawnCorrectionIndex(int pc, int side) const {
+            return (pc * 16384) + (int)(NonPawnHash(side) % 16384);
+        }
+
     private:
         
         Accumulator* _accumulatorBlock;
