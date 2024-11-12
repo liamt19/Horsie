@@ -44,3 +44,4 @@
 /horsie.pdb
 /x64/Debug
 *.bin
+/obj

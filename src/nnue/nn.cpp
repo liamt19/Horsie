@@ -24,6 +24,7 @@ namespace Horsie
     namespace NNUE {
 
         Network net;
+        const Network* g_network;
 
         void LoadNetwork(const std::string& path) {
 #if defined(_MSC_VER)
@@ -42,6 +43,7 @@ namespace Horsie
             for (size_t i = 0; i < LayerBiasElements; i++)
                 net.LayerBiases[i] = read_little_endian<int16_t>(stream);
 
+            g_network = &net;
 #else
             const Network* network = reinterpret_cast<const Network*>(gEVALData);
 
@@ -60,6 +62,8 @@ namespace Horsie
             for (size_t i = 0; i < LayerBiasElements; i++) 
                 net.LayerBiases[i] = network->LayerBiases[i];
 #endif
+
+            
         }
 
 
@@ -80,7 +84,7 @@ namespace Horsie
             Accumulator& accumulator = *pos.State->accumulator;
             Bitboard& bb = pos.bb;
 
-            accumulator.Sides[perspective] = net.FeatureBiases;
+            accumulator.Sides[perspective] = g_network->FeatureBiases;
             accumulator.NeedsRefresh[perspective] = false;
 
             int ourKing = pos.State->KingSquares[perspective];
@@ -95,7 +99,7 @@ namespace Horsie
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
 
                 const auto accum   = reinterpret_cast<short*>(&accumulator.Sides[perspective]);
-                const auto weights = &net.FeatureWeights[idx];
+                const auto weights = &g_network->FeatureWeights[idx];
                 Add(accum, accum, weights);
             }
 
@@ -139,7 +143,7 @@ namespace Horsie
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
                         const auto accum = reinterpret_cast<short*>(&accumulator.Sides[perspective]);
-                        const auto weights = &net.FeatureWeights[idx];
+                        const auto weights = &g_network->FeatureWeights[idx];
                         Add(accum, accum, weights);
                     }
 
@@ -149,7 +153,7 @@ namespace Horsie
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
                         const auto accum = reinterpret_cast<short*>(&accumulator.Sides[perspective]);
-                        const auto weights = &net.FeatureWeights[idx];
+                        const auto weights = &g_network->FeatureWeights[idx];
                         Sub(accum, accum, weights);
                     }
                 }
@@ -184,7 +188,7 @@ namespace Horsie
             auto dstWhite = reinterpret_cast<short*>(&dst->Sides[WHITE]);
             auto dstBlack = reinterpret_cast<short*>(&dst->Sides[BLACK]);
 
-            auto FeatureWeights = reinterpret_cast<const short*>(&net.FeatureWeights[0]);
+            auto FeatureWeights = reinterpret_cast<const short*>(&g_network->FeatureWeights[0]);
 
             if (ourPiece == KING && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
             {
@@ -309,7 +313,7 @@ namespace Horsie
 
             auto data0 = reinterpret_cast<const __m256i*>(&accumulator.Sides[pos.ToMove]);
             auto data1 = &data0[Stride];
-            auto weights = reinterpret_cast<const __m256i*>(&net.LayerWeights[outputBucket]);
+            auto weights = reinterpret_cast<const __m256i*>(&g_network->LayerWeights[outputBucket]);
 
             for (int i = 0; i < Stride; i++) {
                 __m256i c_0 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data0[i]));
@@ -320,7 +324,7 @@ namespace Horsie
 
             data0 = reinterpret_cast<const __m256i*>(&accumulator.Sides[Not(pos.ToMove)]);
             data1 = data0 + Stride;
-            weights = reinterpret_cast<const __m256i*>(&net.LayerWeights[outputBucket][HiddenSize / 2]);
+            weights = reinterpret_cast<const __m256i*>(&g_network->LayerWeights[outputBucket][HiddenSize / 2]);
             for (int i = 0; i < Stride; i++) {
                 __m256i c_0 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data0[i]));
                 __m256i c_1 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data1[i]));
@@ -329,7 +333,7 @@ namespace Horsie
             }
 
             int output = hsum_8x32(sum);
-            int retVal = (output / QA + net.LayerBiases[outputBucket]) * OutputScale / QAB;
+            int retVal = (output / QA + g_network->LayerBiases[outputBucket]) * OutputScale / QAB;
             //std::cout << "retVal: " << retVal << std::endl;
             return retVal;
         }
@@ -432,12 +436,17 @@ namespace Horsie
             }
         }
 
+        //static void Add(const short* _src, short* _dst, const short* _add1) {
+        //    const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
+        //          __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
+        //    const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+        //    for (int i = 0; i < SIMD_CHUNKS; i++)
+        //        dst[i] = _mm256_add_epi16(src[i], add1[i]);
+        //}
+
         static void Add(const short* _src, short* _dst, const short* _add1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-                dst[i] = _mm256_add_epi16(src[i], add1[i]);
+            for (int i = 0; i < HiddenSize; i++)
+                _dst[i] = _src[i] + _add1[i];
         }
 
         static void Sub(const short* _src, short* _dst, const short* _sub1) {

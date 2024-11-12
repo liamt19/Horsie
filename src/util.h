@@ -8,6 +8,7 @@
 
 #include "types.h"
 #include "enums.h"
+#include "search_options.h"
 
 using ulong = uint64_t;
 
@@ -70,22 +71,22 @@ namespace Horsie {
 
     constexpr int GetPieceValue(int pt) {
         switch (pt) {
-        case PAWN: return 199;
-        case HORSIE: return 920;
-        case BISHOP: return 1058;
-        case ROOK: return 1553;
-        case QUEEN: return 3127;
+        case PAWN: return ValuePawn;
+        case HORSIE: return ValueHorsie;
+        case BISHOP: return ValueBishop;
+        case ROOK: return ValueRook;
+        case QUEEN: return ValueQueen;
         default: return 0;
         }
     }
 
     constexpr int GetSEEValue(int pt) {
         switch (pt) {
-        case PAWN: return 112;
-        case HORSIE: return 794;
-        case BISHOP: return 868;
-        case ROOK: return 1324;
-        case QUEEN: return 2107;
+        case PAWN: return SEEValue_Pawn;
+        case HORSIE: return SEEValue_Horsie;
+        case BISHOP: return SEEValue_Bishop;
+        case ROOK: return SEEValue_Rook;
+        case QUEEN: return SEEValue_Queen;
         default: return 0;
         }
     }
@@ -150,8 +151,8 @@ namespace Horsie {
         }
         else
         {
-            const double NormalizeEvalFactor = 2.4;
-            return "cp " + std::to_string((int)(score / NormalizeEvalFactor));
+            const double NormalizeEvalFactor = 252;
+            return "cp " + std::to_string((int)((score * 100) / NormalizeEvalFactor));
         }
     }
 

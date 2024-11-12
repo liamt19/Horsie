@@ -69,13 +69,13 @@ namespace Horsie {
     static int StatMalusMax = 1663;
 
     static int SEEValue_Pawn = 105;
-    static int SEEValue_Knight = 900;
+    static int SEEValue_Horsie = 900;
     static int SEEValue_Bishop = 1054;
     static int SEEValue_Rook = 1332;
     static int SEEValue_Queen = 2300;
 
     static int ValuePawn = 171;
-    static int ValueKnight = 794;
+    static int ValueHorsie = 794;
     static int ValueBishop = 943;
     static int ValueRook = 1620;
     static int ValueQueen = 2994;
