@@ -15,7 +15,7 @@ namespace Horsie {
     struct alignas(64) Accumulator {
     public:
         std::array<std::array<short, HiddenSize>, 2> Sides{};
-        std::array<bool, 2> NeedsRefresh{};
+        std::array<bool, 2> NeedsRefresh = {true, true};
 
         const std::array<short, HiddenSize> operator[](const int c) { return Sides[c]; }
 

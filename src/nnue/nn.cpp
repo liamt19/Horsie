@@ -120,11 +120,11 @@ namespace Horsie
             int ourKing = pos.State->KingSquares[perspective];
             int thisBucket = KingBuckets[ourKing];
 
-            BucketCache rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
+            BucketCache& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
             Bitboard& entryBB = rtEntry.Boards[perspective];
             Accumulator& entryAcc = rtEntry.accumulator;
 
-            auto ourAccumulation = entryAcc[perspective];
+            auto ourAccumulation = reinterpret_cast<short*>(&entryAcc.Sides[perspective]);
             accumulator.NeedsRefresh[perspective] = false;
 
             for (int pc = 0; pc < COLOR_NB; pc++)
@@ -132,7 +132,7 @@ namespace Horsie
                 for (int pt = 0; pt < PIECE_NB; pt++)
                 {
                     ulong prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
-                    ulong curr = bb.Pieces[pt] & bb.Colors[pc];
+                    ulong curr =      bb.Pieces[pt] &      bb.Colors[pc];
 
                     ulong added   = curr & ~prev;
                     ulong removed = prev & ~curr;
@@ -142,9 +142,8 @@ namespace Horsie
                         int sq = poplsb(added);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                        const auto accum = reinterpret_cast<short*>(&accumulator.Sides[perspective]);
                         const auto weights = &g_network->FeatureWeights[idx];
-                        Add(accum, accum, weights);
+                        Add(ourAccumulation, ourAccumulation, weights);
                     }
 
                     while (removed != 0)
@@ -152,9 +151,8 @@ namespace Horsie
                         int sq = poplsb(removed);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                        const auto accum = reinterpret_cast<short*>(&accumulator.Sides[perspective]);
                         const auto weights = &g_network->FeatureWeights[idx];
-                        Sub(accum, accum, weights);
+                        Sub(ourAccumulation, ourAccumulation, weights);
                     }
                 }
             }
@@ -171,7 +169,8 @@ namespace Horsie
             Accumulator* src = pos.State->accumulator;
             Accumulator* dst = pos.NextState()->accumulator;
 
-            dst->NeedsRefresh = src->NeedsRefresh;
+            dst->NeedsRefresh[WHITE] = src->NeedsRefresh[WHITE];
+            dst->NeedsRefresh[BLACK] = src->NeedsRefresh[BLACK];
 
             int moveTo = m.To();
             int moveFrom = m.From();
@@ -286,11 +285,12 @@ namespace Horsie
         }
 
 
+#define UE 1
 
         int GetEvaluation(Position& pos) {
 
             Accumulator& accumulator = *pos.State->accumulator;
-#if NO
+#if UE
             if (accumulator.NeedsRefresh[WHITE])
                 RefreshAccumulatorPerspective(pos, WHITE);
 
@@ -364,7 +364,7 @@ namespace Horsie
             int whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + wSq;
             int blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
 
-            return { whiteIndex * SIMD_CHUNKS, blackIndex * SIMD_CHUNKS };
+            return { whiteIndex * HiddenSize, blackIndex * HiddenSize };
         }
 
         int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
@@ -436,17 +436,12 @@ namespace Horsie
             }
         }
 
-        //static void Add(const short* _src, short* _dst, const short* _add1) {
-        //    const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-        //          __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-        //    const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
-        //    for (int i = 0; i < SIMD_CHUNKS; i++)
-        //        dst[i] = _mm256_add_epi16(src[i], add1[i]);
-        //}
-
         static void Add(const short* _src, short* _dst, const short* _add1) {
-            for (int i = 0; i < HiddenSize; i++)
-                _dst[i] = _src[i] + _add1[i];
+            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
+                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
+            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+                dst[i] = _mm256_add_epi16(src[i], add1[i]);
         }
 
         static void Sub(const short* _src, short* _dst, const short* _sub1) {

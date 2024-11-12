@@ -107,6 +107,7 @@ namespace Horsie {
             return os;
         }
 
+        std::string ToString() { return Move::ToString(*this); }
 
         static std::string ToString(Move m) {
             return m.SmithNotation(false);

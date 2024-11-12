@@ -1,5 +1,6 @@
 
 #define NO_PV_LEN 1
+#define TREE 0
 
 #include "search.h"
 #include "position.h"
@@ -919,6 +920,14 @@ namespace Horsie {
             ss->CurrentMove = m;
             ss->ContinuationHistory = &thisThread->History.Continuations[ss->InCheck][isCapture][histIdx][moveTo];
             thisThread->Nodes++;
+
+#if defined(_DEBUG) && defined(TREE)
+            if ((ss - 2)->CurrentMove.ToString() == "e6f6" &&
+                (ss - 1)->CurrentMove.ToString() == "f4f6" &&
+                (ss - 0)->CurrentMove.ToString() == "f7f6") {
+                int z = 0;
+            }
+#endif
 
             pos.MakeMove(m);
 
