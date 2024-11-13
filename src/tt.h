@@ -50,8 +50,8 @@ namespace Horsie {
         short _StatEval;		//  16 bits
         Move BestMove;          //  16 bits
         ushort Key;             //  16 bits
-        sbyte _AgePVType;       //  5 + 2 + 1 bits
-        sbyte _depth;           //  8 bits
+        byte _AgePVType;        //  5 + 2 + 1 bits
+        byte _depth;            //  8 bits
 
 
         constexpr short Score() const { return _Score; }
@@ -64,10 +64,13 @@ namespace Horsie {
         constexpr bool PV() const { return (_AgePVType & TT_PV_MASK) != 0; }
         constexpr int Bound() const { return _AgePVType & TT_BOUND_MASK; }
 
-        constexpr sbyte Depth() const { return (_depth - DepthOffset); }
-        constexpr void SetDepth(int n) { _depth = (sbyte)(n + DepthOffset); }
+        constexpr int Depth() const { return (int)(_depth + DepthOffset); }
+        constexpr void SetDepth(int n) { _depth = (byte)(n - DepthOffset); }
+        constexpr int RawDepth() const { return _depth; }
 
         constexpr bool IsEmpty() const { return _depth == 0; }
+
+        constexpr sbyte RelAge(byte age) const { return (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK); }
 
         void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false);
 
@@ -75,7 +78,7 @@ namespace Horsie {
 
     private:
         static constexpr int KeyShift = 64 - (sizeof(ushort) * 8);
-        static constexpr int DepthOffset = 7;
+        static constexpr int DepthOffset = -7;
     };
 
 
@@ -95,7 +98,7 @@ namespace Horsie {
     class TranspositionTable {
     public:
         void Initialize(int mb);
-        TTEntry* Probe(ulong hash, bool& ttHit) const;
+        bool Probe(ulong hash, TTEntry* tte) const;
 
         void TTUpdate() {
             Age += TT_AGE_INC;

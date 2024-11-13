@@ -15,7 +15,26 @@
 
 #include "search_options.h"
 
+
+#include <string>
+#include <fstream>
+
 using namespace Horsie::Search;
+
+static void appendLineToFile(std::string& filepath, std::string& line)
+{
+    std::ofstream file;
+    //can't enable exception now because of gcc bug that raises ios_base::failure with useless message
+    //file.exceptions(file.exceptions() | std::ios::failbit);
+    file.open(filepath, std::ios::out | std::ios::app);
+    if (file.fail())
+        throw std::ios_base::failure(std::strerror(errno));
+
+    //make sure write fails with exception if something is wrong
+    file.exceptions(file.exceptions() | std::ios::failbit | std::ifstream::badbit);
+
+    file << line << std::endl;
+}
 
 namespace Horsie {
 
@@ -33,6 +52,7 @@ namespace Horsie {
         SearchTimeMS = info.MaxSearchTime;
 
         History.Clear();
+        TT.TTUpdate();
 
         SearchStackEntry _SearchStackBlock[MaxPly] = {};
         SearchStackEntry* ss = &_SearchStackBlock[10];
@@ -275,11 +295,13 @@ namespace Horsie {
         int startingAlpha = alpha;
         int probBeta;
 
+        short rawEval = ScoreNone;
         short eval = ss->StaticEval;
 
         bool doSkip = ss->Skip != Move::Null();
         bool improving = false;
-        TTEntry* tte = {};
+        TTEntry _tte{};
+        TTEntry* tte = &_tte;
 
 
         if (IsMain && ((++CheckupCount) >= CheckupMax)) {
@@ -326,7 +348,7 @@ namespace Horsie {
         
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
         ss->InCheck = pos.Checked();
-        tte = TT.Probe(pos.Hash(), ss->TTHit);
+        ss->TTHit = TT.Probe(pos.Hash(), tte);
         if (!doSkip) {
             ss->TTPV = isPV || (ss->TTHit && tte->PV());
         }
@@ -354,16 +376,20 @@ namespace Horsie {
             eval = ss->StaticEval;
         }
         else if (ss->TTHit) {
-            eval = ss->StaticEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
+            rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
+
+            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
             if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
                 eval = ttScore;
             }
         }
         else {
-            eval = ss->StaticEval = NNUE::GetEvaluation(pos);
+            rawEval = NNUE::GetEvaluation(pos);
 
-            tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), ss->StaticEval, ss->TTPV);
+            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+
+            tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, ss->TTPV);
         }
 
         if (ss->Ply >= 2) {
@@ -636,10 +662,6 @@ namespace Horsie {
 
                 R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
-                if (std::clamp(R, 1, newDepth) != std::max(1, std::min(R, newDepth)))
-                    std::cout << "clamping differed from min/max!" << std::endl;
-
-                //R = std::clamp(R, 1, newDepth);
                 R = std::max(1, std::min(R, newDepth));
                 int reducedDepth = (newDepth - R);
 
@@ -759,7 +781,7 @@ namespace Horsie {
                                                      TTNodeType::Beta);
 
             Move moveToSave = (bound == TTNodeType::Beta) ? Move::Null() : bestMove;
-            tte->Update(pos.Hash(), MakeTTScore((short)bestScore, ss->Ply), bound, depth, moveToSave, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.Hash(), MakeTTScore((short)bestScore, ss->Ply), bound, depth, moveToSave, rawEval, ss->TTPV);
 
             if (!ss->InCheck
                 && (bestMove.IsNull() || !pos.IsCapture(bestMove))
@@ -796,14 +818,15 @@ namespace Horsie {
         int bestScore = -ScoreInfinite;
         int futility = -ScoreInfinite;
 
+        short rawEval = ScoreNone;
         short eval = ss->StaticEval;
 
         int startingAlpha = alpha;
 
-        TTEntry* tte;
-
+        TTEntry _tte{};
+        TTEntry* tte = &_tte;
         ss->InCheck = pos.Checked();
-        tte = TT.Probe(pos.Hash(), ss->TTHit);
+        ss->TTHit = TT.Probe(pos.Hash(), tte);
         short ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         Move ttMove = ss->TTHit ? tte->BestMove : Move::Null();
         bool ttPV = ss->TTHit && tte->PV();
@@ -833,21 +856,25 @@ namespace Horsie {
         }
         else {
             if (ss->TTHit) {
-                eval = ss->StaticEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
+                rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
+
+                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
                 if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
                     eval = ttScore;
                 }
             }
             else {
-                eval = ss->StaticEval = ((ss - 1)->CurrentMove == Move::Null()) ? (short)(-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
+                rawEval = ((ss - 1)->CurrentMove == Move::Null()) ? (short)(-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
+
+                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
             }
 
             if (eval >= beta) {
                 if (!ss->TTHit)
-                    tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), ss->StaticEval, false);
+                    tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), rawEval, false);
 
-                if (std::abs(eval) < ScoreTTWin) 
+                if (std::abs(eval) < ScoreTTWin)
                     eval = (short)((4 * eval + beta) / 5);
 
                 return eval;
@@ -929,28 +956,13 @@ namespace Horsie {
                 checkEvasions++;
             }
 
-            //int histIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(m.From), m.To);
             int histIdx = MakePiece(us, ourPiece);
 
             ss->CurrentMove = m;
             ss->ContinuationHistory = &thisThread->History.Continuations[ss->InCheck][isCapture][histIdx][moveTo];
             thisThread->Nodes++;
 
-#if defined(_DEBUG) && defined(TREE)
-            if ((ss - 2)->CurrentMove.ToString() == "e6f6" &&
-                (ss - 1)->CurrentMove.ToString() == "f4f6" &&
-                (ss - 0)->CurrentMove.ToString() == "f7f6") {
-                int z = 0;
-            }
-#endif
-
             pos.MakeMove(m);
-
-#if defined(_DEBUG) && defined(TREE)
-            N_TABS(ss->Ply);
-            std::cout << "QS " << m << std::endl;
-#endif
-
             score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha);
             pos.UnmakeMove(m);
 
@@ -961,7 +973,7 @@ namespace Horsie {
                     bestMove = m;
                     alpha = score;
 
-                    if (isPV)
+                    if (isPV) 
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
 
                     if (score >= beta) {
@@ -979,7 +991,11 @@ namespace Horsie {
 
         TTNodeType bound = (bestScore >= beta) ? TTNodeType::Alpha : TTNodeType::Beta;
 
-        tte->Update(pos.State->Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, ss->StaticEval, ss->TTPV);
+        //auto rStr = std::to_string(pos.Hash()) + " " + std::to_string(bestScore);
+        //auto fPath = std::string("temp.txt");
+        //appendLineToFile(fPath, rStr);
+
+        tte->Update(pos.Hash(), MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, ss->TTPV);
 
         return bestScore;
     }

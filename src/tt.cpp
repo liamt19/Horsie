@@ -5,10 +5,10 @@ namespace Horsie {
 
     TranspositionTable TT;
 
-    TTEntry* TranspositionTable::Probe(ulong hash, bool& ttHit) const
+    bool TranspositionTable::Probe(ulong hash, TTEntry* tte) const
     {
         TTCluster* const cluster = GetCluster(hash);
-        TTEntry* tte = (TTEntry*)cluster;
+        tte = (TTEntry*)cluster;
 
         auto key = (ushort)hash;
 
@@ -17,14 +17,11 @@ namespace Horsie {
             //  If the entry's key matches, or the entry is empty, then pick this one.
             if (tte[i].Key == key || tte[i].IsEmpty())
             {
-                tte[i]._AgePVType = (sbyte)(TT.Age | (tte[i]._AgePVType & (TT_AGE_INC - 1)));
                 tte = &tte[i];
 
                 //  We return true if the entry isn't empty, which means that tte is valid.
                 //  Check tte[0] here, not tte[i].
-                ttHit = !tte[0].IsEmpty();
-
-                return tte;
+                return !tte[0].IsEmpty();
             }
         }
 
@@ -35,15 +32,15 @@ namespace Horsie {
         TTEntry* replace = tte;
         for (int i = 1; i < EntriesPerCluster; i++)
         {
-            if (((replace->_depth - (TT_AGE_CYCLE + Age - replace->_AgePVType)) & TT_AGE_MASK) >
-                ((tte[i]._depth - (TT_AGE_CYCLE + Age - tte[i]._AgePVType)) & TT_AGE_MASK))
+            if ((replace->RawDepth() - replace->RelAge(Age)) >
+                (  tte[i].RawDepth() -   tte[i].RelAge(Age)))
             {
                 replace = &tte[i];
             }
         }
 
-        ttHit = false;
-        return replace;
+        tte = replace;
+        return false;
     }
 
 
@@ -57,22 +54,23 @@ namespace Horsie {
     }
 
     void TTEntry::Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV) {
-        
-        //if (!move.IsNull() || (ushort)key != this.Key)
-        if (move != Move::Null() || (ushort)key != Key)
+
+        ushort k = (ushort)key;
+
+        if (move != Move::Null() || k != Key)
         {
             BestMove = move;
         }
 
         if (nodeType == TTNodeType::Exact
-            || (ushort)key != Key
-            || depth + (isPV ? 2 : 0) > _depth - 11)
+            || k != Key
+            || depth + (isPV ? 2 : 0) > _depth - 4 + DepthOffset)
         {
-            Key = (ushort)key;
+            Key = k;
             SetScore(score);
             SetStatEval(statEval);
-            SetDepth((sbyte)depth);
-            _AgePVType = (sbyte)(TT.Age | ((isPV ? 1 : 0) << 2) | (int)nodeType);
+            _depth = (byte)(depth - DepthOffset);
+            _AgePVType = (byte)(TT.Age | ((isPV ? 1 : 0) << 2) | (uint)nodeType);
         }
     }
 

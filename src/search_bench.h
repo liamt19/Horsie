@@ -49,7 +49,7 @@ namespace Horsie {
             totalNodes += thisNodeCount;
 
             if (!openBench) {
-                std::cout << std::left << std::setw(76) << fen << std::to_string(thisNodeCount) << std::endl;
+                std::cout << std::left << std::setw(76) << fen << "\t" << std::to_string(thisNodeCount) << std::endl;
             }
 
             thread.Reset();

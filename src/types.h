@@ -12,8 +12,10 @@
 #include "enums.h"
 
 using nuint = std::size_t;
-using ushort = uint16_t;
 using ulong = uint64_t;
+using uint = uint32_t;
+using ushort = uint16_t;
+using byte = uint8_t;
 using sbyte = int8_t;
 
 // Predefined macros hell:

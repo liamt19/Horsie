@@ -57,8 +57,8 @@ namespace Horsie {
     static int OrderingVictimValueMultiplier = 14;
 
     static int IIRMinDepth = 4;
-    static int AspWindow = 11;
-    static int HistoryCaptureBonusMargin = 158;
+    static int AspWindow = 12;
+    static int HistoryCaptureBonusMargin = 167;
 
     static int StatBonusMult = 184;
     static int StatBonusSub = 80;

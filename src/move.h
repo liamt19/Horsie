@@ -74,7 +74,7 @@ namespace Horsie {
             return (To() > From()) ? CastlingStatus::BK : CastlingStatus::BQ;
         }
 
-        std::string SmithNotation(bool is960) const {
+        constexpr std::string SmithNotation(bool is960) const {
             //int fx = From() % 8;
             //int fy = From() / 8;
             //int tx = To() % 8;
