@@ -57,6 +57,7 @@ namespace Horsie {
         LoadFromFEN(fen);
 
         NNUE::RefreshAccumulator(*this);
+        NNUE::ResetCaches(*this);
     }
 
     Position::~Position() {

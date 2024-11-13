@@ -45,6 +45,8 @@ namespace Horsie {
             (ss + i)->ContinuationHistory = &History.Continuations[0][0][0][0];
         }
 
+        NNUE::ResetCaches(pos);
+
         NodeTable = {};
 
         RootMoves.clear();

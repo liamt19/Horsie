@@ -390,6 +390,15 @@ namespace Horsie
         }
 
 
+        void ResetCaches(Position& pos) {
+            for (auto& bucket : pos.CachedBuckets) {
+                bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = g_network->FeatureBiases;
+                bucket.Boards[WHITE].Reset();
+                bucket.Boards[BLACK].Reset();
+            }
+        }
+
+
         //  https://stackoverflow.com/questions/63106143/simd-c-avx2-intrinsics-getting-sum-of-m256i-vector-with-16bit-integers
         static int32_t hsum_8x32(__m256i v) {
             // silly GCC uses a longer AXV512VL instruction if AVX512 is enabled :/

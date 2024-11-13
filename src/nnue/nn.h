@@ -57,7 +57,7 @@ namespace Horsie
             return result;
         }
 
-
+        void ResetCaches(Position& pos);
         static int32_t hsum_8x32(__m256i v);
         static void Sub(const short* src, short* dst, const short* sub1);
         static void Add(const short* src, short* dst, const short* add1);
