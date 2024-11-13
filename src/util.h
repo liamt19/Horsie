@@ -155,7 +155,7 @@ namespace Horsie {
         }
         else
         {
-            const double NormalizeEvalFactor = 252;
+            const double NormalizeEvalFactor = 100;
             return "cp " + std::to_string((int)((score * 100) / NormalizeEvalFactor));
         }
     }

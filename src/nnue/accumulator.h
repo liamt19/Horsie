@@ -5,6 +5,7 @@
 
 #include "../types.h"
 #include "arch.h"
+#include "network_update.h"
 
 #include <array>
 
@@ -16,6 +17,8 @@ namespace Horsie {
     public:
         std::array<std::array<short, HiddenSize>, 2> Sides{};
         std::array<bool, 2> NeedsRefresh = {true, true};
+        std::array<bool, 2> Computed = { false, false };
+        NetworkUpdate Update{};
 
         const std::array<short, HiddenSize> operator[](const int c) { return Sides[c]; }
 

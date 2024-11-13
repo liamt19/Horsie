@@ -88,6 +88,7 @@ namespace Horsie
 
             accumulator.Sides[perspective] = g_network->FeatureBiases;
             accumulator.NeedsRefresh[perspective] = false;
+            accumulator.Computed[perspective] = true;
 
             int ourKing = pos.State->KingSquares[perspective];
             ulong occ = bb.Occupancy;
@@ -161,149 +162,18 @@ namespace Horsie
 
             entryAcc.CopyTo(&accumulator, perspective);
             bb.CopyTo(entryBB);
+
+            accumulator.Computed[perspective] = true;
         }
 
-
-
-        void MakeMoveNN(Position& pos, Move m) {
-            Bitboard& bb = pos.bb;
-
-            Accumulator* src = pos.State->accumulator;
-            Accumulator* dst = pos.NextState()->accumulator;
-
-            dst->NeedsRefresh[WHITE] = src->NeedsRefresh[WHITE];
-            dst->NeedsRefresh[BLACK] = src->NeedsRefresh[BLACK];
-
-            int moveTo = m.To();
-            int moveFrom = m.From();
-
-            int us = pos.ToMove;
-            int ourPiece = bb.GetPieceAtIndex(moveFrom);
-
-            int them = Not(us);
-            int theirPiece = bb.GetPieceAtIndex(moveTo);
-
-            const auto srcWhite = reinterpret_cast<const short*>(&src->Sides[WHITE]);
-            const auto srcBlack = reinterpret_cast<const short*>(&src->Sides[BLACK]);
-
-            auto dstWhite = reinterpret_cast<short*>(&dst->Sides[WHITE]);
-            auto dstBlack = reinterpret_cast<short*>(&dst->Sides[BLACK]);
-
-            auto FeatureWeights = reinterpret_cast<const short*>(&g_network->FeatureWeights[0]);
-
-            if (ourPiece == KING && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
-            {
-                //  We will need to fully refresh our perspective, but we can still do theirs.
-                dst->NeedsRefresh[us] = true;
-
-                const auto theirSrc = reinterpret_cast<const short*>(&src->Sides[them]);
-                const auto theirDst = reinterpret_cast<short*>(&dst->Sides[them]);
-                int theirKing = pos.State->KingSquares[them];
-
-                int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
-                int to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
-
-                if (theirPiece != NONE && !m.IsCastle())
-                {
-                    int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
-
-                    SubSubAdd(theirSrc, theirDst,
-                        (FeatureWeights + from),
-                        (FeatureWeights + cap),
-                        (FeatureWeights + to));
-                }
-                else if (m.IsCastle())
-                {
-                    int rookFromSq = moveTo;
-                    int rookToSq = m.CastlingRookSquare();
-
-                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare(), theirKing, them);
-
-                    int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
-                    int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
-
-                    SubSubAddAdd(theirSrc, theirDst,
-                        (FeatureWeights + from),
-                        (FeatureWeights + rookFrom),
-                        (FeatureWeights + to),
-                        (FeatureWeights + rookTo));
-                }
-                else
-                {
-                    SubAdd(theirSrc, theirDst,
-                        (FeatureWeights + from),
-                        (FeatureWeights + to));
-                }
-            }
-            else
-            {
-                int wKing = pos.State->KingSquares[WHITE];
-                int bKing = pos.State->KingSquares[BLACK];
-
-                const auto [wFrom, bFrom] = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
-                const auto [wTo, bTo] = FeatureIndex(us, m.IsPromotion() ? m.PromotionTo() : ourPiece, moveTo, wKing, bKing);
-
-                if (theirPiece != NONE)
-                {
-                    const auto [wCap, bCap] = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
-
-                    SubSubAdd(srcWhite, dstWhite,
-                        (FeatureWeights + wFrom),
-                        (FeatureWeights + wCap),
-                        (FeatureWeights + wTo));
-
-                    SubSubAdd(srcBlack, dstBlack,
-                        (FeatureWeights + bFrom),
-                        (FeatureWeights + bCap),
-                        (FeatureWeights + bTo));
-                }
-                else if (m.IsEnPassant())
-                {
-                    int idxPawn = moveTo - ShiftUpDir(us);
-
-                    const auto [wCap, bCap] = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
-
-                    SubSubAdd(srcWhite, dstWhite,
-                        (FeatureWeights + wFrom),
-                        (FeatureWeights + wCap),
-                        (FeatureWeights + wTo));
-
-                    SubSubAdd(srcBlack, dstBlack,
-                        (FeatureWeights + bFrom),
-                        (FeatureWeights + bCap),
-                        (FeatureWeights + bTo));
-                }
-                else
-                {
-                    SubAdd(srcWhite, dstWhite,
-                        (FeatureWeights + wFrom),
-                        (FeatureWeights + wTo));
-
-                    SubAdd(srcBlack, dstBlack,
-                        (FeatureWeights + bFrom),
-                        (FeatureWeights + bTo));
-                }
-            }
-        }
-
-
-#define UE 1
 
         int GetEvaluation(Position& pos) {
 
             Accumulator& accumulator = *pos.State->accumulator;
-#if UE
-            if (accumulator.NeedsRefresh[WHITE])
-                RefreshAccumulatorPerspective(pos, WHITE);
-
-            if (accumulator.NeedsRefresh[BLACK])
-                RefreshAccumulatorPerspective(pos, BLACK);
-#else
-            RefreshAccumulator(pos);
-#endif
+            ProcessUpdates(pos);
 
             Bitboard& bb = pos.bb;
-            
+
             const __m256i zeroVec = _mm256_setzero_si256();
             const __m256i maxVec = _mm256_set1_epi16(QA);
             __m256i sum = _mm256_setzero_si256();
@@ -340,6 +210,185 @@ namespace Horsie
             return retVal;
         }
 
+
+
+        void MakeMoveNN(Position& pos, Move m) {
+            Bitboard& bb = pos.bb;
+
+            Accumulator* src = pos.State->accumulator;
+            Accumulator* dst = pos.NextState()->accumulator;
+
+            dst->NeedsRefresh[WHITE] = src->NeedsRefresh[WHITE];
+            dst->NeedsRefresh[BLACK] = src->NeedsRefresh[BLACK];
+
+            dst->Computed[WHITE] = dst->Computed[BLACK] = false;
+
+            int moveTo = m.To();
+            int moveFrom = m.From();
+
+            int us = pos.ToMove;
+            int ourPiece = bb.GetPieceAtIndex(moveFrom);
+
+            int them = Not(us);
+            int theirPiece = bb.GetPieceAtIndex(moveTo);
+
+            PerspectiveUpdate& wUpdate = dst->Update[WHITE];
+            PerspectiveUpdate& bUpdate = dst->Update[BLACK];
+
+            wUpdate.Clear();
+            bUpdate.Clear();
+
+            if (ourPiece == KING && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
+            {
+                //  We will need to fully refresh our perspective, but we can still do theirs.
+                dst->NeedsRefresh[us] = true;
+
+                PerspectiveUpdate& theirUpdate = dst->Update[them];
+                int theirKing = pos.State->KingSquares[them];
+
+                int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
+                int to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
+
+                if (theirPiece != NONE && !m.IsCastle())
+                {
+                    int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
+
+                    theirUpdate.PushSubSubAdd(from, cap, to);
+                }
+                else if (m.IsCastle())
+                {
+                    int rookFromSq = moveTo;
+                    int rookToSq = m.CastlingRookSquare();
+
+                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare(), theirKing, them);
+
+                    int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
+                    int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
+
+                    theirUpdate.PushSubSubAddAdd(from, rookFrom, to, rookTo);
+                }
+                else
+                {
+                    theirUpdate.PushSubAdd(from, to);
+                }
+            }
+            else
+            {
+                int wKing = pos.State->KingSquares[WHITE];
+                int bKing = pos.State->KingSquares[BLACK];
+
+                const auto [wFrom, bFrom] = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
+                const auto [wTo, bTo] = FeatureIndex(us, m.IsPromotion() ? m.PromotionTo() : ourPiece, moveTo, wKing, bKing);
+
+                wUpdate.PushSubAdd(wFrom, wTo);
+                bUpdate.PushSubAdd(bFrom, bTo);
+
+                if (theirPiece != NONE)
+                {
+                    const auto [wCap, bCap] = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
+
+                    wUpdate.PushSub(wCap);
+                    bUpdate.PushSub(bCap);
+                }
+                else if (m.IsEnPassant())
+                {
+                    int idxPawn = moveTo - ShiftUpDir(us);
+
+                    const auto [wCap, bCap] = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
+
+                    wUpdate.PushSub(wCap);
+                    bUpdate.PushSub(bCap);
+                }
+            }
+        }
+
+
+        void MakeNullMove(Position& pos) {
+            Accumulator* currAcc = pos.State->accumulator;
+            Accumulator* nextAcc = pos.NextState()->accumulator;
+
+            currAcc->CopyTo(nextAcc);
+
+            nextAcc->Computed[WHITE] = currAcc->Computed[WHITE];
+            nextAcc->Computed[BLACK] = currAcc->Computed[BLACK];
+            nextAcc->Update[WHITE].Clear();
+            nextAcc->Update[BLACK].Clear();
+        }
+
+
+        void ProcessUpdates(Position& pos) {
+            StateInfo* st = pos.State;
+            for (int perspective = 0; perspective < 2; perspective++)
+            {
+                //  If the current state is correct for our perspective, no work is needed
+                if (st->accumulator->Computed[perspective])
+                    continue;
+                //  If the current state needs a refresh, don't bother with previous states
+                if (st->accumulator->NeedsRefresh[perspective])
+                {
+                    RefreshAccumulatorPerspective(pos, perspective);
+                    continue;
+                }
+                //  Find the most recent computed or refresh-needed accumulator
+                StateInfo* curr = st - 1;
+                while (!curr->accumulator->Computed[perspective] && !curr->accumulator->NeedsRefresh[perspective])
+                    curr--;
+                if (curr->accumulator->NeedsRefresh[perspective])
+                {
+                    //  The most recent accumulator would need to be refreshed,
+                    //  so don't bother and refresh the current one instead
+                    RefreshAccumulatorPerspective(pos, perspective);
+                }
+                else
+                {
+                    //  Update incrementally till the current accumulator is correct
+                    while (curr != st)
+                    {
+                        StateInfo* prev = curr;
+                        curr++;
+                        UpdateSingle(prev->accumulator, curr->accumulator, perspective);
+                    }
+                }
+            }
+        }
+
+        void UpdateSingle(Accumulator* prev, Accumulator* curr, int perspective)
+        {
+            auto FeatureWeights = reinterpret_cast<const short*>(&g_network->FeatureWeights[0]);
+            const auto& updates = curr->Update[perspective];
+
+            if (updates.AddCnt == 0 && updates.SubCnt == 0)
+            {
+                //  For null moves, we still need to carry forward the correct accumulator state
+                prev->CopyTo(curr, perspective);
+                return;
+            }
+
+            auto src = reinterpret_cast<short*>(&prev->Sides[perspective]);
+            auto dst = reinterpret_cast<short*>(&curr->Sides[perspective]);
+            if (updates.AddCnt == 1 && updates.SubCnt == 1)
+            {
+                SubAdd(src, dst,
+                    (FeatureWeights + updates.Subs[0]),
+                    (FeatureWeights + updates.Adds[0]));
+            }
+            else if (updates.AddCnt == 1 && updates.SubCnt == 2)
+            {
+                SubSubAdd(src, dst,
+                    (FeatureWeights + updates.Subs[0]),
+                    (FeatureWeights + updates.Subs[1]),
+                    (FeatureWeights + updates.Adds[0]));
+            }
+            else if (updates.AddCnt == 2 && updates.SubCnt == 2)
+            {
+                SubSubAddAdd(src, dst,
+                    (FeatureWeights + updates.Subs[0]),
+                    (FeatureWeights + updates.Subs[1]),
+                    (FeatureWeights + updates.Adds[0]),
+                    (FeatureWeights + updates.Adds[1]));
+            }
+            curr->Computed[perspective] = true;
+        }
 
 
         std::pair<int, int> FeatureIndex(int pc, int pt, int sq, int wk, int bk)

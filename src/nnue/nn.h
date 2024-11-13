@@ -32,6 +32,10 @@ namespace Horsie
         void RefreshAccumulatorPerspective(Position& pos, int perspective);
 
         void MakeMoveNN(Position& pos, Move m);
+        void MakeNullMove(Position& pos);
+        void UpdateSingle(Accumulator* prev, Accumulator* curr, int perspective);
+        void ProcessUpdates(Position& pos);
+
         int GetEvaluation(Position& pos);
 
         std::pair<int, int> FeatureIndex(int pc, int pt, int sq, int wk, int bk);

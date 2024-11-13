@@ -278,7 +278,7 @@ namespace Horsie {
     void Position::MakeNullMove()
     {
         CopyBlock(State + 1, State, StateCopySize);
-        State->accumulator->CopyTo(NextState()->accumulator);
+        NNUE::MakeNullMove(*this);
 
         State++;
 
