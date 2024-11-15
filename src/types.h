@@ -188,8 +188,13 @@ namespace Horsie {
 #define MemClear memset
 #define CopyBlock memcpy
 #else
+#if defined(_WIN32)
+#define AlignedFree _mm_free
+#define AlignedAllocZeroed(a, b) _mm_malloc(a, b)
+#else
 #define AlignedFree std::free
 #define AlignedAllocZeroed(a, b) aligned_alloc(b, a)
+#endif
 #define MemClear memset
 #define CopyBlock memcpy
 #endif

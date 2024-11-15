@@ -48,7 +48,13 @@ std::barrier is_sync_barrier(2);
 
 int main()
 {
-    NNUE::LoadNetwork("C:\\Programming\\Horsie\\src\\incbin\\net-013-16l8.bin");
+#ifdef EVALFILE
+    auto net = std::string(EVALFILE);
+#else
+    auto net = std::string("net.bin");
+#endif
+
+    NNUE::LoadNetwork(net);
     Precomputed::init();
     Zobrist::init();
     Cuckoo::init();
