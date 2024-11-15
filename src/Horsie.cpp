@@ -26,7 +26,7 @@ using namespace Horsie::Cuckoo;
 using std::cout;
 using std::endl;
 
-int main();
+int main(int argc, char* argv[]);
 void HandleSetPosition(Position& pos, std::istringstream& is);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
@@ -46,7 +46,7 @@ void HandleNewGameCommand(Position& pos);
 SearchThread thread = SearchThread();
 std::barrier is_sync_barrier(2);
 
-int main()
+int main(int argc, char* argv[])
 {
 #ifdef EVALFILE
     auto net = std::string(EVALFILE);
@@ -63,6 +63,14 @@ int main()
     Position pos = Position(InitialFEN);
 
     std::cout << "Horsie 0.0" << std::endl << std::endl;
+
+    if (argc > 1) {
+        std::string arg1 = std::string(argv[1]);
+        if (arg1 == "bench") {
+            Horsie::DoBench(12, true);
+            return 0;
+        }
+    }
 
     std::thread searcher;
     std::string token, cmd;
