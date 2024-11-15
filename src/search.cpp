@@ -32,7 +32,6 @@ namespace Horsie {
         MaxNodes = info.MaxNodes;
         SearchTimeMS = info.MaxSearchTime;
 
-        History.Clear();
         TT.TTUpdate();
 
         SearchStackEntry _SearchStackBlock[MaxPly] = {};
