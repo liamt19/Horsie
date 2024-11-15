@@ -283,16 +283,20 @@ namespace Horsie {
         TTEntry* tte = &_tte;
 
 
-        if (IsMain && ((++CheckupCount) >= CheckupMax)) {
-            CheckupCount = 0;
+        if (IsMain) {
+            if ((++CheckupCount) >= CheckupMax) {
+                CheckupCount = 0;
 
-            if (CheckTime() || (Nodes >= MaxNodes)) {
+                if (CheckTime()) {
+                    StopSearching = true;
+                }
+            }
+            
+            if ((Threads == 1 && Nodes >= MaxNodes)
+                || (CheckupCount == 0 && Nodes >= MaxNodes)) {
+                //  CheckupCount == 0 && thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.NodeLimit
                 StopSearching = true;
             }
-        }
-
-        if (Nodes >= MaxNodes) {
-            StopSearching = true;
         }
 
         if (isPV) {

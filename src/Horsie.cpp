@@ -42,7 +42,7 @@ void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
 
 
-
+bool inUCI = false;
 SearchThread thread = SearchThread();
 std::barrier is_sync_barrier(2);
 
@@ -323,7 +323,11 @@ SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
 
 
 void HandleGoCommand(Position& pos, std::istringstream& is) {
-   
+
+    if (!inUCI) {
+        HandleNewGameCommand(pos);
+    }
+
     thread.IsMain = true;
     thread.Reset();
     SearchLimits limits = ParseGoParameters(pos, is);
@@ -341,9 +345,7 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
         limits.MaxSearchTime = INT32_MAX;
     }
 
-    std::string fen = pos.GetFEN();
-    Position posCopy = Position(fen);
-    thread.Search(posCopy, limits);
+    thread.Search(pos, limits);
     std::cout << "bestmove " << Move::ToString(thread.RootMoves[0].move) << std::endl;
 }
 
@@ -388,6 +390,7 @@ void HandleUCICommand() {
     std::cout << "option name Hash type spin default " << TranspositionTable::DefaultTTSize << " min 1 max " << TranspositionTable::MaxSize << std::endl;
     std::cout << "option name Threads type spin default 1 min 1 max 1" << std::endl;
     std::cout << "uciok" << std::endl;
+    inUCI = true;
 }
 
 

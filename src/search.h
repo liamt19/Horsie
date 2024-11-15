@@ -183,29 +183,17 @@ namespace Horsie {
             }
 
             bool CheckTime() const {
-                //auto now = std::chrono::system_clock::now();
-                //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - TimeStart);
-                //return (duration.count() > SearchTimeMS);
-
                 const auto time = GetSearchTime();
                 return (time > SearchTimeMS - SEARCH_TIME_BUFFER);
             }
 
             void MakeMoveTime(SearchLimits& limits) {
-                int newSearchTime = limits.Increment + (limits.PlayerTime / 2);
+                int newSearchTime = limits.Increment + std::max(limits.PlayerTime / 2, limits.PlayerTime / limits.MovesToGo);
 
-                if (limits.MovesToGo != -1)
-                {
-                    newSearchTime = std::max(newSearchTime, limits.Increment + (limits.PlayerTime / limits.MovesToGo));
-                }
-
-                if (newSearchTime > limits.PlayerTime)
-                {
-                    newSearchTime = limits.PlayerTime;
-                }
+                newSearchTime = std::min(newSearchTime, limits.PlayerTime);
 
                 //  Values from Clarity
-                SoftTimeLimit = (int)(0.6 * ((static_cast<double>(limits.PlayerTime) / limits.MovesToGo) + (limits.Increment * 3 / 4.0)));
+                SoftTimeLimit = (int)(0.65 * ((static_cast<double>(limits.PlayerTime) / limits.MovesToGo) + (limits.Increment * 3 / 4.0)));
                 HasSoftTime = true;
 
                 limits.MaxSearchTime = newSearchTime;
