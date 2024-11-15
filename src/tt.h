@@ -98,7 +98,7 @@ namespace Horsie {
     class TranspositionTable {
     public:
         void Initialize(int mb);
-        bool Probe(ulong hash, TTEntry* tte) const;
+        bool Probe(ulong hash, TTEntry*& tte) const;
 
         void TTUpdate() {
             Age += TT_AGE_INC;
@@ -115,14 +115,14 @@ namespace Horsie {
 
         TTCluster* GetCluster(ulong hash) const
         {
-            return Clusters + ((ulong)((uint128_t(hash) * uint128_t(ClusterCount)) >> 64));
+            return Clusters + (ulong)(((uint128_t(hash) * uint128_t(ClusterCount)) >> 64));
         }
 
         TTCluster* Clusters = nullptr;
         ushort Age = 0;
         ulong ClusterCount = 0;
 
-        static const int DefaultTTSize = 16;
+        static const int DefaultTTSize = 32;
         static const int MaxSize = 1048576;
     };
 

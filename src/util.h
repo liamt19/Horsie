@@ -64,30 +64,30 @@ namespace Horsie {
         case BISHOP: return 'b';
         case ROOK  : return 'r';
         case QUEEN : return 'q';
-        case KING: return 'k';
-        default: return ' ';
+        case KING  : return 'k';
+        default:     return ' ';
         };
     }
 
     constexpr int GetPieceValue(int pt) {
         switch (pt) {
-        case PAWN: return ValuePawn;
+        case PAWN  : return ValuePawn;
         case HORSIE: return ValueHorsie;
         case BISHOP: return ValueBishop;
-        case ROOK: return ValueRook;
-        case QUEEN: return ValueQueen;
-        default: return 0;
+        case ROOK  : return ValueRook;
+        case QUEEN : return ValueQueen;
+        default:     return 0;
         }
     }
 
     constexpr int GetSEEValue(int pt) {
         switch (pt) {
-        case PAWN: return SEEValue_Pawn;
+        case PAWN  : return SEEValue_Pawn;
         case HORSIE: return SEEValue_Horsie;
         case BISHOP: return SEEValue_Bishop;
-        case ROOK: return SEEValue_Rook;
-        case QUEEN: return SEEValue_Queen;
-        default: return 0;
+        case ROOK  : return SEEValue_Rook;
+        case QUEEN : return SEEValue_Queen;
+        default:     return 0;
         }
     }
 
@@ -155,7 +155,7 @@ namespace Horsie {
         }
         else
         {
-            const double NormalizeEvalFactor = 100;
+            const double NormalizeEvalFactor = 252;
             return "cp " + std::to_string((int)((score * 100) / NormalizeEvalFactor));
         }
     }

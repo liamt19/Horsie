@@ -2,57 +2,45 @@
 #include "zobrist.h"
 
 #define LIZARD_HASHES 1
-
-#if defined(LIZARD_HASHES)
-#include <cstring>
-#include <fstream>
-#endif
+//#undef LIZARD_HASHES
 
 namespace Zobrist {
 
-    ulong ColorPieceSquareHashes[COLOR_NB][PIECE_NB][SQUARE_NB];
+    ulong ColorPieceSquareHashes[2][6][64];
     ulong CastlingRightsHashes[4];
-    ulong EnPassantFileHashes[FILE_NB];
+    ulong EnPassantFileHashes[8];
     ulong BlackHash;
 
     void init() {
+#if defined(LIZARD_HASHES)
+        for (int i = 0; i < 2; i++)
+            for (int j = 0; j < 6; j++)
+                for (int k = 0; k < 64; k++)
+                    ColorPieceSquareHashes[i][j][k] = LizardPSQT[i][j][k];
+
+        for (int i = 0; i < 4; i++)
+            CastlingRightsHashes[i] = LizardCR[i];
+
+        for (int i = 0; i < 8; i++)
+            EnPassantFileHashes[i] = LizardEP[i];
+
+        BlackHash = LizardBH;
+#else
         std::mt19937_64 rng(DefaultSeed);
         std::uniform_int_distribution<uint64_t> dis;
 
-        for (int i = 0; i < COLOR_NB; i++) {
-            for (int j = 0; j < PIECE_NB; j++) {
-                for (int k = 0; k < SQUARE_NB; k++) {
+        for (int i = 0; i < 2; i++)
+            for (int j = 0; j < 6; j++)
+                for (int k = 0; k < 64; k++)
                     ColorPieceSquareHashes[i][j][k] = dis(rng);
-                }
-            }
-        }
 
         for (int i = 0; i < 4; i++)
-        {
             CastlingRightsHashes[i] = dis(rng);
-        }
 
-        for (int i = 0; i < FILE_NB; i++)
-        {
+        for (int i = 0; i < 8; i++)
             EnPassantFileHashes[i] = dis(rng);
-        }
 
         BlackHash = dis(rng);
-
-#if defined(LIZARD_HASHES)
-        std::ifstream stream("zobrist.txt", std::ios::binary);
-
-        auto psq = reinterpret_cast<ulong*>(&ColorPieceSquareHashes);
-        for (size_t i = 0; i < 2 * 6 * 64; i++)
-            stream >> psq[i];
-
-        for (size_t i = 0; i < 4; i++)
-            stream >> CastlingRightsHashes[i];
-
-        for (size_t i = 0; i < 8; i++)
-            stream >> EnPassantFileHashes[i];
-
-        stream >> BlackHash;
 #endif
     }
 

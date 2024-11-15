@@ -39,9 +39,9 @@ namespace Horsie {
     static int RFPMaxDepth = 6;
     static int RFPMargin = 47;
 
+    static int ProbCutMinDepth = 2;
     static int ProbCutBeta = 256;
     static int ProbcutBetaImp = 101;
-    static int ProbCutMinDepth = 2;
 
     static int ShallowSEEMargin = 216;
     static int ShallowMaxDepth = 9;
@@ -58,7 +58,6 @@ namespace Horsie {
 
     static int IIRMinDepth = 4;
     static int AspWindow = 12;
-    static int HistoryCaptureBonusMargin = 167;
 
     static int StatBonusMult = 184;
     static int StatBonusSub = 80;

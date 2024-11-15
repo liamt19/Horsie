@@ -1,8 +1,4 @@
 
-#define NO_PV_LEN 1
-#define TREE
-#undef TREE
-
 #include "search.h"
 #include "position.h"
 #include "nnue/nn.h"
@@ -20,21 +16,6 @@
 #include <fstream>
 
 using namespace Horsie::Search;
-
-static void appendLineToFile(std::string& filepath, std::string& line)
-{
-    std::ofstream file;
-    //can't enable exception now because of gcc bug that raises ios_base::failure with useless message
-    //file.exceptions(file.exceptions() | std::ios::failbit);
-    file.open(filepath, std::ios::out | std::ios::app);
-    if (file.fail())
-        throw std::ios_base::failure(std::strerror(errno));
-
-    //make sure write fails with exception if something is wrong
-    file.exceptions(file.exceptions() | std::ios::failbit | std::ifstream::badbit);
-
-    file << line << std::endl;
-}
 
 namespace Horsie {
 
@@ -270,8 +251,6 @@ namespace Horsie {
         constexpr bool isRoot = NodeType == SearchNodeType::RootNode;
         constexpr bool isPV = NodeType != SearchNodeType::NonPVNode;
 
-        //std::cout << "Negamax(" << ss->Ply << ", " << alpha << ", " << beta << ", " << depth << ")" << std::endl;
-
         if (depth <= 0) {
             return QSearch<NodeType>(pos, ss, alpha, beta);
         }
@@ -324,7 +303,7 @@ namespace Horsie {
         if (!isRoot) {
             if (pos.IsDraw())
             {
-                return ScoreDraw;
+                return MakeDrawScore(Nodes);
             }
 
             if (StopSearching || ss->Ply >= MaxSearchStackPly - 1)
@@ -410,6 +389,7 @@ namespace Horsie {
             return (eval + beta) / 2;
         }
 
+
         if (UseNMP
             && !isPV
             && depth >= NMPMinDepth
@@ -451,7 +431,7 @@ namespace Horsie {
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta))
         {
             ScoredMove captures[MoveListSize] = {};
-            int numCaps = Generate<GenNoisy>(pos, captures, 0);
+            int numCaps = GenerateQS(pos, captures, 0);
             AssignProbCutScores(pos, captures, numCaps);
 
             for (int i = 0; i < numCaps; i++) {
@@ -463,7 +443,6 @@ namespace Horsie {
 
                 prefetch(TT.GetCluster(pos.HashAfter(m)));
 
-                //int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From()), m.To());
                 int histIdx = MakePiece(us, bb.GetPieceAtIndex(m.From()));
                 bool isCap = (bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle());
 
@@ -623,19 +602,12 @@ namespace Horsie {
             Nodes++;
 
             pos.MakeMove(m);
-            
-#if defined(_DEBUG) && defined(TREE)
-            N_TABS(ss->Ply);
-            std::cout << "NM " << m << std::endl;
-#endif
 
             playedMoves++;
             ulong prevNodes = Nodes;
 
             if (isPV)
             {
-                //System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
-                //std::memset((ss + 1)->PV, 0, (MaxPly * sizeof(Move)));
                 (ss + 1)->PVLength = 0;
             }
 
@@ -725,7 +697,6 @@ namespace Horsie {
                     rm.PV.resize(1);
 
                     for (Move* childMove = (ss + 1)->PV; *childMove != Move::Null(); ++childMove) {
-                        //rm.PV[rm.PVLength++] = *childMove;
                         rm.PV.push_back(*childMove);
                     }
                 }
@@ -775,12 +746,14 @@ namespace Horsie {
             ss->TTPV = ss->TTPV || ((ss - 1)->TTPV && depth > 3);
         }
 
+
         if (!doSkip && !(isRoot && PVIndex > 0)) {
             TTNodeType bound = (bestScore >= beta) ? TTNodeType::Alpha :
                       ((bestScore > startingAlpha) ? TTNodeType::Exact :
                                                      TTNodeType::Beta);
 
             Move moveToSave = (bound == TTNodeType::Beta) ? Move::Null() : bestMove;
+            
             tte->Update(pos.Hash(), MakeTTScore((short)bestScore, ss->Ply), bound, depth, moveToSave, rawEval, ss->TTPV);
 
             if (!ss->InCheck
@@ -792,6 +765,7 @@ namespace Horsie {
                 UpdateCorrectionHistory(pos, diff, depth);
             }
         }
+
 
         return bestScore;
     }
@@ -956,10 +930,8 @@ namespace Horsie {
                 checkEvasions++;
             }
 
-            int histIdx = MakePiece(us, ourPiece);
-
             ss->CurrentMove = m;
-            ss->ContinuationHistory = &thisThread->History.Continuations[ss->InCheck][isCapture][histIdx][moveTo];
+            ss->ContinuationHistory = &thisThread->History.Continuations[ss->InCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
             thisThread->Nodes++;
 
             pos.MakeMove(m);
@@ -1029,13 +1001,7 @@ namespace Horsie {
 
         if (capturedPiece != Piece::NONE && !bestMove.IsCastle())
         {
-            //int idx = HistoryTable.CapIndex(thisColor, thisPiece, moveTo, capturedPiece);
-            //history.ApplyBonus(history.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
-
-           /*history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] += (short)(bonus -
-           (history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] * std::abs(bonus) / HistoryClamp));*/
             history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] << bonus;
-            
         }
         else
         {
@@ -1051,8 +1017,6 @@ namespace Horsie {
                 return;
             }
 
-            /*history.MainHistory[thisColor][bestMove.GetMoveMask()] += (short)(bonus -
-            (history.MainHistory[thisColor][bestMove.GetMoveMask()] * std::abs(bonus) / HistoryClamp));*/
             history.MainHistory[thisColor][bestMove.GetMoveMask()] << bonus;
             UpdateContinuations(ss, thisColor, thisPiece, moveTo, bonus);
 
@@ -1061,10 +1025,7 @@ namespace Horsie {
                 Move m = quietMoves[i];
                 thisPiece = bb.GetPieceAtIndex(m.From());
 
-                /*history.MainHistory[thisColor][m.GetMoveMask()] += (short)(-malus -
-               (history.MainHistory[thisColor][m.GetMoveMask()] * std::abs(-malus) / HistoryClamp));*/
                 history.MainHistory[thisColor][m.GetMoveMask()] << -malus;
-
                 UpdateContinuations(ss, thisColor, thisPiece, m.To(), -malus);
             }
         }
@@ -1074,8 +1035,6 @@ namespace Horsie {
             thisPiece = bb.GetPieceAtIndex(m.From());
             capturedPiece = bb.GetPieceAtIndex(m.To());
 
-            /*history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] += (short)(-malus -
-           (history.CaptureHistory[thisColor][thisPiece][moveTo][capturedPiece] * std::abs(-malus) / HistoryClamp));*/
             history.CaptureHistory[thisColor][thisPiece][m.To()][capturedPiece] << -malus;
         }
 
@@ -1086,14 +1045,16 @@ namespace Horsie {
         rawEval = (short)(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
-        const auto nonPawn = (History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] + History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384]) / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawn * 100) / 300;
+        const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
+        const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
+        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
 
         return (short)(rawEval + corr);
     }
 
 
     void SearchThread::UpdateCorrectionHistory(Position& pos, int diff, int depth) {
+
         const auto scaledWeight = std::min((depth * depth) + 1, 128);
 
         auto& pawnCh = History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384];
@@ -1157,8 +1118,6 @@ namespace Horsie {
 
             list[i].Score = GetSEEValue(m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To()));
             if (m.IsPromotion()) {
-                //  Gives promotions a higher score than captures.
-                //  We can assume a queen promotion is better than most captures.
                 list[i].Score += GetSEEValue(QUEEN) + 1;
             }
         }
@@ -1198,7 +1157,7 @@ namespace Horsie {
                 }
             }
 
-            if (pt == Knight) {
+            if (pt == HORSIE) {
                 list[i].Score += 200;
             }
         }
@@ -1242,7 +1201,7 @@ namespace Horsie {
                 }
             }
 
-            if (pt == Knight) {
+            if (pt == HORSIE) {
                 list[i].Score += 200;
             }
         }

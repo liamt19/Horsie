@@ -58,8 +58,8 @@ namespace Horsie {
 
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
         constexpr bool CastlingImpeded(ulong boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[(int)cr]); }
-        constexpr bool HasCastlingRook(ulong ourOcc, CastlingStatus cr) const { return (bb.Pieces[Rook] & SquareBB(CastlingRookSquares[(int)cr]) & ourOcc); }
-        constexpr bool HasNonPawnMaterial(int pc) const { return (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc])); }
+        constexpr bool HasCastlingRook(ulong ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[(int)cr]) & ourOcc); }
+        constexpr bool HasNonPawnMaterial(int pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
         constexpr bool IsCapture(Move m) const { return ((bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle()) || m.IsEnPassant()); }
 
         void RemoveCastling(CastlingStatus cr) const;

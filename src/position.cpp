@@ -186,7 +186,7 @@ namespace Horsie {
                 int down = -ShiftUpDir(ourColor);
 
                 //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
-                if ((PawnAttackMasks[ourColor][moveTo + down] & bb.Colors[theirColor] & bb.Pieces[Pawn]) != 0) {
+                if ((PawnAttackMasks[ourColor][moveTo + down] & bb.Colors[theirColor] & bb.Pieces[PAWN]) != 0) {
                     State->EPSquare = moveTo + down;
                     Zobrist::EnPassant(State->Hash, GetIndexFile(State->EPSquare));
                 }
@@ -219,6 +219,18 @@ namespace Horsie {
 
         State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
         
+
+        //ulong ph = 0;
+        //ulong nph = 0;
+        //ulong h = Zobrist::GetHash(*this, &ph, &nph);
+        //assert(Hash() == h);
+        //assert(PawnHash() == ph);
+
+        //ulong nphw = NonPawnHash(WHITE);
+        //if (nphw != nph) {
+        //    int z = 0;
+        //}
+
         SetCheckInfo();
     }
 
@@ -326,11 +338,11 @@ namespace Horsie {
             bb.AddPiece(to, ourColor, KING);
             bb.AddPiece(rto, ourColor, ROOK);
 
-            UpdateHash(ourColor, King, from);
-            UpdateHash(ourColor, Rook, rfrom);
+            UpdateHash(ourColor, KING, from);
+            UpdateHash(ourColor, ROOK, rfrom);
 
-            UpdateHash(ourColor, King, to);
-            UpdateHash(ourColor, Rook, rto);
+            UpdateHash(ourColor, KING, to);
+            UpdateHash(ourColor, ROOK, rto);
         }
     }
 
@@ -356,7 +368,7 @@ namespace Horsie {
         State->CheckSquares[BISHOP] = attacks_bb<BISHOP>(kingSq, bb.Occupancy);
         State->CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
         State->CheckSquares[QUEEN] = State->CheckSquares[BISHOP] | State->CheckSquares[ROOK];
-        State->CheckSquares[King] = 0;
+        State->CheckSquares[KING] = 0;
     }
 
     void Position::SetCastlingStatus(int c, int rfrom) {
@@ -420,7 +432,7 @@ namespace Horsie {
             return false;
         }
 
-        if (pt == Pawn)
+        if (pt == PAWN)
         {
             if (move.IsEnPassant())
             {
@@ -566,12 +578,12 @@ namespace Horsie {
     }
 
     bool Position::IsInsufficientMaterial() const {
-        if ((bb.Pieces[Piece::Queen] | bb.Pieces[Piece::Rook] | bb.Pieces[Piece::Pawn]) != 0) {
+        if ((bb.Pieces[Piece::QUEEN] | bb.Pieces[Piece::ROOK] | bb.Pieces[Piece::PAWN]) != 0) {
             return false;
         }
 
-        ulong knights = popcount(bb.Pieces[Piece::Knight]);
-        ulong bishops = popcount(bb.Pieces[Piece::Bishop]);
+        ulong knights = popcount(bb.Pieces[Piece::HORSIE]);
+        ulong bishops = popcount(bb.Pieces[Piece::BISHOP]);
 
         //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
         //  Some organizations classify 2 knights a draw and others don't.
@@ -637,7 +649,7 @@ namespace Horsie {
     void Position::UpdateHash(int pc, int pt, int sq) const {
         Zobrist::ToggleSquare(State->Hash, pc, pt, sq);
         
-        if (pt == Pawn)
+        if (pt == PAWN)
             Zobrist::ToggleSquare(State->PawnHash, pc, pt, sq);
         else
             Zobrist::ToggleSquare(State->NonPawnHash[pc], pc, pt, sq);
@@ -748,7 +760,7 @@ namespace Horsie {
                 for (rsq = ((int)Square::H1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; --rsq) { }
             }
             else if (upper == 'Q') {
-                for (rsq = ((int)Square::A1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; ++rsq) { }
+                for (rsq = ((int)Square::A1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; ++rsq) { }
             }
             else if (upper >= 'A' && upper <= 'H') {
                 IsChess960 = true;

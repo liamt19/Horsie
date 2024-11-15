@@ -5,9 +5,6 @@
 
 #include <cstring>
 
-#define KnightMasks horsie_masks
-#define GetBishopMoves get_bishop_moves
-#define GetRookMoves get_rook_moves
 
 namespace Horsie {
 
@@ -126,12 +123,12 @@ namespace Horsie {
     {
         switch (pt)
         {
-        case Pawn: return PawnAttackMasks[pc][(int)idx];
-        case Knight: return PseudoAttacks[HORSIE][(int)idx];
-        case Bishop: return attacks_bb<BISHOP>(idx, occupied);
-        case Rook: return attacks_bb<ROOK>(idx, occupied);
-        case Queen: return attacks_bb<QUEEN>(idx, occupied);
-        case King: return PseudoAttacks[KING][(int)idx];
+        case PAWN: return PawnAttackMasks[pc][(int)idx];
+        case HORSIE: return PseudoAttacks[HORSIE][(int)idx];
+        case BISHOP: return attacks_bb<BISHOP>(idx, occupied);
+        case ROOK: return attacks_bb<ROOK>(idx, occupied);
+        case QUEEN: return attacks_bb<QUEEN>(idx, occupied);
+        case KING: return PseudoAttacks[KING][(int)idx];
         default:
             return 0;
         };

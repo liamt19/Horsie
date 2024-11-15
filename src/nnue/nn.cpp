@@ -262,8 +262,8 @@ namespace Horsie
 
                     to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare(), theirKing, them);
 
-                    int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
-                    int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
+                    int rookFrom = FeatureIndexSingle(us, ROOK, rookFromSq, theirKing, them);
+                    int rookTo = FeatureIndexSingle(us, ROOK, rookToSq, theirKing, them);
 
                     theirUpdate.PushSubSubAddAdd(from, rookFrom, to, rookTo);
                 }
@@ -294,7 +294,7 @@ namespace Horsie
                 {
                     int idxPawn = moveTo - ShiftUpDir(us);
 
-                    const auto [wCap, bCap] = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
+                    const auto [wCap, bCap] = FeatureIndex(them, PAWN, idxPawn, wKing, bKing);
 
                     wUpdate.PushSub(wCap);
                     bUpdate.PushSub(bCap);

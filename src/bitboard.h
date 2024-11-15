@@ -9,13 +9,6 @@
 #include "nnue/accumulator.h"
 #include "util.h"
 
-#define Pawn PAWN
-#define Knight HORSIE
-#define Bishop BISHOP
-#define Rook ROOK
-#define Queen QUEEN
-#define King KING
-
 namespace Horsie {
 
     class Bitboard
