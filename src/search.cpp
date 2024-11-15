@@ -286,14 +286,13 @@ namespace Horsie {
         if (IsMain && ((++CheckupCount) >= CheckupMax)) {
             CheckupCount = 0;
 
-            //if (thisThread.CheckTime() || SearchPool.GetNodeCount() >= info.MaxNodes)
-            //{
-            //  SearchPool.StopThreads = true;
-            //}
-
             if (CheckTime() || (Nodes >= MaxNodes)) {
                 StopSearching = true;
             }
+        }
+
+        if (Nodes >= MaxNodes) {
+            StopSearching = true;
         }
 
         if (isPV) {
