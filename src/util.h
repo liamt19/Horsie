@@ -5,6 +5,10 @@
 
 #include <cstdint>
 #include <string>
+#include <sstream>
+
+#include <iomanip>
+#include <locale>
 
 #include "types.h"
 #include "enums.h"
@@ -158,6 +162,15 @@ namespace Horsie {
             const double NormalizeEvalFactor = 252;
             return "cp " + std::to_string((int)((score * 100) / NormalizeEvalFactor));
         }
+    }
+
+    template<class T>
+    inline std::string FormatWithCommas(T value)
+    {
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << std::fixed << value;
+        return ss.str();
     }
 
 

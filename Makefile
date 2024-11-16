@@ -5,6 +5,9 @@ ARCH := -march=native
 _THIS := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 _ROOT := $(_THIS)
 
+PGO = off
+
+SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/tt.cpp src/zobrist.cpp src/nnue/nn.cpp
 
 LDFLAGS := 
 
@@ -23,7 +26,7 @@ ifndef EVALFILE
 endif
 
 
-GXX_FLAGS:= -mavx -mavx2 -DUSE_PEXT -DUSE_POPCNT -funroll-loops
+CXXFLAGS:= -mavx -mavx2 -std=c++23 -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -DUSE_PEXT -DUSE_POPCNT -funroll-loops
 
 COMMON_CXXFLAGS := -std=c++23 -DEVALFILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
 
@@ -31,6 +34,8 @@ COMMON_CXXFLAGS := -std=c++23 -DEVALFILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 BUILD_CXXFLAGS := $(COMMON_CXXFLAGS) -O3 -DNDEBUG
 
+CXXFLAGS_NATIVE := -march=native
+CXXFLAGS_AVX2_BMI2 := -march=haswell -mtune=haswell
 
 # Directories
 SRC_DIR := src
@@ -38,35 +43,44 @@ BUILD_DIR := build
 
 
 ifeq ($(OS),Windows_NT) 
-	NNUE_DIR_CMD = cd $(BUILD_DIR) && mkdir nnue && cd ..
+	CXXFLAGS += -fuse-ld=lld
 	RM_FILE_CMD = del
 	RM_FOLDER_CMD = rmdir /s /q
 	LDFLAGS += -Wl,--stack,12194304
+	SUFFIX := .exe
 else
 	NNUE_DIR_CMD = -mkdir $(BUILD_DIR)/nnue
 	RM_FILE_CMD = rm
 	RM_FOLDER_CMD = rm -rf
 endif
 
+#	https://github.com/Ciekce/Stormphrax/blob/main/Makefile
 
-# Source files
-SRCS := $(wildcard $(SRC_DIR)/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/nnue/*.cpp)
-
-OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
+PGO_GENERATE := -fprofile-generate
+PGO_USE := -fprofile-use
+PROFILE_OUT = horsie$(SUFFIX)
 
 
-# Append .exe to the binary name on Windows
-ifeq ($(OS),Windows_NT)
-	CXXFLAGS += -fuse-ld=lld
-    override EXE := $(EXE).exe
+ifneq ($(PGO),on)
+define build
+    $(CXX) $(CXXFLAGS) $(CXXFLAGS_$1) $(LDFLAGS) -o $(EXE)$(if $(NO_EXE_SET),-$2)$(SUFFIX) $(filter-out $(EVALFILE),$^)
+endef
+else
+define build
+    $(CXX) $(CXXFLAGS) $(CXXFLAGS_$1) $(LDFLAGS) -o $(PROFILE_OUT) $(PGO_GENERATE) $(filter-out $(EVALFILE),$^)
+    ./$(PROFILE_OUT) bench
+    $(RM_FILE_CMD) $(PROFILE_OUT)
+    $(CXX) $(CXXFLAGS) $(CXXFLAGS_$1) $(LDFLAGS) -o $(EXE)$(if $(NO_EXE_SET),-$2)$(SUFFIX) $(PGO_USE) $(filter-out $(EVALFILE),$^)
+endef
 endif
 
 
-# Default target
-all: CXXFLAGS += $(BUILD_CXXFLAGS)
-all: clean
-all: $(EXE)
+release: avx2-bmi2
+all: native release
+
+.PHONY: all
+
+.DEFAULT_GOAL := native
 
 ifdef NO_EVALFILE_SET
 $(EVALFILE):
@@ -76,31 +90,12 @@ $(EVALFILE):
 download-net: $(EVALFILE)
 endif
 
-# Rule to build the target binary
-$(EXE): $(EVALFILE) $(OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJS)
+$(EXE): $(EVALFILE) $(SOURCES)
+	$(call build,NATIVE,native)
 
-# Rule to build object files
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+native: $(EXE)
 
-# Create directories if they don't exist
-$(BUILD_DIR):
-	-mkdir $@
+avx2-bmi2: $(EVALFILE) $(SOURCES)
+	$(call build,AVX2_BMI2,avx2-bmi2)
 
-# Debug target
-debug: CXXFLAGS += $(DEBUG_CXXFLAGS)
-debug: $(EXE)
-
-# Clean the build
 clean:
-	-$(RM_FOLDER_CMD) $(BUILD_DIR)
-	-mkdir $(BUILD_DIR)
-	$(NNUE_DIR_CMD)
-	-$(RM_FILE_CMD) $(EXE)
-
-# Phony targets
-.PHONY: all debug clean pgo-generate
-
-# Disable built-in rules and variables
-.SUFFIXES:

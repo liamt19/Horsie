@@ -94,7 +94,7 @@ namespace Horsie {
         while (candidates != 0) {
             int idx = poplsb(candidates);
 
-            temp = BetweenBB[ourKing][(int)idx] & occ;
+            temp = between_bb(ourKing, (int)idx) & occ;
 
             if (temp != 0 && !MoreThanOne(temp)) {
                 //  If there is one and only one piece between the candidate and our king, that piece is a blocker

@@ -40,7 +40,6 @@ namespace Horsie {
         ulong AttackMask(int idx, int pc, int pt, ulong occupied) const;
     };
 
-    //struct Accumulator;
     struct BucketCache {
         Bitboard Boards[2];
         Accumulator accumulator;

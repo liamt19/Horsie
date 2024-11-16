@@ -31,10 +31,6 @@ int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool is
 }
 
 
-#ifdef _MSC_VER
-#pragma optimize("s", off)  //  MSVC doesn't like this one for some reason
-#endif
-
 template <MoveGenType GenType>
 int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
     constexpr bool noisyMoves = GenType == GenNoisy;
@@ -140,10 +136,6 @@ int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size) {
 
     return size;
 }
-
-#ifdef _MSC_VER
-#pragma optimize("s", on)
-#endif
 
 
 int GenNormal(const Position& pos, ScoredMove* list, int pt, ulong targets, int size) {

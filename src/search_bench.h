@@ -70,7 +70,7 @@ namespace Horsie {
             std::cout << totalNodes << " nodes " << nps << " nps" << std::endl;
         }
         else {
-            std::cout << std::endl << "Nodes searched: " << totalNodes << " in " << durSeconds << "." << durMillis << " s(" << nps << " nps)" << std::endl;
+            std::cout << std::endl << "Nodes searched: " << totalNodes << " in " << durSeconds << "." << durMillis << " s (" << FormatWithCommas(nps) << " nps)" << std::endl;
         }
     }
 

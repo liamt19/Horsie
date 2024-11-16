@@ -208,7 +208,7 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
     auto durMillis = duration.count() % 1000;
 
     auto nps = (nodes / ((double)dur / 1000));
-     cout << "\nTotal: " << nodes << " in " << durSeconds << "." << durMillis << "s (" << (ulong)nps << " nps)" << endl << endl;
+     cout << "\nTotal: " << nodes << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((ulong)nps) << " nps)" << endl << endl;
 }
 
 
@@ -216,6 +216,7 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
 void HandleBenchPerftCommand(Position& pos) {
     auto timeStart = std::chrono::high_resolution_clock::now();
 
+    ulong total = 0;
     for (std::string entry : EtherealFENs_D5)
     {
         std::string fen = entry.substr(0, entry.find(";"));
@@ -229,16 +230,21 @@ void HandleBenchPerftCommand(Position& pos) {
             cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << endl;
         }
         else {
-            cout << "[" << fen << "] Passed, Expected: " << nodes << " Got: " << ourNodes << endl;
+            cout << "[" << fen << "] Passed" << endl;
         }
+
+        total += ourNodes;
     }
 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timeStart);
-#if defined(_MSC_VER)
-    cout << "Done in " << duration << endl;
-#else
-    cout << "Done in " << duration.count() << endl;
-#endif
+    auto timeEnd = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart);
+    auto dur = duration.count();
+    auto durSeconds = duration.count() / 1000;
+    auto durMillis = duration.count() % 1000;
+
+    auto nps = (total / ((double)dur / 1000));
+    cout << "\nTotal: " << total << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((ulong)nps) << " nps)" << endl << endl;
+
 }
 
 
