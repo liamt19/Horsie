@@ -12,6 +12,8 @@
 namespace Horsie {
 
     constexpr int HistoryClamp = 16384;
+    constexpr int LowPlyCount = 4;
+    constexpr int LowPlyClamp = 8192;
 
 
     template<typename T, int ClampVal>
@@ -51,6 +53,7 @@ namespace Horsie {
 
     using MainHistoryT = Stats<short, 16384, 2, 64 * 64>;
     using CaptureHistoryT = Stats<short, 16384, 2, 6, 64, 6>;
+    using PlyHistoryT = Stats<short, LowPlyClamp, LowPlyCount, 64 * 64>;
     using PieceToHistory = Stats<int16_t, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
     using CorrectionT = Util::NDArray<short, 2, 16384>;
@@ -60,12 +63,14 @@ namespace Horsie {
         ContinuationHistoryT Continuations[2][2];
         MainHistoryT MainHistory{};
         CaptureHistoryT CaptureHistory{};
+        PlyHistoryT PlyHistory{};
         CorrectionT PawnCorrection{};
         CorrectionT NonPawnCorrection{};
 
         void Clear() {
             MainHistory.fill(0);
             CaptureHistory.fill(0);
+            PlyHistory.fill(0);
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
             std::memset(&NonPawnCorrection, 0, sizeof(NonPawnCorrection));
 

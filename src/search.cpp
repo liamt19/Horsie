@@ -1015,11 +1015,12 @@ namespace Horsie {
             //  Idea from Ethereal:
             //  Don't reward/punish moves resulting from a trivial, low-depth cutoff
             if (quietCount == 0 && depth <= 3)
-            {
                 return;
-            }
 
             history.MainHistory[thisColor][bestMove.GetMoveMask()] << bonus;
+            if (ss->Ply < LowPlyCount)
+                history.PlyHistory[ss->Ply][bestMove.GetMoveMask()] << bonus;
+
             UpdateContinuations(ss, thisColor, thisPiece, moveTo, bonus);
 
 
@@ -1028,6 +1029,9 @@ namespace Horsie {
                 thisPiece = bb.GetPieceAtIndex(m.From());
 
                 history.MainHistory[thisColor][m.GetMoveMask()] << -malus;
+                if (ss->Ply < LowPlyCount)
+                    history.PlyHistory[ss->Ply][m.GetMoveMask()] << -malus;
+
                 UpdateContinuations(ss, thisColor, thisPiece, m.To(), -malus);
             }
         }
@@ -1197,6 +1201,11 @@ namespace Horsie {
                 list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+
+                if (ss->Ply < LowPlyCount)
+                {
+                    list[i].Score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
+                }
 
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
                     list[i].Score += OrderingGivesCheckBonus;
