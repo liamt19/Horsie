@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef NDARRAY_H
+#define NDARRAY_H
+
 #include "../types.h"
 #include <array>
 
@@ -23,3 +26,5 @@ namespace Horsie::Util
 	template <typename T, nuint... Ns>
 	using NDArray = typename ThingsIStoleFromStormphrax::NDArrayImpl<T, Ns...>::Type;
 }
+
+#endif

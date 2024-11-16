@@ -182,22 +182,8 @@ constexpr bool HasPext = false;
 
 namespace Horsie {
 
-#if defined(_MSC_VER)
-#define AlignedFree _aligned_free
-#define AlignedAllocZeroed(a, b) _aligned_malloc(a, b)
 #define MemClear memset
 #define CopyBlock memcpy
-#else
-#if defined(_WIN32)
-#define AlignedFree _mm_free
-#define AlignedAllocZeroed(a, b) _mm_malloc(a, b)
-#else
-#define AlignedFree std::free
-#define AlignedAllocZeroed(a, b) aligned_alloc(b, a)
-#endif
-#define MemClear memset
-#define CopyBlock memcpy
-#endif
 
     constexpr size_t AllocAlignment = 64;
 

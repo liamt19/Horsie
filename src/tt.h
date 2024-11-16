@@ -82,7 +82,7 @@ namespace Horsie {
     };
 
 
-    struct TTCluster {
+    struct alignas(32) TTCluster {
         TTEntry entries[3];
         char _pad[2];
 
@@ -104,13 +104,8 @@ namespace Horsie {
             Age += TT_AGE_INC;
         }
 
-        void Clear() {
-            for (ulong i = 0; i < ClusterCount; i++)
-            {
-                TTEntry* cluster = (TTEntry*)&Clusters[i];
-
-                Clusters[i].Clear();
-            }
+        void Clear() const {
+            std::memset(Clusters, 0, sizeof(TTCluster) * ClusterCount);
         }
 
         TTCluster* GetCluster(ulong hash) const

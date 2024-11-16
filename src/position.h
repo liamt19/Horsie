@@ -3,6 +3,8 @@
 #ifndef POSITION_H
 #define POSITION_H
 
+#include <stdlib.h>
+
 #include "types.h"
 #include "move.h"
 #include "nnue/accumulator.h"

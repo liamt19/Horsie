@@ -40,7 +40,7 @@ namespace Horsie {
         {
             (ss + i)->Clear();
             (ss + i)->Ply = (short)i;
-            (ss + i)->PV = (Move*)AlignedAllocZeroed((MaxPly * sizeof(Move)), AllocAlignment);
+            (ss + i)->PV = AlignedAlloc<Move>(MaxPly);
             (ss + i)->PVLength = 0;
             (ss + i)->ContinuationHistory = &History.Continuations[0][0][0][0];
         }

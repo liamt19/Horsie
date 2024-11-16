@@ -18,6 +18,7 @@
 #include "cuckoo.h"
 #include "search.h"
 #include "nnue/nn.h"
+#include "util/alloc.h"
 
 using namespace Horsie::Cuckoo;
 
@@ -41,13 +42,13 @@ namespace Horsie {
         std::cout << "Creating position " << dbg_ThisPositionNumber << std::endl;
 #endif
 
-        _stateBlock = (StateInfo*)AlignedAllocZeroed((sizeof(StateInfo) * StateStackSize), AllocAlignment);
+        _stateBlock = AlignedAlloc<StateInfo>(StateStackSize);
 
         _SentinelStart = &_stateBlock[0];
         _SentinelEnd = &_stateBlock[StateStackSize - 1];
         State = &_stateBlock[0];
 
-        _accumulatorBlock = (Accumulator*)AlignedAllocZeroed((sizeof(Accumulator) * StateStackSize), AllocAlignment);
+        _accumulatorBlock = AlignedAlloc<Accumulator>(StateStackSize);
         for (int i = 0; i < StateStackSize; i++)
         {
             (_stateBlock + i)->accumulator = _accumulatorBlock + i;

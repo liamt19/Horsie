@@ -1,5 +1,5 @@
 #include "tt.h"
-
+#include "util/alloc.h"
 
 namespace Horsie {
 
@@ -47,9 +47,14 @@ namespace Horsie {
 
     void TranspositionTable::Initialize(int mb)
     {
+        if (Clusters) {
+            AlignedFree(Clusters);
+        }
+
         ulong size = ulong(mb) * 1024 * 1024 / sizeof(TTCluster);
-        Clusters = new TTCluster[size];
         ClusterCount = size;
+        Clusters = AlignedAlloc<TTCluster>(ClusterCount);
+        
         std::memset(Clusters, 0, sizeof(TTCluster) * size);
     }
 

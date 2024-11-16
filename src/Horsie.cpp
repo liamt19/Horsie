@@ -31,6 +31,7 @@ void HandleSetPosition(Position& pos, std::istringstream& is);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleBenchCommand(std::istringstream& is);
+void HandleSetOptionCommand(std::istringstream& is);
 void HandleBenchPerftCommand(Position& pos);
 void HandleMoveCommand(Position& pos, std::istringstream& is);
 void HandleListMovesCommand(Position& pos);
@@ -58,7 +59,7 @@ int main(int argc, char* argv[])
     Precomputed::init();
     Zobrist::init();
     Cuckoo::init();
-    TT.Initialize(TranspositionTable::DefaultTTSize);
+    TT.Initialize(Horsie::Hash);
 
     Position pos = Position(InitialFEN);
 
@@ -110,17 +111,17 @@ int main(int argc, char* argv[])
             HandleMoveCommand(pos, is);
 
         else if (token == "go") {
-            
+
             if (searcher.joinable())
-				searcher.join();
+                searcher.join();
 
             searcher = std::thread(HandleGoCommand, std::ref(pos), std::ref(is));
-            
+
             //  The HandleGoCommand function is going to call ParseGoParameters, 
             //  so wait for it to finish doing that before getline is called again and modifies the input stream
             is_sync_barrier.arrive_and_wait();
         }
-            
+
 
         else if (token == "eval")
             HandleEvalCommand(pos);
@@ -137,7 +138,8 @@ int main(int argc, char* argv[])
         else if (token == "ucinewgame")
             HandleNewGameCommand(pos);
 
-
+        else if (token == "setoption")
+            HandleSetOptionCommand(is);
 
     } while (true);
 
@@ -255,6 +257,23 @@ void HandleBenchCommand(std::istringstream& is) {
         is >> depth;
 
     Horsie::DoBench(depth);
+}
+
+void HandleSetOptionCommand(std::istringstream& is) {
+    std::string name{}, value{};
+    is >> name;
+    is >> name;
+
+    is >> value;
+    is >> value;
+
+    if (name == "hash") {
+        int hashVal = std::stoi(value);
+        if (hashVal >= 1 && hashVal <= TranspositionTable::MaxSize) {
+            Horsie::Hash = hashVal;
+            TT.Initialize(Horsie::Hash);
+        }
+    }
 }
 
 

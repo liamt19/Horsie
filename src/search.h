@@ -12,6 +12,7 @@
 
 #include "move.h"
 #include "history.h"
+#include "util/alloc.h"
 
 #include "search_options.h"
 
