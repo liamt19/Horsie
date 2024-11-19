@@ -416,11 +416,13 @@ namespace Horsie {
         }
 
 
-        if (ttMove == Move::Null()
-            && (cutNode || isPV)
-            && depth >= IIRMinDepth)
-        {
-            depth--;
+        if (ttMove == Move::Null()) {
+            
+            if (cutNode && depth >= IIRMinDepth + 2)
+                depth--;
+
+            if (isPV && depth >= IIRMinDepth)
+                depth--;
         }
 
 
