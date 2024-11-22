@@ -27,20 +27,11 @@ using namespace Horsie::Cuckoo;
 
 namespace Horsie {
 
-#if defined(_DEBUG)
-    static int PositionNumber = 0;
-#endif
-
     Position::Position(const std::string& fen) {
         GamePly = 0;
         FullMoves = 1;
 
         bb = Bitboard();
-
-#if defined(_DEBUG)
-        dbg_ThisPositionNumber = PositionNumber++;
-        std::cout << "Creating position " << dbg_ThisPositionNumber << std::endl;
-#endif
 
         _stateBlock = AlignedAlloc<StateInfo>(StateStackSize);
 
@@ -55,6 +46,8 @@ namespace Horsie {
             *(_stateBlock + i)->accumulator = Accumulator();
         }
 
+        IsChess960 = false;
+
         LoadFromFEN(fen);
 
         NNUE::RefreshAccumulator(*this);
@@ -62,10 +55,6 @@ namespace Horsie {
     }
 
     Position::~Position() {
-
-#if defined(_DEBUG)
-        std::cout << "Destroying position " << dbg_ThisPositionNumber << std::endl;
-#endif
 
         AlignedFree(_accumulatorBlock);
         AlignedFree(_stateBlock);
@@ -723,8 +712,6 @@ namespace Horsie {
         State->PliesFromNull = 0;
 
         GamePly = 0;
-
-        IsChess960 = false;
 
         unsigned char col, row, token;
         size_t idx;

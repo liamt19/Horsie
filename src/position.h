@@ -41,7 +41,6 @@ namespace Horsie {
         ulong CastlingRookPaths[(int) CastlingStatus::All];
 
         bool IsChess960;
-        int dbg_ThisPositionNumber;
 
         constexpr bool InCheck()       const { return popcount(State->Checkers) == 1; }
         constexpr bool InDoubleCheck() const { return popcount(State->Checkers) == 2; }
