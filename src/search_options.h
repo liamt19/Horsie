@@ -56,7 +56,7 @@ namespace Horsie {
     static int OrderingGivesCheckBonus = 9546;
     static int OrderingVictimValueMultiplier = 14;
 
-    static int IIRMinDepth = 4;
+    static int IIRMinDepth = 3;
     static int AspWindow = 12;
 
     static int StatBonusMult = 184;
