@@ -122,6 +122,11 @@ int main(int argc, char* argv[])
             is_sync_barrier.arrive_and_wait();
         }
 
+        else if (token == "wait") {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (searcher.joinable())
+                searcher.join();
+        }
 
         else if (token == "eval")
             HandleEvalCommand(pos);
@@ -267,11 +272,12 @@ void HandleSetOptionCommand(std::istringstream& is) {
     is >> value;
     is >> value;
 
-    if (name == "hash") {
+    if (name == "hash" || name == "Hash") {
         int hashVal = std::stoi(value);
         if (hashVal >= 1 && hashVal <= TranspositionTable::MaxSize) {
             Horsie::Hash = hashVal;
             TT.Initialize(Horsie::Hash);
+            std::cout << "info string set hash to " << Horsie::Hash << std::endl;
         }
     }
 }
@@ -350,7 +356,8 @@ SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
 void HandleGoCommand(Position& pos, std::istringstream& is) {
 
     if (!inUCI) {
-        HandleNewGameCommand(pos);
+        thread.History.Clear();
+        TT.Clear();
     }
 
     thread.IsMain = true;

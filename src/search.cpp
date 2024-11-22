@@ -128,10 +128,6 @@ namespace Horsie {
                     else {
                         RootMove& rm = RootMoves[0];
 
-                        if (StopSearching) {
-                            rm = lastBestRootMove;
-                        }
-
                         bool moveSearched = rm.Score != -ScoreInfinite;
                         int depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
                         int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
