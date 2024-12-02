@@ -122,6 +122,7 @@ namespace Horsie {
         {
         public:
             ulong Nodes;
+            int NMPPly;
             int ThreadIdx;
             int PVIndex;
             int RootDepth;
@@ -202,7 +203,7 @@ namespace Horsie {
 
             void Reset() {
                 Nodes = 0;
-                PVIndex = RootDepth = SelDepth = CompletedDepth = CheckupCount = 0;
+                PVIndex = RootDepth = SelDepth = CompletedDepth = CheckupCount = NMPPly = 0;
                 SoftTimeLimit = 0;
                 HasSoftTime = StopSearching = false;
             }
