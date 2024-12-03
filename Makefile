@@ -11,6 +11,7 @@ SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/po
 
 LDFLAGS := 
 
+COMPILER_VERSION := $(shell $(CXX) --version)
 
 EXE := horsie
 
@@ -26,7 +27,7 @@ ifndef EVALFILE
 endif
 
 
-CXXFLAGS:= -mavx -mavx2 -std=c++23 -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -DUSE_PEXT -DUSE_POPCNT -funroll-loops
+CXXFLAGS:= -mavx -mavx2 -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -DUSE_PEXT -DUSE_POPCNT -funroll-loops
 
 COMMON_CXXFLAGS := -std=c++23 -DEVALFILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
 
@@ -41,12 +42,17 @@ CXXFLAGS_AVX2_BMI2 := -march=haswell -mtune=haswell
 SRC_DIR := src
 BUILD_DIR := build
 
+ifeq ($(CXX),clang++)
+	STACK_SIZE := -Wl,/STACK:12582912
+else
+	STACK_SIZE := -Wl,--stack,12194304
+endif
 
 ifeq ($(OS),Windows_NT) 
 	CXXFLAGS += -fuse-ld=lld
 	RM_FILE_CMD = del
 	RM_FOLDER_CMD = rmdir /s /q
-	LDFLAGS += -Wl,--stack,12194304
+	LDFLAGS += $(STACK_SIZE)
 	SUFFIX := .exe
 else
 	NNUE_DIR_CMD = -mkdir $(BUILD_DIR)/nnue
@@ -56,8 +62,18 @@ endif
 
 #	https://github.com/Ciekce/Stormphrax/blob/main/Makefile
 
+ifneq (, $(findstring clang,$(COMPILER_VERSION)))
+PGO_GENERATE := -fprofile-instr-generate
+PGO_MERGE := llvm-profdata merge -output=horsie_p.profdata *.profraw
+PGO_USE := -fprofile-instr-use=horsie_p.profdata
+PGO_CLEAN := $(RM_FILE_CMD) *.profraw horsie_p.profdata
+else
 PGO_GENERATE := -fprofile-generate
+PGO_MERGE := 
 PGO_USE := -fprofile-use
+PGO_CLEAN := $(RM_FILE_CMD) *.gcda
+endif
+
 PROFILE_OUT = horsie$(SUFFIX)
 
 
@@ -68,9 +84,11 @@ endef
 else
 define build
     $(CXX) $(CXXFLAGS) $(CXXFLAGS_$1) $(LDFLAGS) -o $(PROFILE_OUT) $(PGO_GENERATE) $(filter-out $(EVALFILE),$^)
-    ./$(PROFILE_OUT) bench
+    ./$(PROFILE_OUT) bench 13
     $(RM_FILE_CMD) $(PROFILE_OUT)
+	$(PGO_MERGE)
     $(CXX) $(CXXFLAGS) $(CXXFLAGS_$1) $(LDFLAGS) -o $(EXE)$(if $(NO_EXE_SET),-$2)$(SUFFIX) $(PGO_USE) $(filter-out $(EVALFILE),$^)
+	$(PGO_CLEAN)
 endef
 endif
 
