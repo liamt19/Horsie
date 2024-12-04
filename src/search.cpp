@@ -390,10 +390,11 @@ namespace Horsie {
 
         if (UseNMP
             && !isPV
+            && !doSkip
             && depth >= NMPMinDepth
+            && ss->Ply >= NMPPly
             && eval >= beta
             && eval >= ss->StaticEval
-            && !doSkip
             && (ss - 1)->CurrentMove != Move::Null()
             && pos.HasNonPawnMaterial(us)) 
         {
@@ -407,7 +408,20 @@ namespace Horsie {
             pos.UnmakeNullMove();
 
             if (score >= beta) {
-                return score < ScoreTTWin ? score : beta;
+
+                if (NMPPly > 0 || depth <= 15)
+                {
+                    return score > ScoreWin ? beta : score;
+                }
+
+                NMPPly = (3 * (depth - reduction) / 4) + ss->Ply;
+                int verification = Negamax<NonPVNode>(pos, ss, beta - 1, beta, depth - reduction, false);
+                NMPPly = 0;
+
+                if (verification >= beta)
+                {
+                    return score;
+                }
             }
         }
 
