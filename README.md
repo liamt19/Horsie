@@ -2,17 +2,18 @@
 Horsie - A C++ chess engine
 </h1>
 
-A (WIP) port of [Lizard](https://github.com/liamt19/Lizard/) from C# to C++. As of Nov. 15th, its search is (almost) functionally the same as [this commit](https://github.com/liamt19/Lizard/commit/3188b6eca26bc18d478d22d2d63931572d94e142).
+A (WIP) port of [Lizard](https://github.com/liamt19/Lizard/) from C# to C++. As of December 4th, its search is functionally identical to [this commit](https://github.com/liamt19/Lizard/commit/5cfcc4f7fb0540bda504460a0225a85a44bc2c74).
 
 ---
 
-[This test](http://somelizard.pythonanywhere.com/test/1985/) shows that of 5,108 pairs (both sides of a random opening), 5,105 were draws as expected. It also won 4 games, hence the "almost" functionally identical.
+[This test](http://somelizard.pythonanywhere.com/test/2016/) shows that of 5,155 pairs (both sides of a random opening), all were draws as expected.
 ```
-Elo   | 0.14 +- 0.16 (95%)
-Conf  | N=5000 Threads=1 Hash=32MB
-Games | N: 10216 W: 4189 L: 4185 D: 1842
-Penta | [0, 0, 5105, 2, 1]
+Elo   | -0.00 +- 0.00 (95%)
+Conf  | N=5000 Threads=1 Hash=16MB
+Games | N: 10310 W: 4342 L: 4342 D: 1626
+Penta | [0, 0, 5155, 0, 0]
 ```
+
 
 ---
 
