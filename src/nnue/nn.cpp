@@ -1,7 +1,6 @@
 
 #include "../nnue/nn.h"
 
-#include <span>
 #include "immintrin.h"
 
 #include <fstream>
@@ -77,7 +76,7 @@ namespace Horsie
             for (size_t i = 0; i < L1_SIZE; i++)
                 net.FTBiases[i] = UQNet->FTBiases[i];
 
-            PermuteFT(net.FTWeights, net.FTBiases);
+            PermuteFT(Span<short>(net.FTWeights), Span<short>(net.FTBiases));
             PermuteL1(tempL1);
 
             for (int bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
@@ -248,16 +247,14 @@ namespace Horsie
         }
 
 
-        int GetEvaluation(Position& pos)
-        {
+        int GetEvaluation(Position& pos) {
             int occ = (int)popcount(pos.bb.Occupancy);
             int outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
             return GetEvaluation(pos, outputBucket);
         }
 
-        int GetEvaluation(Position& pos, int outputBucket)
-        {
+        int GetEvaluation(Position& pos, int outputBucket) {
             Bitboard& bb = pos.bb;
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
@@ -266,20 +263,19 @@ namespace Horsie
             float L2Outputs[L3_SIZE];
             float L3Output = 0;
 
-            auto us = reinterpret_cast<short*>(&accumulator.Sides[pos.ToMove]);
-            auto them = reinterpret_cast<short*>(&accumulator.Sides[Not(pos.ToMove)]);
+            auto us = Span<short>(accumulator.Sides[pos.ToMove]);
+            auto them = Span<short>(accumulator.Sides[Not(pos.ToMove)]);
 
-            ActivateFTSparse(us, them, reinterpret_cast<sbyte*>(&net.L1Weights[outputBucket]), reinterpret_cast<float*>(&net.L1Biases[outputBucket]), L1Outputs);
-            ActivateL2(L1Outputs, reinterpret_cast<float*>(&net.L2Weights[outputBucket]), reinterpret_cast<float*>(&net.L2Biases[outputBucket]), L2Outputs);
-            ActivateL3(L2Outputs, reinterpret_cast<float*>(&net.L3Weights[outputBucket]), net.L3Biases[outputBucket], L3Output);
+            ActivateFTSparse(us, them, Span<sbyte>(net.L1Weights[outputBucket]), Span<float>(net.L1Biases[outputBucket]), L1Outputs);
+            ActivateL2(L1Outputs, Span<float>(net.L2Weights[outputBucket]), Span<float>(net.L2Biases[outputBucket]), L2Outputs);
+            ActivateL3(L2Outputs, Span<float>(net.L3Weights[outputBucket]), net.L3Biases[outputBucket], L3Output);
 
             return (int)(L3Output * OutputScale);
         }
 
 
 
-        static void ActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output)
-        {
+        static void ActivateFTSparse(Span<short> us, Span<short> them, Span<sbyte> weights, Span<float> biases, Span<float> output) {
             const auto ft_zero = _mm256_setzero_si256();
             const auto ft_one = _mm256_set1_epi16(FT_QUANT);
 
@@ -292,12 +288,9 @@ namespace Horsie
             const vec_128i baseInc = _mm_set1_epi16((ushort)8);
             vec_128i baseVec = _mm_setzero_si128();
 
-            for (int perspective = 0; perspective < 2; perspective++)
-            {
-                short* acc = perspective == 0 ? us : them;
-
-                for (int i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2))
-                {
+            
+            for (const auto acc : { us, them }) {
+                for (int i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
                     const auto input0a = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
                     const auto input0b = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
 
@@ -318,8 +311,7 @@ namespace Horsie
 
                     const auto nnz_mask = vec_nnz_mask(product_one);
 
-                    for (int j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++)
-                    {
+                    for (int j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++) {
                         int lookup = (nnz_mask >> (j * 8)) & 0xFF;
                         auto offsets = nnzTable.Entries[lookup];
                         _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
@@ -347,28 +339,23 @@ namespace Horsie
         }
 
 
-        static void ActivateL1Sparse(sbyte* inputs, sbyte* weights, float* biases, float* output, ushort* nnzIndices, int nnzCount)
-        {
+        static void ActivateL1Sparse(Span<sbyte> inputs, Span<sbyte> weights, Span<float> biases, Span<float> output, Span<ushort> nnzIndices, const int nnzCount) {
             vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
 
-            const int* inputs32 = (int*)(inputs);
-            for (int i = 0; i < nnzCount; i++)
-            {
+            const auto inputs32 = (int*)(inputs.data());
+            for (int i = 0; i < nnzCount; i++) {
                 const auto index = nnzIndices[i];
                 const auto input32 = _mm256_set1_epi32(inputs32[index]);
                 const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
                 for (int k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
-                {
                     sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
-                }
             }
 
             const auto zero = _mm256_set1_ps(0.0f);
             const auto one = _mm256_set1_ps(1.0f);
 
             const auto sumMul = _mm256_set1_ps((1 << FT_SHIFT) / (float)(FT_QUANT * FT_QUANT * L1_QUANT));
-            for (int i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i)
-            {
+            for (int i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
                 const auto biasVec = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
                 const auto sumPs = _mm256_fmadd_ps(_mm256_cvtepi32_ps(sums[i]), sumMul, biasVec);
                 const auto clipped = _mm256_min_ps(_mm256_max_ps(sumPs, zero), one);
@@ -378,27 +365,22 @@ namespace Horsie
         }
 
 
-        static void ActivateL2(float* inputs, float* weights, float* biases, float* output)
-        {
+        static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output) {
             vec_ps32 sumVecs[L3_SIZE / F32_CHUNK_SIZE];
 
             for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
                 sumVecs[i] = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
 
-            for (int i = 0; i < L2_SIZE; ++i)
-            {
+            for (int i = 0; i < L2_SIZE; ++i) {
                 const auto inputVec = _mm256_set1_ps(inputs[i]);
                 const auto weight = reinterpret_cast<const vec_ps32*>(&weights[i * L3_SIZE]);
                 for (int j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
-                {
                     sumVecs[j] = vec_mul_add_ps(inputVec, weight[j], sumVecs[j]);
-                }
             }
 
             const auto zero = _mm256_set1_ps(0.0f);
             const auto one = _mm256_set1_ps(1.0f);
-            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
-            {
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
                 const auto clipped = _mm256_min_ps(_mm256_max_ps(sumVecs[i], zero), one);
                 const auto squared = _mm256_mul_ps(clipped, clipped);
                 _mm256_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
@@ -406,12 +388,10 @@ namespace Horsie
         }
 
 
-        static void ActivateL3(float* inputs, float* weights, float bias, float& output)
-        {
+        static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output) {
             auto sumVec = _mm256_set1_ps(0.0f);
 
-            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++)
-            {
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
                 const auto weightVec = _mm256_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
                 const auto inputsVec = _mm256_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
                 sumVec = vec_mul_add_ps(inputsVec, weightVec, sumVec);
@@ -659,14 +639,14 @@ namespace Horsie
         }
 
 
-        static void PermuteFT(std::array<short, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS>& ftWeights, std::array<short, L1_SIZE>& ftBiases)
+        static void PermuteFT(Span<short> ftWeights, Span<short> ftBiases)
         {
             const int OneBucket = (INPUT_SIZE * L1_SIZE);
             std::vector<short> temp(OneBucket, 0);
 
             for (int bucket = 0; bucket < INPUT_BUCKETS; bucket++)
             {
-                std::span<short> ftBucket = std::span<short>(&ftWeights[(bucket * OneBucket)], OneBucket);
+                Span<short> ftBucket = Span<short>(&ftWeights[(bucket * OneBucket)], OneBucket);
 
                 for (size_t i = 0; i < OneBucket; i++)
                     temp[i] = ftBucket[i];

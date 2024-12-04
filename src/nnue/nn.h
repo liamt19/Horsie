@@ -10,9 +10,11 @@
 #include "../nnue/arch.h"
 
 #include <array>
+#include <span>
 #include <immintrin.h>
 
-
+template<typename T>
+using Span = std::span<T>;
 
 namespace Horsie
 {
@@ -61,7 +63,7 @@ namespace Horsie
 
         void LoadNetwork(const std::string& name);
         static void SetupNNZ();
-        static void PermuteFT(std::array<short, INPUT_SIZE* L1_SIZE* INPUT_BUCKETS>& ftWeights, std::array<short, L1_SIZE>& ftBiases);
+        static void PermuteFT(Span<short> ftWeights, Span<short> ftBiases);
         static void PermuteL1(sbyte l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]);
 
 
@@ -78,10 +80,10 @@ namespace Horsie
 
         int GetEvaluation(Position& pos, int outputBucket);
         int GetEvaluation(Position& pos);
-        static void ActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output);
-        static void ActivateL1Sparse(sbyte* inputs, sbyte* weights, float* biases, float* output, ushort* nnzIndices, int nnzCount);
-        static void ActivateL2(float* inputs, float* weights, float* biases, float* output);
-        static void ActivateL3(float* inputs, float* weights, float bias, float& output);
+        static void ActivateFTSparse(Span<short> us, Span<short> them, Span<sbyte> weights, Span<float> biases, Span<float> output);
+        static void ActivateL1Sparse(Span<sbyte> inputs, Span<sbyte> weights, Span<float> biases, Span<float> output, Span<ushort> nnzIndices, const int nnzCount);
+        static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output);
+        static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output);
 
 
         std::pair<int, int> FeatureIndex(int pc, int pt, int sq, int wk, int bk);
