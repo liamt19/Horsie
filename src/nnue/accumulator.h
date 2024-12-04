@@ -16,7 +16,7 @@ namespace Horsie {
     struct alignas(64) Accumulator {
     public:
         std::array<std::array<short, L1_SIZE>, 2> Sides{};
-        std::array<bool, 2> NeedsRefresh = {true, true};
+        std::array<bool, 2> NeedsRefresh = { true, true };
         std::array<bool, 2> Computed = { false, false };
         NetworkUpdate Update{};
 

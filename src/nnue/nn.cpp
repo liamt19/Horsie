@@ -1,6 +1,4 @@
 
-
-
 #include "../nnue/nn.h"
 
 #include <span>
@@ -27,8 +25,6 @@ namespace Horsie
         NNZTable nnzTable;
         Network net;
         const Network* g_network;
-
-        int PermuteIndices[L1_SIZE / 2] = {};
 
         void LoadNetwork(const std::string& path) {
             SetupNNZ();
@@ -67,8 +63,12 @@ namespace Horsie
             ptr = reinterpret_cast<float*>(UQNet->L3Biases);
             for (size_t i = 0; i < OUTPUT_BUCKETS; i++)
                 ptr[i] = read_little_endian<float>(stream);
+
+            auto& tempL1 = UQNet->L1Weights;
 #else
             const QuantisedNetwork* UQNet = reinterpret_cast<const QuantisedNetwork*>(gEVALData);
+            auto tempL1 = new sbyte[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
+            std::memcpy(tempL1, UQNet->L1Weights, L1_SIZE * OUTPUT_BUCKETS * L2_SIZE);
 #endif
 
             for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
@@ -77,10 +77,8 @@ namespace Horsie
             for (size_t i = 0; i < L1_SIZE; i++)
                 net.FTBiases[i] = UQNet->FTBiases[i];
 
-#if defined(PERMUTE_FT)
             PermuteFT(net.FTWeights, net.FTBiases);
-            PermuteL1(UQNet->L1Weights);
-#endif
+            PermuteL1(tempL1);
 
             for (int bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
             {
@@ -89,7 +87,7 @@ namespace Horsie
                         for (int k = 0; k < L1_CHUNK_PER_32; ++k)
                             net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
                                                 + j * L1_CHUNK_PER_32
-                                                + k] = UQNet->L1Weights[i * L1_CHUNK_PER_32 + k][bucket][j];
+                                                + k] = tempL1[i * L1_CHUNK_PER_32 + k][bucket][j];
 
                 for (int i = 0; i < L2_SIZE; ++i)
                     net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
@@ -132,11 +130,8 @@ namespace Horsie
                     bs[i + j] = regi[order[j]];
             }
 
-#if !defined(PERMUTE_FT)
-            for (int i = 0; i < L1_PAIR_COUNT; i++)
-            {
-                PermuteIndices[i] = i;
-            }
+#if !defined(_MSC_VER)
+            delete[] tempL1;
 #endif
 
             g_network = &net;
@@ -157,11 +152,6 @@ namespace Horsie
                     ptr[k++] = (ushort)lsbIndex;
                 }
             }
-        }
-
-
-        static constexpr int BucketForPerspective(int ksq, int perspective) {
-            return (KingBuckets[(ksq ^ (56 * perspective))]);
         }
 
 
@@ -299,8 +289,8 @@ namespace Horsie
             sbyte ft_outputs[L1_SIZE];
             ushort nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
 
-            const __m128i baseInc = _mm_set1_epi16((ushort)8);
-            __m128i baseVec = _mm_setzero_si128();
+            const vec_128i baseInc = _mm_set1_epi16((ushort)8);
+            vec_128i baseVec = _mm_setzero_si128();
 
             for (int perspective = 0; perspective < 2; perspective++)
             {
@@ -308,11 +298,11 @@ namespace Horsie
 
                 for (int i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2))
                 {
-                    const auto input0a = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
-                    const auto input0b = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
+                    const auto input0a = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
+                    const auto input0b = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
 
-                    const auto input1a = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
-                    const auto input1b = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                    const auto input1a = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                    const auto input1b = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
 
                     const auto clipped0a = _mm256_min_epi16(_mm256_max_epi16(input0a, ft_zero), ft_one);
                     const auto clipped0b = _mm256_min_epi16(_mm256_max_epi16(input0b, ft_zero), ft_one);
@@ -324,7 +314,7 @@ namespace Horsie
                     const auto productb = _mm256_mulhi_epi16(_mm256_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
 
                     const auto product_one = _mm256_packus_epi16(producta, productb);
-                    _mm256_storeu_si256(reinterpret_cast<__m256i*>(&ft_outputs[offset + i]), product_one);
+                    _mm256_storeu_si256(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), product_one);
 
                     const auto nnz_mask = vec_nnz_mask(product_one);
 
@@ -332,7 +322,7 @@ namespace Horsie
                     {
                         int lookup = (nnz_mask >> (j * 8)) & 0xFF;
                         auto offsets = nnzTable.Entries[lookup];
-                        _mm_storeu_si128(reinterpret_cast<v128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
+                        _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
 
                         nnzCount += std::popcount((uint)lookup);
                         baseVec = _mm_add_epi16(baseVec, baseInc);
@@ -343,7 +333,7 @@ namespace Horsie
                 offset += L1_PAIR_COUNT;
             }
 
-#if PERM_COUNT
+#if defined(PERM_COUNT)
             EvalCalls++;
             ActivationCount += (ulong)nnzCount;
             lock(NNZCounts)
@@ -359,7 +349,7 @@ namespace Horsie
 
         static void ActivateL1Sparse(sbyte* inputs, sbyte* weights, float* biases, float* output, ushort* nnzIndices, int nnzCount)
         {
-            __m256i sums[L2_SIZE / I32_CHUNK_SIZE]{};
+            vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
 
             const int* inputs32 = (int*)(inputs);
             for (int i = 0; i < nnzCount; i++)
@@ -390,7 +380,7 @@ namespace Horsie
 
         static void ActivateL2(float* inputs, float* weights, float* biases, float* output)
         {
-            __m256 sumVecs[L3_SIZE / F32_CHUNK_SIZE];
+            vec_ps32 sumVecs[L3_SIZE / F32_CHUNK_SIZE];
 
             for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
                 sumVecs[i] = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
@@ -429,11 +419,6 @@ namespace Horsie
 
             output = bias + scuffed_chatgpt_hsum(sumVec);
         }
-
-
-
-
-
 
 
         void MakeMoveNN(Position& pos, Move m) {
@@ -701,16 +686,14 @@ namespace Horsie
 
             std::vector<short> temp2(L1_SIZE, 0);
             for (int i = 0; i < L1_SIZE; i++)
-            {
                 temp2[i] = ftBiases[i];
-            }
 
             for (int dst = 0; dst < L1_PAIR_COUNT; dst++)
             {
                 int src = PermuteIndices[dst];
 
-                ftBiases[dst] = temp[src];
-                ftBiases[dst + L1_PAIR_COUNT] = temp[src + L1_PAIR_COUNT];
+                ftBiases[dst] = temp2[src];
+                ftBiases[dst + L1_PAIR_COUNT] = temp2[src + L1_PAIR_COUNT];
             }
         }
 
@@ -735,53 +718,6 @@ namespace Horsie
             }
 
             delete[] temp;
-        }
-
-
-        //  https://stackoverflow.com/questions/63106143/simd-c-avx2-intrinsics-getting-sum-of-m256i-vector-with-16bit-integers
-        static int32_t hsum_8x32(__m256i v) {
-            // silly GCC uses a longer AXV512VL instruction if AVX512 is enabled :/
-            __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
-
-            __m128i hi64 = _mm_unpackhi_epi64(sum128, sum128);                  // 3-operand non-destructive AVX lets us save a byte without needing a movdqa
-            __m128i sum64 = _mm_add_epi32(hi64, sum128);
-            __m128i hi32 = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
-            __m128i sum32 = _mm_add_epi32(sum64, hi32);
-            return _mm_cvtsi128_si32(sum32);       // movd
-        }
-
-
-        inline float vec_reduce_add_ps(const __m256* vecs) {
-            const __m256 vec = _mm256_add_ps(vecs[0], vecs[1]);
-
-            const __m128 upper_128 = _mm256_extractf128_ps(vec, 1);
-            const __m128 lower_128 = _mm256_castps256_ps128(vec);
-            const __m128 sum_128 = _mm_add_ps(lower_128, upper_128);
-
-            const __m128 upper_64 = _mm_movehl_ps(sum_128, sum_128);
-            const __m128 sum_64 = _mm_add_ps(sum_128, upper_64);
-
-            const __m128 upper_32 = _mm_shuffle_ps(sum_64, sum_64, 1);
-            const __m128 sum_32 = _mm_add_ss(sum_64, upper_32);
-
-            return _mm_cvtss_f32(sum_32);
-        }
-
-
-        inline float scuffed_chatgpt_hsum(const vec_ps32 v) {
-            // Extract the high and low halves
-            __m128 low = _mm256_castps256_ps128(v);          // Lower 128 bits
-            __m128 high = _mm256_extractf128_ps(v, 1);       // Upper 128 bits
-
-            // Add the two halves
-            __m128 sum128 = _mm_add_ps(low, high);
-
-            // Perform the horizontal add
-            sum128 = _mm_hadd_ps(sum128, sum128);
-            sum128 = _mm_hadd_ps(sum128, sum128);
-
-            // Extract the result
-            return _mm_cvtss_f32(sum128);
         }
 
 
