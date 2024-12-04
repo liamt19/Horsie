@@ -5,14 +5,14 @@ namespace Horsie {
 
     TranspositionTable TT;
 
-    bool TranspositionTable::Probe(ulong hash, TTEntry*& tte) const
+    bool TranspositionTable::Probe(u64 hash, TTEntry*& tte) const
     {
         TTCluster* const cluster = GetCluster(hash);
         tte = (TTEntry*)cluster;
 
-        auto key = (ushort)hash;
+        auto key = (u16)hash;
 
-        for (int i = 0; i < EntriesPerCluster; i++)
+        for (i32 i = 0; i < EntriesPerCluster; i++)
         {
             //  If the entry's key matches, or the entry is empty, then pick this one.
             if (tte[i].Key == key || tte[i].IsEmpty())
@@ -30,7 +30,7 @@ namespace Horsie {
 
         //  Replace the first entry, unless the 2nd or 3rd is a better option.
         TTEntry* replace = tte;
-        for (int i = 1; i < EntriesPerCluster; i++)
+        for (i32 i = 1; i < EntriesPerCluster; i++)
         {
             if ((replace->RawDepth() - replace->RelAge(Age)) >
                 (  tte[i].RawDepth() -   tte[i].RelAge(Age)))
@@ -45,22 +45,22 @@ namespace Horsie {
 
 
 
-    void TranspositionTable::Initialize(int mb)
+    void TranspositionTable::Initialize(i32 mb)
     {
         if (Clusters) {
             AlignedFree(Clusters);
         }
 
-        ulong size = ulong(mb) * 1024 * 1024 / sizeof(TTCluster);
+        u64 size = u64(mb) * 1024 * 1024 / sizeof(TTCluster);
         ClusterCount = size;
         Clusters = AlignedAlloc<TTCluster>(ClusterCount);
         
         std::memset(Clusters, 0, sizeof(TTCluster) * size);
     }
 
-    void TTEntry::Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV) {
+    void TTEntry::Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, bool isPV) {
 
-        ushort k = (ushort)key;
+        u16 k = (u16)key;
 
         if (move != Move::Null() || k != Key)
         {
@@ -74,8 +74,8 @@ namespace Horsie {
             Key = k;
             SetScore(score);
             SetStatEval(statEval);
-            _depth = (byte)(depth - DepthOffset);
-            _AgePVType = (byte)(TT.Age | ((isPV ? 1 : 0) << 2) | (uint)nodeType);
+            _depth = (u8)(depth - DepthOffset);
+            _AgePVType = (u8)(TT.Age | ((isPV ? 1 : 0) << 2) | (u32)nodeType);
         }
     }
 

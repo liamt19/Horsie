@@ -21,8 +21,8 @@ namespace Horsie {
 
 
 template<MoveGenType>
-int Generate(const Position& pos, ScoredMove* moveList, int size);
-int GenerateQS(const Position& pos, ScoredMove* moveList, int size);
+i32 Generate(const Position& pos, ScoredMove* moveList, i32 size);
+i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size);
 
 }
 
@@ -72,22 +72,22 @@ namespace Horsie {
 
 #ifndef MOVEGEN_H_TEMPLATES
 template <MoveGenType>
-int GenPawns(const Position& pos, ScoredMove* list, ulong targets, int size);
+i32 GenPawns(const Position& pos, ScoredMove* list, u64 targets, i32 size);
 
 template <MoveGenType>
-int GenAll(const Position& pos, ScoredMove* list, int size);
+i32 GenAll(const Position& pos, ScoredMove* list, i32 size);
 
-int GenNormal(const Position& pos, ScoredMove* list, int pt, bool checks, ulong targets, int size);
+i32 GenNormal(const Position& pos, ScoredMove* list, i32 pt, bool checks, u64 targets, i32 size);
 
 template <MoveGenType>
-int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size);
+i32 MakePromotionChecks(ScoredMove* list, i32 from, i32 promotionSquare, bool isCapture, i32 size);
 
-int GenCastlingMoves(const Position& pos, ScoredMove* list, int size);
+i32 GenCastlingMoves(const Position& pos, ScoredMove* list, i32 size);
 
 #endif
 
 template<MoveGenType>
-int GenAllPseudoLegalMoves(const Position& pos, ScoredMove* moveList);
+i32 GenAllPseudoLegalMoves(const Position& pos, ScoredMove* moveList);
 
 
 

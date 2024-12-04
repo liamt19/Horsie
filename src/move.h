@@ -11,14 +11,14 @@
 #include <sstream>   
 
 
-constexpr int FlagEnPassant = 0b0001 << 12;
-constexpr int FlagCastle    = 0b0010 << 12;
-constexpr int FlagPromotion = 0b0011 << 12;
-constexpr int SpecialFlagsMask  = 0b0011 << 12;
-constexpr int FlagPromoKnight   = 0b00 << 14 | FlagPromotion;
-constexpr int FlagPromoBishop   = 0b01 << 14 | FlagPromotion;
-constexpr int FlagPromoRook     = 0b10 << 14 | FlagPromotion;
-constexpr int FlagPromoQueen    = 0b11 << 14 | FlagPromotion;
+constexpr i32 FlagEnPassant = 0b0001 << 12;
+constexpr i32 FlagCastle    = 0b0010 << 12;
+constexpr i32 FlagPromotion = 0b0011 << 12;
+constexpr i32 SpecialFlagsMask  = 0b0011 << 12;
+constexpr i32 FlagPromoKnight   = 0b00 << 14 | FlagPromotion;
+constexpr i32 FlagPromoBishop   = 0b01 << 14 | FlagPromotion;
+constexpr i32 FlagPromoRook     = 0b10 << 14 | FlagPromotion;
+constexpr i32 FlagPromoQueen    = 0b11 << 14 | FlagPromotion;
 
 namespace Horsie {
 
@@ -28,14 +28,14 @@ namespace Horsie {
     class Move {
     public:
         Move() = default;
-        constexpr explicit Move(ushort d) : data(d) {}
-        constexpr Move(int from, int to, int flags = 0) : data((ushort)(to | (from << 6) | flags)) {}
+        constexpr explicit Move(u16 d) : data(d) {}
+        constexpr Move(i32 from, i32 to, i32 flags = 0) : data((u16)(to | (from << 6) | flags)) {}
 
-        constexpr int To() const { return int(data & 0x3F); }
-        constexpr int From() const { return int((data >> 6) & 0x3F); }
+        constexpr i32 To() const { return i32(data & 0x3F); }
+        constexpr i32 From() const { return i32((data >> 6) & 0x3F); }
 
-        constexpr int Data() const { return data; }
-        constexpr int GetMoveMask() const { return data & 0xFFF; }
+        constexpr i32 Data() const { return data; }
+        constexpr i32 GetMoveMask() const { return data & 0xFFF; }
 
         constexpr bool IsEnPassant() const { return ((data & SpecialFlagsMask) == FlagEnPassant); }
         constexpr bool IsCastle() const {    return ((data & SpecialFlagsMask) == FlagCastle); }
@@ -50,24 +50,24 @@ namespace Horsie {
         constexpr bool operator!=(const Move& m) const { return data != m.data; }
         constexpr explicit operator bool() const { return data != 0; }
 
-        constexpr int CastlingKingSquare() const {
-            if (From() < (int)Square::A2) {
-                return (To() > From()) ? (int)Square::G1 : (int)Square::C1;
+        constexpr i32 CastlingKingSquare() const {
+            if (From() < (i32)Square::A2) {
+                return (To() > From()) ? (i32)Square::G1 : (i32)Square::C1;
             }
 
-            return (To() > From()) ? (int)Square::G8 : (int)Square::C8;
+            return (To() > From()) ? (i32)Square::G8 : (i32)Square::C8;
         }
 
-        constexpr int CastlingRookSquare() const {
-            if (From() < (int)Square::A2) {
-                return (To() > From()) ? (int)Square::F1 : (int)Square::D1;
+        constexpr i32 CastlingRookSquare() const {
+            if (From() < (i32)Square::A2) {
+                return (To() > From()) ? (i32)Square::F1 : (i32)Square::D1;
             }
 
-            return (To() > From()) ? (int)Square::F8 : (int)Square::D8;
+            return (To() > From()) ? (i32)Square::F8 : (i32)Square::D8;
         }
 
         constexpr CastlingStatus RelevantCastlingRight() const {
-            if (From() < (int)Square::A2) {
+            if (From() < (i32)Square::A2) {
                 return (To() > From()) ? CastlingStatus::WK : CastlingStatus::WQ;
             }
 
@@ -75,14 +75,14 @@ namespace Horsie {
         }
 
         constexpr std::string SmithNotation(bool is960) const {
-            //int fx = From() % 8;
-            //int fy = From() / 8;
-            //int tx = To() % 8;
-            //int ty = To() / 8;
+            //i32 fx = From() % 8;
+            //i32 fy = From() / 8;
+            //i32 tx = To() % 8;
+            //i32 ty = To() / 8;
 
-            int fx, fy, tx, ty = 0;
-            IndexToCoord((int) From(), fx, fy);
-            IndexToCoord((int) To(), tx, ty);
+            i32 fx, fy, tx, ty = 0;
+            IndexToCoord((i32) From(), fx, fy);
+            IndexToCoord((i32) To(), tx, ty);
 
 
             if (IsCastle() && !is960)
@@ -112,20 +112,20 @@ namespace Horsie {
         }
 
     private:
-        ushort data;
+        u16 data;
     };
 
 
     struct ScoredMove {
         Move move;
-        int Score;
+        i32 Score;
     };
 
 
 
-    inline std::string MoveListToString(const ScoredMove* moves, int size) {
+    inline std::string MoveListToString(const ScoredMove* moves, i32 size) {
         std::stringstream buffer;
-        for (int i = 0; i < size; i++)
+        for (i32 i = 0; i < size; i++)
         {
 			buffer << Move::ToString(moves[i].move) << ": " << moves[i].Score << "\n";
 		}

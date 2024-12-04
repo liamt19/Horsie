@@ -15,7 +15,7 @@
 #include "nnue/nn.h"
 #include "nnue/arch.h"
 
-constexpr int StateStackSize = 1024;
+constexpr i32 StateStackSize = 1024;
 
 namespace Horsie {
 
@@ -28,8 +28,8 @@ namespace Horsie {
 
         Bitboard bb;
         Color ToMove;
-        int FullMoves;
-        int GamePly;
+        i32 FullMoves;
+        i32 GamePly;
 
 
         StateInfo* State;
@@ -37,8 +37,8 @@ namespace Horsie {
 
         bool UpdateNN;
 
-        int CastlingRookSquares[(int) CastlingStatus::All];
-        ulong CastlingRookPaths[(int) CastlingStatus::All];
+        i32 CastlingRookSquares[(i32) CastlingStatus::All];
+        u64 CastlingRookPaths[(i32) CastlingStatus::All];
 
         bool IsChess960;
 
@@ -49,23 +49,23 @@ namespace Horsie {
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
 
-        constexpr ulong Hash() const { return State->Hash; }
-        constexpr ulong PawnHash() const { return State->PawnHash; }
-        constexpr ulong NonPawnHash(int pc) const { return State->NonPawnHash[pc]; }
+        constexpr u64 Hash() const { return State->Hash; }
+        constexpr u64 PawnHash() const { return State->PawnHash; }
+        constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
         
-        constexpr bool CanCastle(ulong boardOcc, ulong ourOcc, CastlingStatus cr) const {
+        constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
 
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
-        constexpr bool CastlingImpeded(ulong boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[(int)cr]); }
-        constexpr bool HasCastlingRook(ulong ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[(int)cr]) & ourOcc); }
-        constexpr bool HasNonPawnMaterial(int pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
+        constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[(i32)cr]); }
+        constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[(i32)cr]) & ourOcc); }
+        constexpr bool HasNonPawnMaterial(i32 pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
         constexpr bool IsCapture(Move m) const { return ((bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle()) || m.IsEnPassant()); }
 
         void RemoveCastling(CastlingStatus cr) const;
-        void UpdateHash(int pc, int pt, int sq) const;
-        constexpr CastlingStatus GetCastlingForRook(int sq) const;
+        void UpdateHash(i32 pc, i32 pt, i32 sq) const;
+        constexpr CastlingStatus GetCastlingForRook(i32 sq) const;
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 
         template<bool UpdateNN>
@@ -76,38 +76,38 @@ namespace Horsie {
         void MakeNullMove();
         void UnmakeNullMove();
 
-        void DoCastling(int ourColor, int from, int to, bool undo);
+        void DoCastling(i32 ourColor, i32 from, i32 to, bool undo);
 
         void SetState();
         void SetCheckInfo();
-        void SetCastlingStatus(int c, int rfrom);
+        void SetCastlingStatus(i32 c, i32 rfrom);
 
-        ulong HashAfter(Move m) const;
+        u64 HashAfter(Move m) const;
 
         bool IsPseudoLegal(Move move) const;
         bool IsLegal(Move move) const;
-        bool IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces) const;
+        bool IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const;
 
         bool IsDraw() const;
         bool IsInsufficientMaterial() const;
         bool IsThreefoldRepetition() const;
         bool IsFiftyMoveDraw() const;
 
-        ulong Perft(int depth);
-        ulong DebugPerft(int depth);
-        ulong SplitPerft(int depth);
+        u64 Perft(i32 depth);
+        u64 DebugPerft(i32 depth);
+        u64 SplitPerft(i32 depth);
 
         std::string GetFEN() const;
-        bool SEE_GE(Move m, int threshold = 1) const;
-        bool HasCycle(int ply) const;
+        bool SEE_GE(Move m, i32 threshold = 1) const;
+        bool HasCycle(i32 ply) const;
 
 
-        inline int PawnCorrectionIndex(int pc) const {
-            return (pc * 16384) + (int)(PawnHash() % 16384);
+        inline i32 PawnCorrectionIndex(i32 pc) const {
+            return (pc * 16384) + (i32)(PawnHash() % 16384);
         }
 
-        inline int NonPawnCorrectionIndex(int pc, int side) const {
-            return (pc * 16384) + (int)(NonPawnHash(side) % 16384);
+        inline i32 NonPawnCorrectionIndex(i32 pc, i32 side) const {
+            return (pc * 16384) + (i32)(NonPawnHash(side) % 16384);
         }
 
     private:

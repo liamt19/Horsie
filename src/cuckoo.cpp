@@ -9,25 +9,25 @@ using namespace Horsie;
 
 namespace Horsie::Cuckoo {
 
-	std::array<ulong, 8192> keys{};
+	std::array<u64, 8192> keys{};
 	std::array<Move, 8192> moves{};
 
 	void init() {
-        int count = 0;
-        for (int pc = Color::WHITE; pc <= Color::BLACK; pc++)
+        i32 count = 0;
+        for (i32 pc = Color::WHITE; pc <= Color::BLACK; pc++)
         {
-            for (int pt = Piece::HORSIE; pt <= Piece::KING; pt++)
+            for (i32 pt = Piece::HORSIE; pt <= Piece::KING; pt++)
             {
-                for (int s1 = 0; s1 < 64; s1++)
+                for (i32 s1 = 0; s1 < 64; s1++)
                 {
-                    for (int s2 = s1 + 1; s2 < 64; s2++)
+                    for (i32 s2 = s1 + 1; s2 < 64; s2++)
                     {
                         if ((attacks_bb(pt, s1, 0) & SquareBB(s2)) != 0)
                         {
                             Move m = Move(s1, s2);
-                            ulong key = Zobrist::ColorPieceSquareHashes[pc][pt][s1] ^ Zobrist::ColorPieceSquareHashes[pc][pt][s2] ^ Zobrist::BlackHash;
+                            u64 key = Zobrist::ColorPieceSquareHashes[pc][pt][s1] ^ Zobrist::ColorPieceSquareHashes[pc][pt][s2] ^ Zobrist::BlackHash;
 
-                            int iter = hash1(key);
+                            i32 iter = hash1(key);
                             while (true)
                             {
                                 std::swap(keys[iter], key);

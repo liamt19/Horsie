@@ -18,10 +18,10 @@
 
 namespace Horsie {
 
-    static const int DepthQChecks = 0;
-    static const int DepthQNoChecks = -1;
+    static const i32 DepthQChecks = 0;
+    static const i32 DepthQNoChecks = -1;
 
-    static const int SEARCH_TIME_BUFFER = 25;
+    static const i32 SEARCH_TIME_BUFFER = 25;
 
     enum SearchNodeType {
         PVNode,
@@ -36,17 +36,17 @@ namespace Horsie {
 
         struct SearchLimits {
         public:
-            int MaxDepth = Horsie::MaxDepth;
-            ulong MaxNodes = UINT64_MAX;
-            ulong SoftNodeLimit = UINT64_MAX;
-            int MaxSearchTime = INT32_MAX;
-            int Increment = 0;
-            int MovesToGo = 20;
+            i32 MaxDepth = Horsie::MaxDepth;
+            u64 MaxNodes = UINT64_MAX;
+            u64 SoftNodeLimit = UINT64_MAX;
+            i32 MaxSearchTime = INT32_MAX;
+            i32 Increment = 0;
+            i32 MovesToGo = 20;
 
-            int MoveTime = 0;
+            i32 MoveTime = 0;
             const bool HasMoveTime() const { return MoveTime != 0; }
 
-            int PlayerTime = 0;
+            i32 PlayerTime = 0;
             const bool HasPlayerTime() const { return PlayerTime != 0; }
 
             void PrintLimits() const {
@@ -64,16 +64,16 @@ namespace Horsie {
         public:
             Move* PV;
             PieceToHistory* ContinuationHistory;
-            short DoubleExtensions;
-            short Ply;
-            short StaticEval;
+            i16 DoubleExtensions;
+            i16 Ply;
+            i16 StaticEval;
             Move KillerMove;
             Move CurrentMove;
             Move Skip;
             bool InCheck;
             bool TTPV;
             bool TTHit;
-            int PVLength;
+            i32 PVLength;
 
 
             void Clear() {
@@ -108,10 +108,10 @@ namespace Horsie {
             bool operator<(const RootMove& m) const { return m.Score != Score ? m.Score < Score : m.PreviousScore < PreviousScore; }
             
             Move move;
-            int Score;
-            int PreviousScore;
-            int AverageScore;
-            int Depth;
+            i32 Score;
+            i32 PreviousScore;
+            i32 AverageScore;
+            i32 Depth;
 
             std::vector<Horsie::Move> PV;
         };
@@ -121,21 +121,21 @@ namespace Horsie {
         class SearchThread
         {
         public:
-            ulong Nodes;
-            int NMPPly;
-            int ThreadIdx;
-            int PVIndex;
-            int RootDepth;
-            int SelDepth;
-            int CompletedDepth;
-            int CheckupCount = 0;
+            u64 Nodes;
+            i32 NMPPly;
+            i32 ThreadIdx;
+            i32 PVIndex;
+            i32 RootDepth;
+            i32 SelDepth;
+            i32 CompletedDepth;
+            i32 CheckupCount = 0;
             bool Searching;
             bool Quit;
             bool IsMain = false;
 
             std::chrono::system_clock::time_point TimeStart = std::chrono::system_clock::now();
-            int SearchTimeMS = 0;
-            ulong MaxNodes = 0;
+            i32 SearchTimeMS = 0;
+            u64 MaxNodes = 0;
             bool StopSearching = false;
 
             std::function<void()> OnDepthFinish;
@@ -143,8 +143,8 @@ namespace Horsie {
             HistoryTable History{};
 
             bool HasSoftTime = false;
-            int SoftTimeLimit = 0;
-            Util::NDArray<ulong, 64, 64> NodeTable{};
+            i32 SoftTimeLimit = 0;
+            Util::NDArray<u64, 64, 64> NodeTable{};
 
             Move CurrentMove() const { return RootMoves[PVIndex].move; }
 
@@ -152,33 +152,33 @@ namespace Horsie {
             void Search(Position& pos, SearchLimits& info);
 
             template <SearchNodeType NodeType>
-            int Negamax(Position& pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode);
+            i32 Negamax(Position& pos, SearchStackEntry* ss, i32 alpha, i32 beta, i32 depth, bool cutNode);
 
             template <SearchNodeType NodeType>
-            int QSearch(Position& pos, SearchStackEntry* ss, int alpha, int beta);
+            i32 QSearch(Position& pos, SearchStackEntry* ss, i32 alpha, i32 beta);
 
-            void UpdateCorrectionHistory(Position& pos, int diff, int depth);
-            short AdjustEval(Position& pos, int us, short rawEval);
+            void UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth);
+            i16 AdjustEval(Position& pos, i32 us, i16 rawEval);
 
-            inline int GetRFPMargin(int depth, bool improving) const { return (depth - (improving)) * RFPMargin; }
-            inline int StatBonus(int depth) const { return std::min((StatBonusMult * depth) - StatBonusSub, StatBonusMax); }
-            inline int StatMalus(int depth) const { return std::min((StatMalusMult * depth) - StatMalusSub, StatMalusMax); }
+            inline i32 GetRFPMargin(i32 depth, bool improving) const { return (depth - (improving)) * RFPMargin; }
+            inline i32 StatBonus(i32 depth) const { return std::min((StatBonusMult * depth) - StatBonusSub, StatBonusMax); }
+            inline i32 StatMalus(i32 depth) const { return std::min((StatMalusMult * depth) - StatMalusSub, StatMalusMax); }
 
-            void AssignProbCutScores(Position& pos, ScoredMove* list, int size);
-            void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove);
-            void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, int size, Move ttMove);
-            Move OrderNextMove(ScoredMove* moves, int size, int listIndex);
+            void AssignProbCutScores(Position& pos, ScoredMove* list, i32 size);
+            void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove);
+            void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove);
+            Move OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex);
 
             void UpdatePV(Move* pv, Move move, Move* childPV);
 
-            void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus);
-            void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth, Move* quietMoves, int quietCount, Move* captureMoves, int captureCount);
+            void UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus);
+            void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, Move* quietMoves, i32 quietCount, Move* captureMoves, i32 captureCount);
 
             std::string Debug_GetMovesPlayed(SearchStackEntry* ss);
 
 
 
-            long long GetSearchTime() const {
+            i64 GetSearchTime() const {
                 auto now = std::chrono::system_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - TimeStart);
                 return duration.count();
@@ -190,12 +190,12 @@ namespace Horsie {
             }
 
             void MakeMoveTime(SearchLimits& limits) {
-                int newSearchTime = limits.Increment + std::max(limits.PlayerTime / 2, limits.PlayerTime / limits.MovesToGo);
+                i32 newSearchTime = limits.Increment + std::max(limits.PlayerTime / 2, limits.PlayerTime / limits.MovesToGo);
 
                 newSearchTime = std::min(newSearchTime, limits.PlayerTime);
 
                 //  Values from Clarity
-                SoftTimeLimit = (int)(0.65 * ((static_cast<double>(limits.PlayerTime) / limits.MovesToGo) + (limits.Increment * 3 / 4.0)));
+                SoftTimeLimit = (i32)(0.65 * ((static_cast<double>(limits.PlayerTime) / limits.MovesToGo) + (limits.Increment * 3 / 4.0)));
                 HasSoftTime = true;
 
                 limits.MaxSearchTime = newSearchTime;
@@ -209,25 +209,25 @@ namespace Horsie {
             }
 
         private:
-            const int CheckupMax = 512;
+            const i32 CheckupMax = 512;
         };
 
 
-        static void StableSort(std::vector<RootMove>& items, int offset = 0, int end = -1) {
+        static void StableSort(std::vector<RootMove>& items, i32 offset = 0, i32 end = -1) {
             
             std::stable_sort(items.begin() + offset, items.end());
             return;
             
             if (end == -1)
             {
-                end = (int)items.size();
+                end = (i32)items.size();
             }
 
-            for (int i = offset; i < end; i++)
+            for (i32 i = offset; i < end; i++)
             {
-                int best = i;
+                i32 best = i;
 
-                for (int j = i + 1; j < end; j++)
+                for (i32 j = i + 1; j < end; j++)
                 {
                     //if (items[j].CompareTo(items[best]) > 0)
                     

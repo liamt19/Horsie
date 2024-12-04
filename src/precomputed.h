@@ -7,31 +7,31 @@
 
 namespace Horsie {
     extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
-    extern ulong BetweenBB[SQUARE_NB][SQUARE_NB];
-    extern ulong LineBB[SQUARE_NB][SQUARE_NB];
-    extern ulong RayBB[SQUARE_NB][SQUARE_NB];
-    extern ulong XrayBB[SQUARE_NB][SQUARE_NB];
-    extern ulong PseudoAttacks[PIECE_NB][SQUARE_NB];
-    extern ulong PawnAttackMasks[COLOR_NB][SQUARE_NB];
-    extern ulong HorsieMasks[SQUARE_NB];
-    extern ulong RookRays[SQUARE_NB];
-    extern ulong BishopRays[SQUARE_NB];
+    extern u64 BetweenBB[SQUARE_NB][SQUARE_NB];
+    extern u64 LineBB[SQUARE_NB][SQUARE_NB];
+    extern u64 RayBB[SQUARE_NB][SQUARE_NB];
+    extern u64 XrayBB[SQUARE_NB][SQUARE_NB];
+    extern u64 PseudoAttacks[PIECE_NB][SQUARE_NB];
+    extern u64 PawnAttackMasks[COLOR_NB][SQUARE_NB];
+    extern u64 HorsieMasks[SQUARE_NB];
+    extern u64 RookRays[SQUARE_NB];
+    extern u64 BishopRays[SQUARE_NB];
 
-    extern int LogarithmicReductionTable[MaxPly][MoveListSize];
-    extern int LMPTable[2][MaxDepth];
+    extern i32 LogarithmicReductionTable[MaxPly][MoveListSize];
+    extern i32 LMPTable[2][MaxDepth];
 
     namespace Precomputed {
         void init();
     }
 
     struct Magic {
-        ulong mask;
-        ulong magic;
-        ulong* attacks;
+        u64 mask;
+        u64 magic;
+        u64* attacks;
         unsigned shift;
 
         // Compute the attack's index using the 'magic bitboards' approach
-        unsigned index(ulong occupied) const {
+        unsigned index(u64 occupied) const {
 
             if (HasPext)
                 return unsigned(pext(occupied, mask));
@@ -45,67 +45,67 @@ namespace Horsie {
 
 
     template<Color C>
-    constexpr ulong pawn_attacks_bb(ulong b) {
+    constexpr u64 pawn_attacks_bb(u64 b) {
         return C == WHITE ? Shift<NORTH_WEST>(b) | Shift<NORTH_EAST>(b)
             : Shift<SOUTH_WEST>(b) | Shift<SOUTH_EAST>(b);
     }
 
-    inline ulong pawn_attacks_bb(Color c, int s) { return PawnAttackMasks[c][s]; }
-    inline ulong pawn_attacks_bb(Color c, Square s) { return pawn_attacks_bb(c, (int)s); }
+    inline u64 pawn_attacks_bb(Color c, i32 s) { return PawnAttackMasks[c][s]; }
+    inline u64 pawn_attacks_bb(Color c, Square s) { return pawn_attacks_bb(c, (i32)s); }
 
-    inline ulong line_bb(int s1, int s2) { return LineBB[(int)s1][(int)s2]; }
-    inline ulong line_bb(Square s1, Square s2) { return line_bb((int)s1, (int)s2); }
+    inline u64 line_bb(i32 s1, i32 s2) { return LineBB[(i32)s1][(i32)s2]; }
+    inline u64 line_bb(Square s1, Square s2) { return line_bb((i32)s1, (i32)s2); }
 
-    inline ulong between_bb(int s1, int s2) { return BetweenBB[s1][s2]; }
-    inline ulong between_bb(Square s1, Square s2) { return between_bb((int)s1, (int)s2); }
+    inline u64 between_bb(i32 s1, i32 s2) { return BetweenBB[s1][s2]; }
+    inline u64 between_bb(Square s1, Square s2) { return between_bb((i32)s1, (i32)s2); }
 
     inline bool aligned(Square s1, Square s2, Square s3) { return line_bb(s1, s2) & s3; }
 
     template<typename T1 = Square>
-    inline int distance(Square x, Square y);
+    inline i32 distance(Square x, Square y);
 
     template<>
-    inline int distance<File>(Square x, Square y) {
-        return std::abs(GetIndexFile((int)x) - GetIndexFile((int)y));
+    inline i32 distance<File>(Square x, Square y) {
+        return std::abs(GetIndexFile((i32)x) - GetIndexFile((i32)y));
     }
 
     template<>
-    inline int distance<Rank>(Square x, Square y) {
-        return std::abs(GetIndexRank((int)x) - GetIndexRank((int)y));
+    inline i32 distance<Rank>(Square x, Square y) {
+        return std::abs(GetIndexRank((i32)x) - GetIndexRank((i32)y));
     }
 
     template<>
-    inline int distance<Square>(Square x, Square y) { return SquareDistance[(int)x][(int)y]; }
+    inline i32 distance<Square>(Square x, Square y) { return SquareDistance[(i32)x][(i32)y]; }
 
 
-    template<typename T1 = int>
-    inline int distance(int x, int y);
+    template<typename T1 = i32>
+    inline i32 distance(i32 x, i32 y);
 
     template<>
-    inline int distance<File>(int x, int y) {
-        return std::abs(GetIndexFile((int)x) - GetIndexFile((int)y));
+    inline i32 distance<File>(i32 x, i32 y) {
+        return std::abs(GetIndexFile((i32)x) - GetIndexFile((i32)y));
     }
 
     template<>
-    inline int distance<Rank>(int x, int y) {
-        return std::abs(GetIndexRank((int)x) - GetIndexRank((int)y));
+    inline i32 distance<Rank>(i32 x, i32 y) {
+        return std::abs(GetIndexRank((i32)x) - GetIndexRank((i32)y));
     }
 
     template<>
-    inline int distance<int>(int x, int y) { return SquareDistance[(int)x][(int)y]; }
+    inline i32 distance<i32>(i32 x, i32 y) { return SquareDistance[(i32)x][(i32)y]; }
 
 
 
 
 
-    inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
+    inline i32 edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 
     // Returns the pseudo attacks of the given piece type
     // assuming an empty board.
     template<Piece Pt>
-    inline ulong attacks_bb(int s) {
+    inline u64 attacks_bb(i32 s) {
         assert((Pt != PAWN) && (IsOK(s)));
-        return PseudoAttacks[Pt][(int)s];
+        return PseudoAttacks[Pt][(i32)s];
     }
 
 
@@ -113,24 +113,24 @@ namespace Horsie {
     // assuming the board is occupied according to the passed Bitboard.
     // Sliding piece attacks do not continue passed an occupied square.
     template<Piece Pt>
-    inline ulong attacks_bb(int s, ulong occupied) {
+    inline u64 attacks_bb(i32 s, u64 occupied) {
         switch (Pt)
         {
         case BISHOP:
-            return BishopMagics[(int)s].attacks[BishopMagics[(int)s].index(occupied)];
+            return BishopMagics[(i32)s].attacks[BishopMagics[(i32)s].index(occupied)];
         case ROOK:
-            return RookMagics[(int)s].attacks[RookMagics[(int)s].index(occupied)];
+            return RookMagics[(i32)s].attacks[RookMagics[(i32)s].index(occupied)];
         case QUEEN:
             return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
         default:
-            return PseudoAttacks[Pt][(int)s];
+            return PseudoAttacks[Pt][(i32)s];
         }
     }
 
     // Returns the attacks by the given piece
     // assuming the board is occupied according to the passed Bitboard.
     // Sliding piece attacks do not continue passed an occupied square.
-    inline ulong attacks_bb(int pt, int s, ulong occupied) {
+    inline u64 attacks_bb(i32 pt, i32 s, u64 occupied) {
         switch (pt)
         {
         case BISHOP:
@@ -140,7 +140,7 @@ namespace Horsie {
         case QUEEN:
             return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
         default:
-            return PseudoAttacks[pt][(int)s];
+            return PseudoAttacks[pt][(i32)s];
         }
     }
 }

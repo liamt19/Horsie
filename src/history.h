@@ -11,12 +11,12 @@
 
 namespace Horsie {
 
-    constexpr int HistoryClamp = 16384;
-    constexpr int LowPlyCount = 4;
-    constexpr int LowPlyClamp = 8192;
+    constexpr i32 HistoryClamp = 16384;
+    constexpr i32 LowPlyCount = 4;
+    constexpr i32 LowPlyClamp = 8192;
 
 
-    template<typename T, int ClampVal>
+    template<typename T, i32 ClampVal>
     class StatsEntry {
         T entry;
 
@@ -26,14 +26,14 @@ namespace Horsie {
             T* operator->() { return &entry; }
             operator const T& () const { return entry; }
 
-            void operator<<(int bonus) {
+            void operator<<(i32 bonus) {
                 static_assert(ClampVal <= std::numeric_limits<T>::max(), "D overflows T");
                 entry += (bonus - (entry * std::abs(bonus) / ClampVal));
                 assert(std::abs(entry) <= ClampVal);
             }
     };
 
-    template<typename T, int D, int Size, int... Sizes>
+    template<typename T, i32 D, i32 Size, i32... Sizes>
     struct Stats : public std::array<Stats<T, D, Sizes...>, Size> {
         using stats = Stats<T, D, Size, Sizes...>;
 
@@ -48,15 +48,15 @@ namespace Horsie {
         }
     };
 
-    template<typename T, int D, int Size>
+    template<typename T, i32 D, i32 Size>
     struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
-    using MainHistoryT = Stats<short, 16384, 2, 64 * 64>;
-    using CaptureHistoryT = Stats<short, 16384, 2, 6, 64, 6>;
-    using PlyHistoryT = Stats<short, LowPlyClamp, LowPlyCount, 64 * 64>;
+    using MainHistoryT = Stats<i16, 16384, 2, 64 * 64>;
+    using CaptureHistoryT = Stats<i16, 16384, 2, 6, 64, 6>;
+    using PlyHistoryT = Stats<i16, LowPlyClamp, LowPlyCount, 64 * 64>;
     using PieceToHistory = Stats<int16_t, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
-    using CorrectionT = Util::NDArray<short, 2, 16384>;
+    using CorrectionT = Util::NDArray<i16, 2, 16384>;
 
     struct HistoryTable {
     public:

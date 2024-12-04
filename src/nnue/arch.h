@@ -1,22 +1,22 @@
 #pragma once
 
 #include <immintrin.h>
+#include "../defs.h"
 
-constexpr int InputBuckets = 16;
-constexpr int InputSize = 768;
-constexpr int HiddenSize = 2048;
-constexpr int OutputBuckets = 8;
+constexpr auto InputBuckets = 16;
+constexpr auto InputSize = 768;
+constexpr auto HiddenSize = 2048;
+constexpr auto OutputBuckets = 8;
 
-constexpr int QA = 258;
-constexpr int QB = 64;
-constexpr int QAB = QA * QB;
+constexpr auto QA = 258;
+constexpr auto QB = 64;
+constexpr auto QAB = QA * QB;
 
-constexpr int OutputScale = 400;
-constexpr bool SelectOutputBucket = (OutputBuckets != 1);
+constexpr auto OutputScale = 400;
 
-constexpr int SIMD_CHUNKS = HiddenSize / (sizeof(__m256i) / sizeof(short));
+constexpr auto SIMD_CHUNKS = HiddenSize / (sizeof(__m256i) / sizeof(i16));
 
-const int FeatureWeightElements = InputSize * HiddenSize;
-const int FeatureBiasElements = HiddenSize;
-const int LayerWeightElements = HiddenSize;
-const int LayerBiasElements = OutputBuckets;
+const auto FeatureWeightElements = InputSize * HiddenSize;
+const auto FeatureBiasElements = HiddenSize;
+const auto LayerWeightElements = HiddenSize;
+const auto LayerBiasElements = OutputBuckets;

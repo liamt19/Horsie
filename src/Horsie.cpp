@@ -26,7 +26,7 @@ using namespace Horsie::Cuckoo;
 using std::cout;
 using std::endl;
 
-int main(int argc, char* argv[]);
+i32 main(i32 argc, char* argv[]);
 void HandleSetPosition(Position& pos, std::istringstream& is);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
@@ -47,7 +47,7 @@ bool inUCI = false;
 SearchThread thread = SearchThread();
 std::barrier is_sync_barrier(2);
 
-int main(int argc, char* argv[])
+i32 main(i32 argc, char* argv[])
 {
 #ifdef EVALFILE
     auto net = std::string(EVALFILE);
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
     if (argc > 1) {
         std::string arg1 = std::string(argv[1]);
         if (arg1 == "bench") {
-            int depth = 12;
+            i32 depth = 12;
             if (argc > 2) {
                 depth = std::stoi(std::string(argv[2]));
             }
@@ -212,7 +212,7 @@ void HandleSetOptionCommand(std::istringstream& is) {
     std::transform(name.begin(), name.end(), name.begin(), [](auto c) { return std::tolower(c); });
 
     if (name == "hash") {
-        int hashVal = std::stoi(value);
+        i32 hashVal = std::stoi(value);
         if (hashVal >= 1 && hashVal <= TranspositionTable::MaxSize) {
             Horsie::Hash = hashVal;
             TT.Initialize(Horsie::Hash);
@@ -316,14 +316,14 @@ void HandleEvalCommand(Position& pos) {
     cout << "Evaluation: " << NNUE::GetEvaluation(pos) << endl << endl;
 
     ScoredMove legals[MoveListSize] = {};
-    int legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+    i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
     std::list<ScoredMove> moves;
 
     for (size_t i = 0; i < legalsSize; i++)
     {
         Move m = legals[i].move;
         pos.MakeMove(m);
-        int eval = NNUE::GetEvaluation(pos);
+        i32 eval = NNUE::GetEvaluation(pos);
         pos.UnmakeMove(m);
 
         moves.push_back({ m, (eval * -1) });
@@ -370,14 +370,14 @@ void HandleDisplayPosition(Position& pos) {
 
 
 void HandlePerftCommand(Position& pos, std::istringstream& is) {
-    int depth = 5;
+    i32 depth = 5;
 
     if (is && is.peek() != EOF)
         is >> depth;
 
     cout << "\nSplitPerft(" << depth << "): " << endl;
     auto timeStart = std::chrono::high_resolution_clock::now();
-    ulong nodes = pos.SplitPerft(depth);
+    u64 nodes = pos.SplitPerft(depth);
     auto timeEnd = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart);
@@ -386,23 +386,23 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
     auto durMillis = duration.count() % 1000;
 
     auto nps = (nodes / ((double)dur / 1000));
-    cout << "\nTotal: " << nodes << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((ulong)nps) << " nps)" << endl << endl;
+    cout << "\nTotal: " << nodes << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((u64)nps) << " nps)" << endl << endl;
 }
 
 
 void HandleBenchPerftCommand(Position& pos) {
     auto timeStart = std::chrono::high_resolution_clock::now();
 
-    ulong total = 0;
+    u64 total = 0;
     for (std::string entry : EtherealFENs_D5)
     {
         std::string fen = entry.substr(0, entry.find(";"));
         std::string nodesStr = entry.substr(entry.find(";") + 1);
 
-        ulong nodes = std::stoull(nodesStr);
+        u64 nodes = std::stoull(nodesStr);
         pos.LoadFromFEN(fen);
 
-        ulong ourNodes = pos.Perft(5);
+        u64 ourNodes = pos.Perft(5);
         if (ourNodes != nodes) {
             cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << endl;
         }
@@ -420,14 +420,14 @@ void HandleBenchPerftCommand(Position& pos) {
     auto durMillis = duration.count() % 1000;
 
     auto nps = (total / ((double)dur / 1000));
-    cout << "\nTotal: " << total << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((ulong)nps) << " nps)" << endl << endl;
+    cout << "\nTotal: " << total << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((u64)nps) << " nps)" << endl << endl;
 
 }
 
 
 void HandleBenchCommand(std::istringstream& is) {
 
-    int depth = 12;
+    i32 depth = 12;
     if (is && is.peek() != EOF)
         is >> depth;
 
@@ -437,7 +437,7 @@ void HandleBenchCommand(std::istringstream& is) {
 
 void HandleListMovesCommand(Position& pos) {
     ScoredMove pseudos[MoveListSize] = {};
-    int pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
+    i32 pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
 
     cout << "Pseudo: ";
     for (size_t i = 0; i < pseudoSize; i++)
@@ -445,7 +445,7 @@ void HandleListMovesCommand(Position& pos) {
     cout << endl;
 
     ScoredMove legals[MoveListSize] = {};
-    int legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+    i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
 
     cout << "Legal: ";
     for (size_t i = 0; i < legalsSize; i++)

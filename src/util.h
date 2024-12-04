@@ -14,37 +14,37 @@
 #include "enums.h"
 #include "search_options.h"
 
-using ulong = uint64_t;
+using u64 = uint64_t;
 
 
 namespace Horsie {
 
-    constexpr int NormalListCapacity = 128;
-    constexpr const int MoveListSize = 256;
+    constexpr i32 NormalListCapacity = 128;
+    constexpr const i32 MoveListSize = 256;
 
-    constexpr const int MaxDepth = 64;
-    constexpr const int MaxPly = 256;
+    constexpr const i32 MaxDepth = 64;
+    constexpr const i32 MaxPly = 256;
 
     constexpr std::string_view PieceToChar("pnbrqk ");
 
 
-    constexpr short ScoreNone = 32760;
-    constexpr int ScoreInfinite = 31200;
-    constexpr int ScoreMate = 30000;
-    constexpr int ScoreDraw = 0;
-    constexpr int ScoreTTWin = ScoreMate - 512;
-    constexpr int ScoreTTLoss = -ScoreTTWin;
-    constexpr int ScoreMateMax = ScoreMate - 256;
-    constexpr int ScoreMatedMax = -ScoreMateMax;
-    constexpr int ScoreAssuredWin = 20000;
-    constexpr int ScoreWin = 10000;
+    constexpr i16 ScoreNone = 32760;
+    constexpr i32 ScoreInfinite = 31200;
+    constexpr i32 ScoreMate = 30000;
+    constexpr i32 ScoreDraw = 0;
+    constexpr i32 ScoreTTWin = ScoreMate - 512;
+    constexpr i32 ScoreTTLoss = -ScoreTTWin;
+    constexpr i32 ScoreMateMax = ScoreMate - 256;
+    constexpr i32 ScoreMatedMax = -ScoreMateMax;
+    constexpr i32 ScoreAssuredWin = 20000;
+    constexpr i32 ScoreWin = 10000;
 
-    constexpr int AlphaStart = -ScoreMate;
-    constexpr int BetaStart = ScoreMate;
+    constexpr i32 AlphaStart = -ScoreMate;
+    constexpr i32 BetaStart = ScoreMate;
 
 
 
-    inline int FenToPiece(char fenChar)
+    inline i32 FenToPiece(char fenChar)
     {
         fenChar = char(tolower(fenChar));
         switch (fenChar)
@@ -59,7 +59,7 @@ namespace Horsie {
         };
     }
 
-    inline char PieceToFEN(int pt)
+    inline char PieceToFEN(i32 pt)
     {
         switch (pt)
         {
@@ -73,7 +73,7 @@ namespace Horsie {
         };
     }
 
-    constexpr int GetPieceValue(int pt) {
+    constexpr i32 GetPieceValue(i32 pt) {
         switch (pt) {
         case PAWN  : return ValuePawn;
         case HORSIE: return ValueHorsie;
@@ -84,7 +84,7 @@ namespace Horsie {
         }
     }
 
-    constexpr int GetSEEValue(int pt) {
+    constexpr i32 GetSEEValue(i32 pt) {
         switch (pt) {
         case PAWN  : return SEEValue_Pawn;
         case HORSIE: return SEEValue_Horsie;
@@ -95,45 +95,45 @@ namespace Horsie {
         }
     }
 
-    constexpr int MakeDrawScore(ulong nodes) {
-        return -1 + (int)(nodes & 2);
+    constexpr i32 MakeDrawScore(u64 nodes) {
+        return -1 + (i32)(nodes & 2);
     }
 
-    constexpr int MakeMateScore(int ply) {
+    constexpr i32 MakeMateScore(i32 ply) {
         return -ScoreMate + ply;
     }
 
-    constexpr short MakeTTScore(short score, int ply)
+    constexpr i16 MakeTTScore(i16 score, i32 ply)
     {
         if (score == ScoreNone)
             return score;
 
         if (score >= ScoreTTWin)
-            return (short)(score + ply);
+            return (i16)(score + ply);
 
         if (score <= ScoreTTLoss)
-            return (short)(score - ply);
+            return (i16)(score - ply);
 
         return score;
     }
 
-    constexpr short MakeNormalScore(short ttScore, int ply)
+    constexpr i16 MakeNormalScore(i16 ttScore, i32 ply)
     {
         if (ttScore == ScoreNone)
             return ttScore;
 
         if (ttScore >= ScoreTTWin)
-            return (short)(ttScore - ply);
+            return (i16)(ttScore - ply);
 
         if (ttScore <= ScoreTTLoss)
-            return (short)(ttScore + ply);
+            return (i16)(ttScore + ply);
 
         return ttScore;
     }
 
 
 
-    constexpr bool IsScoreMate(int score)
+    constexpr bool IsScoreMate(i32 score)
     {
 #if defined(_MSC_VER)
         auto v = (score < 0 ? -score : score) - ScoreMate;
@@ -143,7 +143,7 @@ namespace Horsie {
 #endif
     }
 
-    inline std::string FormatMoveScore(int score)
+    inline std::string FormatMoveScore(i32 score)
     {
         if (IsScoreMate(score))
         {
@@ -160,7 +160,7 @@ namespace Horsie {
         else
         {
             const double NormalizeEvalFactor = 252;
-            return "cp " + std::to_string((int)((score * 100) / NormalizeEvalFactor));
+            return "cp " + std::to_string((i32)((score * 100) / NormalizeEvalFactor));
         }
     }
 

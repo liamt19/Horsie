@@ -12,11 +12,11 @@ using Horsie::Move;
 
 namespace Horsie::Cuckoo {
 
-	extern std::array<ulong, 8192> keys;
+	extern std::array<u64, 8192> keys;
 	extern std::array<Move, 8192> moves;
 
-	constexpr auto hash1(ulong key) { return static_cast<nuint>(key & 0x1FFF); }
-	constexpr auto hash2(ulong key) { return static_cast<nuint>((key >> 16) & 0x1FFF); }
+	constexpr auto hash1(u64 key) { return static_cast<int>(key & 0x1FFF); }
+	constexpr auto hash2(u64 key) { return static_cast<int>((key >> 16) & 0x1FFF); }
 
 	void init();
 }

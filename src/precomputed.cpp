@@ -12,31 +12,31 @@ namespace Horsie {
 
     uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-    ulong BetweenBB[SQUARE_NB][SQUARE_NB];
-    ulong LineBB[SQUARE_NB][SQUARE_NB];
-    ulong RayBB[SQUARE_NB][SQUARE_NB];
-    ulong XrayBB[SQUARE_NB][SQUARE_NB];
-    ulong PseudoAttacks[PIECE_NB][SQUARE_NB];
+    u64 BetweenBB[SQUARE_NB][SQUARE_NB];
+    u64 LineBB[SQUARE_NB][SQUARE_NB];
+    u64 RayBB[SQUARE_NB][SQUARE_NB];
+    u64 XrayBB[SQUARE_NB][SQUARE_NB];
+    u64 PseudoAttacks[PIECE_NB][SQUARE_NB];
 
-    ulong PawnAttackMasks[COLOR_NB][SQUARE_NB];
-    ulong RookRays[SQUARE_NB];
-    ulong BishopRays[SQUARE_NB];
+    u64 PawnAttackMasks[COLOR_NB][SQUARE_NB];
+    u64 RookRays[SQUARE_NB];
+    u64 BishopRays[SQUARE_NB];
 
     Magic RookMagics[SQUARE_NB];
     Magic BishopMagics[SQUARE_NB];
 
-    int LogarithmicReductionTable[MaxPly][MoveListSize];
-    int LMPTable[2][MaxDepth];
+    i32 LogarithmicReductionTable[MaxPly][MoveListSize];
+    i32 LMPTable[2][MaxDepth];
 
     namespace {
-        ulong RookTable[0x19000];   // To store rook attacks
-        ulong BishopTable[0x1480];  // To store bishop attacks
+        u64 RookTable[0x19000];   // To store rook attacks
+        u64 BishopTable[0x1480];  // To store bishop attacks
 
-        void init_magics(Piece pt, ulong table[], Magic magics[]);
+        void init_magics(Piece pt, u64 table[], Magic magics[]);
 
-        ulong safe_destination(Square s, int step) {
+        u64 safe_destination(Square s, i32 step) {
             Square to = Square(s + step);
-            return IsOK((int)to) && distance(s, to) <= 2 ? SquareBB(to) : ulong(0);
+            return IsOK((i32)to) && distance(s, to) <= 2 ? SquareBB(to) : u64(0);
         }
     }
 
@@ -44,21 +44,21 @@ namespace Horsie {
 
         for (Square s1 = Square::A1; s1 <= Square::H8; ++s1)
             for (Square s2 = Square::A1; s2 <= Square::H8; ++s2)
-                SquareDistance[(int)s1][(int)s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
+                SquareDistance[(i32)s1][(i32)s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
 
         init_magics(ROOK, RookTable, RookMagics);
         init_magics(BISHOP, BishopTable, BishopMagics);
 
         for (Square sq1 = Square::A1; sq1 <= Square::H8; ++sq1)
         {
-            int s1 = (int)sq1;
+            i32 s1 = (i32)sq1;
             PawnAttackMasks[WHITE][s1] = pawn_attacks_bb<WHITE>(SquareBB(sq1));
             PawnAttackMasks[BLACK][s1] = pawn_attacks_bb<BLACK>(SquareBB(sq1));
 
-            for (int step : {-9, -8, -7, -1, 1, 7, 8, 9})
+            for (i32 step : {-9, -8, -7, -1, 1, 7, 8, 9})
                 PseudoAttacks[KING][s1] |= safe_destination(sq1, step);
 
-            for (int step : {-17, -15, -10, -6, 6, 10, 15, 17})
+            for (i32 step : {-17, -15, -10, -6, 6, 10, 15, 17})
                 PseudoAttacks[HORSIE][s1] |= safe_destination(sq1, step);
 
             PseudoAttacks[QUEEN][s1] = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
@@ -67,7 +67,7 @@ namespace Horsie {
             RookRays[s1] = PseudoAttacks[ROOK][s1];
             BishopRays[s1] = PseudoAttacks[BISHOP][s1];
             
-            for (int s2 = 0; s2 < 64; s2++)
+            for (i32 s2 = 0; s2 < 64; s2++)
             {
                 if ((RookRays[s1] & SquareBB(s2)) != 0)
                 {
@@ -87,8 +87,8 @@ namespace Horsie {
             }            
         }
 
-        for (int s1 = 0; s1 < 64; s1++) {
-            for (int s2 = 0; s2 < 64; s2++)
+        for (i32 s1 = 0; s1 < 64; s1++) {
+            for (i32 s2 = 0; s2 < 64; s2++)
             {
                 if ((RookRays[s1] & SquareBB(s2)) != 0)
                 {
@@ -109,16 +109,16 @@ namespace Horsie {
         }
 
 
-        for (int depth = 0; depth < MaxPly; depth++)
+        for (i32 depth = 0; depth < MaxPly; depth++)
         {
-            for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
+            for (i32 moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
             {
                 if (depth == 0 || moveIndex == 0) {
                     LogarithmicReductionTable[depth][moveIndex] = 0;
                     continue;
                 }
 
-                LogarithmicReductionTable[depth][moveIndex] = int((std::log(depth) * std::log(moveIndex) / 2.25) + 0.25);
+                LogarithmicReductionTable[depth][moveIndex] = i32((std::log(depth) * std::log(moveIndex) / 2.25) + 0.25);
 
                 if (LogarithmicReductionTable[depth][moveIndex] < 1)
                 {
@@ -127,9 +127,9 @@ namespace Horsie {
             }
         }
 
-        const int not_improving = 0;
-        const int improving = 1;
-        for (int depth = 0; depth < MaxDepth; depth++)
+        const i32 not_improving = 0;
+        const i32 improving = 1;
+        for (i32 depth = 0; depth < MaxDepth; depth++)
         {
             LMPTable[not_improving][depth] = (3 + (depth * depth)) / 2;
             LMPTable[    improving][depth] =  3 + (depth * depth);
@@ -138,9 +138,9 @@ namespace Horsie {
 
 
     namespace {
-        ulong sliding_attack(Piece pt, Square sq, ulong occupied) {
+        u64 sliding_attack(Piece pt, Square sq, u64 occupied) {
 
-            ulong  attacks = 0;
+            u64  attacks = 0;
             Direction RookDirections[4] = { NORTH, SOUTH, EAST, WEST };
             Direction BishopDirections[4] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
@@ -154,15 +154,15 @@ namespace Horsie {
             return attacks;
         }
 
-        void init_magics(Piece pt, ulong table[], Magic magics[]) {
+        void init_magics(Piece pt, u64 table[], Magic magics[]) {
 
             // Optimal PRNG seeds to pick the correct magics in the shortest time
-            int seeds[RANK_NB] = { 728, 10316, 55013, 32803, 12281, 15100, 16645, 255 };
+            i32 seeds[RANK_NB] = { 728, 10316, 55013, 32803, 12281, 15100, 16645, 255 };
 
-            ulong occupancy[4096], reference[4096], edges, b;
-            int      epoch[4096] = {}, cnt = 0, size = 0;
+            u64 occupancy[4096], reference[4096], edges, b;
+            i32      epoch[4096] = {}, cnt = 0, size = 0;
 
-            for (int s = (int)Square::A1; s <= (int)Square::H8; ++s)
+            for (i32 s = (i32)Square::A1; s <= (i32)Square::H8; ++s)
             {
                 // Board edges are not considered in the relevant occupancies
                 edges = ((Rank1BB | Rank8BB) & ~RankBB(s)) | ((FileABB | FileHBB) & ~FileBB(s));
@@ -178,7 +178,7 @@ namespace Horsie {
 
                 // Set the offset for the attacks table of the square. We have individual
                 // table sizes for each square with "Fancy Magic Bitboards".
-                m.attacks = s == (int)Square::A1 ? table : magics[s - 1].attacks + size;
+                m.attacks = s == (i32)Square::A1 ? table : magics[s - 1].attacks + size;
 
                 // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
                 // store the corresponding sliding attack bitboard in reference[].
@@ -202,10 +202,10 @@ namespace Horsie {
 
                 // Find a magic for square 's' picking up an (almost) random number
                 // until we find the one that passes the verification test.
-                for (int i = 0; i < size;)
+                for (i32 i = 0; i < size;)
                 {
                     for (m.magic = 0; popcount((m.magic * m.mask) >> 56) < 6;)
-                        m.magic = rng.sparse_rand<ulong>();
+                        m.magic = rng.sparse_rand<u64>();
 
                     // A good magic must map every possible occupancy to an index that
                     // looks up the correct sliding attack in the attacks[s] database.

@@ -18,15 +18,15 @@ using uint128_t = unsigned __int128;
 #endif
 
 
-constexpr int TT_BOUND_MASK = 0x3;
-constexpr int TT_PV_MASK = 0x4;
-constexpr int TT_AGE_MASK = 0xF8;
-constexpr int TT_AGE_INC = 0x8;
-constexpr int TT_AGE_CYCLE = 255 + TT_AGE_INC;
+constexpr i32 TT_BOUND_MASK = 0x3;
+constexpr i32 TT_PV_MASK = 0x4;
+constexpr i32 TT_AGE_MASK = 0xF8;
+constexpr i32 TT_AGE_INC = 0x8;
+constexpr i32 TT_AGE_CYCLE = 255 + TT_AGE_INC;
 
-constexpr int MinTTClusters = 1000;
+constexpr i32 MinTTClusters = 1000;
 
-constexpr int EntriesPerCluster = 3;
+constexpr i32 EntriesPerCluster = 3;
 
 
 
@@ -46,39 +46,39 @@ namespace Horsie {
 
 
     struct TTEntry {
-        short _Score;           //  16 bits
-        short _StatEval;		//  16 bits
+        i16 _Score;           //  16 bits
+        i16 _StatEval;		//  16 bits
         Move BestMove;          //  16 bits
-        ushort Key;             //  16 bits
-        byte _AgePVType;        //  5 + 2 + 1 bits
-        byte _depth;            //  8 bits
+        u16 Key;             //  16 bits
+        u8 _AgePVType;        //  5 + 2 + 1 bits
+        u8 _depth;            //  8 bits
 
 
-        constexpr short Score() const { return _Score; }
-        constexpr void SetScore(short n) { _Score = n; }
+        constexpr i16 Score() const { return _Score; }
+        constexpr void SetScore(i16 n) { _Score = n; }
 
-        constexpr short StatEval() const { return _StatEval; }
-        constexpr void SetStatEval(short n) { _StatEval = n; }
+        constexpr i16 StatEval() const { return _StatEval; }
+        constexpr void SetStatEval(i16 n) { _StatEval = n; }
 
-        constexpr int Age() const { return _AgePVType & TT_AGE_MASK; }
+        constexpr i32 Age() const { return _AgePVType & TT_AGE_MASK; }
         constexpr bool PV() const { return (_AgePVType & TT_PV_MASK) != 0; }
-        constexpr int Bound() const { return _AgePVType & TT_BOUND_MASK; }
+        constexpr i32 Bound() const { return _AgePVType & TT_BOUND_MASK; }
 
-        constexpr int Depth() const { return (int)(_depth + DepthOffset); }
-        constexpr void SetDepth(int n) { _depth = (byte)(n - DepthOffset); }
-        constexpr int RawDepth() const { return _depth; }
+        constexpr i32 Depth() const { return (i32)(_depth + DepthOffset); }
+        constexpr void SetDepth(i32 n) { _depth = (u8)(n - DepthOffset); }
+        constexpr i32 RawDepth() const { return _depth; }
 
         constexpr bool IsEmpty() const { return _depth == 0; }
 
-        constexpr sbyte RelAge(byte age) const { return (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK); }
+        constexpr i8 RelAge(u8 age) const { return (i8)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK); }
 
-        void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false);
+        void Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, bool isPV = false);
 
-        static constexpr int DepthNone = -6;
+        static constexpr i32 DepthNone = -6;
 
     private:
-        static constexpr int KeyShift = 64 - (sizeof(ushort) * 8);
-        static constexpr int DepthOffset = -7;
+        static constexpr i32 KeyShift = 64 - (sizeof(u16) * 8);
+        static constexpr i32 DepthOffset = -7;
     };
 
 
@@ -97,8 +97,8 @@ namespace Horsie {
 
     class TranspositionTable {
     public:
-        void Initialize(int mb);
-        bool Probe(ulong hash, TTEntry*& tte) const;
+        void Initialize(i32 mb);
+        bool Probe(u64 hash, TTEntry*& tte) const;
 
         void TTUpdate() {
             Age += TT_AGE_INC;
@@ -108,17 +108,17 @@ namespace Horsie {
             std::memset(Clusters, 0, sizeof(TTCluster) * ClusterCount);
         }
 
-        TTCluster* GetCluster(ulong hash) const
+        TTCluster* GetCluster(u64 hash) const
         {
-            return Clusters + (ulong)(((uint128_t(hash) * uint128_t(ClusterCount)) >> 64));
+            return Clusters + (u64)(((uint128_t(hash) * uint128_t(ClusterCount)) >> 64));
         }
 
         TTCluster* Clusters = nullptr;
-        ushort Age = 0;
-        ulong ClusterCount = 0;
+        u16 Age = 0;
+        u64 ClusterCount = 0;
 
-        static const int DefaultTTSize = 32;
-        static const int MaxSize = 1048576;
+        static const i32 DefaultTTSize = 32;
+        static const i32 MaxSize = 1048576;
     };
 
     extern TranspositionTable TT;

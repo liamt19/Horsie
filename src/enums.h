@@ -4,8 +4,9 @@
 #define ENUMS_H
 
 #include <iostream>
+#include "defs.h"
 
-enum Piece : int {
+enum Piece : i32 {
     PAWN = 0,
     HORSIE,
     BISHOP,
@@ -17,14 +18,14 @@ enum Piece : int {
     PIECE_NB = 6
 };
 
-enum Color: int{
+enum Color: i32{
     WHITE = 0,
     BLACK,
 
     COLOR_NB = 2
 };
 
-enum class Square : int {
+enum class Square : i32 {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
     A3, B3, C3, D3, E3, F3, G3, H3,
@@ -38,10 +39,10 @@ enum class Square : int {
     SQUARE_NB = 64,
 };
 
-constexpr int EP_NONE = (int)Square::EP_NONE;
-constexpr int SQUARE_NB = (int)Square::SQUARE_NB;
+constexpr i32 EP_NONE = (i32)Square::EP_NONE;
+constexpr i32 SQUARE_NB = (i32)Square::SQUARE_NB;
 
-enum File : int {
+enum File : i32 {
     FILE_A = 0,
     FILE_B,
     FILE_C,
@@ -53,7 +54,7 @@ enum File : int {
     FILE_NB
 };
 
-enum Rank : int {
+enum Rank : i32 {
     RANK_1 = 0,
     RANK_2,
     RANK_3,
@@ -82,7 +83,7 @@ enum class CastlingStatus
     All = WK | WQ | BK | BQ,
 };
 
-enum Direction : int {
+enum Direction : i32 {
     NORTH = 8,
     EAST = 1,
     SOUTH = -NORTH,
@@ -109,19 +110,19 @@ enum TTNodeType
 };
 
 
-constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) & int(r)); }
-constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) | int(r)); }
+constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
+constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
 
 constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { 
-    l = CastlingStatus(int(l) & int(r));
+    l = CastlingStatus(i32(l) & i32(r));
     return l;
 }
 
 constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { 
-    l = CastlingStatus(int(l) | int(r));
+    l = CastlingStatus(i32(l) | i32(r));
     return l;
 }
 
-constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~int(l)); }
+constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
 
 #endif

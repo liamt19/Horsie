@@ -6,22 +6,22 @@
 
 namespace Zobrist {
 
-    ulong ColorPieceSquareHashes[2][6][64];
-    ulong CastlingRightsHashes[4];
-    ulong EnPassantFileHashes[8];
-    ulong BlackHash;
+    u64 ColorPieceSquareHashes[2][6][64];
+    u64 CastlingRightsHashes[4];
+    u64 EnPassantFileHashes[8];
+    u64 BlackHash;
 
     void init() {
 #if defined(LIZARD_HASHES)
-        for (int i = 0; i < 2; i++)
-            for (int j = 0; j < 6; j++)
-                for (int k = 0; k < 64; k++)
+        for (i32 i = 0; i < 2; i++)
+            for (i32 j = 0; j < 6; j++)
+                for (i32 k = 0; k < 64; k++)
                     ColorPieceSquareHashes[i][j][k] = LizardPSQT[i][j][k];
 
-        for (int i = 0; i < 4; i++)
+        for (i32 i = 0; i < 4; i++)
             CastlingRightsHashes[i] = LizardCR[i];
 
-        for (int i = 0; i < 8; i++)
+        for (i32 i = 0; i < 8; i++)
             EnPassantFileHashes[i] = LizardEP[i];
 
         BlackHash = LizardBH;
@@ -29,57 +29,57 @@ namespace Zobrist {
         std::mt19937_64 rng(DefaultSeed);
         std::uniform_int_distribution<uint64_t> dis;
 
-        for (int i = 0; i < 2; i++)
-            for (int j = 0; j < 6; j++)
-                for (int k = 0; k < 64; k++)
+        for (i32 i = 0; i < 2; i++)
+            for (i32 j = 0; j < 6; j++)
+                for (i32 k = 0; k < 64; k++)
                     ColorPieceSquareHashes[i][j][k] = dis(rng);
 
-        for (int i = 0; i < 4; i++)
+        for (i32 i = 0; i < 4; i++)
             CastlingRightsHashes[i] = dis(rng);
 
-        for (int i = 0; i < 8; i++)
+        for (i32 i = 0; i < 8; i++)
             EnPassantFileHashes[i] = dis(rng);
 
         BlackHash = dis(rng);
 #endif
     }
 
-    void Castle(ulong& hash, CastlingStatus prev, CastlingStatus toRemove) {
-        ulong change = (ulong)(prev & toRemove);
+    void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove) {
+        u64 change = (u64)(prev & toRemove);
         while (change != 0)
         {
-            hash ^= CastlingRightsHashes[(int)poplsb(change)];
+            hash ^= CastlingRightsHashes[(i32)poplsb(change)];
         }
     }
 
 
-    void Move(ulong& hash, int from, int to, int color, int pt) {
+    void Move(u64& hash, i32 from, i32 to, i32 color, i32 pt) {
         hash ^= ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to];
     }
 
-    void ToggleSquare(ulong& hash, int color, int pt, int idx) {
+    void ToggleSquare(u64& hash, i32 color, i32 pt, i32 idx) {
         hash ^= ColorPieceSquareHashes[color][pt][idx];
     }
 
-    void EnPassant(ulong& hash, int file) {
+    void EnPassant(u64& hash, i32 file) {
         hash ^= EnPassantFileHashes[file];
     }
 
-    void ChangeToMove(ulong& hash) {
+    void ChangeToMove(u64& hash) {
         hash ^= BlackHash;
     }
 
-    ulong GetHash(Horsie::Position& position, ulong* pawnHash, ulong* nonPawnHash) {
-        ulong hash = 0;
+    u64 GetHash(Horsie::Position& position, u64* pawnHash, u64* nonPawnHash) {
+        u64 hash = 0;
 
         Horsie::Bitboard& bb = position.bb;
-        ulong white = bb.Colors[Color::WHITE];
-        ulong black = bb.Colors[Color::BLACK];
+        u64 white = bb.Colors[Color::WHITE];
+        u64 black = bb.Colors[Color::BLACK];
 
         while (white != 0)
         {
-            int idx = (int)poplsb(white);
-            int pt = bb.GetPieceAtIndex(idx);
+            i32 idx = (i32)poplsb(white);
+            i32 pt = bb.GetPieceAtIndex(idx);
             hash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
 
             if (pt == PAWN) {
@@ -92,8 +92,8 @@ namespace Zobrist {
 
         while (black != 0)
         {
-            int idx = (int)poplsb(black);
-            int pt = bb.GetPieceAtIndex(idx);
+            i32 idx = (i32)poplsb(black);
+            i32 pt = bb.GetPieceAtIndex(idx);
             hash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
 
             if (pt == PAWN) {
@@ -121,7 +121,7 @@ namespace Zobrist {
             hash ^= CastlingRightsHashes[3];
         }
 
-        if (position.State->EPSquare != (int)Square::EP_NONE)
+        if (position.State->EPSquare != (i32)Square::EP_NONE)
         {
             hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.State->EPSquare)];
         }

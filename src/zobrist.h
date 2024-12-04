@@ -11,21 +11,21 @@
 
 namespace Zobrist {
 
-    extern ulong ColorPieceSquareHashes[2][6][64];
-    extern ulong CastlingRightsHashes[4];
-    extern ulong EnPassantFileHashes[8];
-    extern ulong BlackHash;
-    const int DefaultSeed = 0xBEEF;
+    extern u64 ColorPieceSquareHashes[2][6][64];
+    extern u64 CastlingRightsHashes[4];
+    extern u64 EnPassantFileHashes[8];
+    extern u64 BlackHash;
+    const i32 DefaultSeed = 0xBEEF;
 
     void init();
-    void Castle(ulong& hash, CastlingStatus prev, CastlingStatus toRemove);
-    void Move(ulong& hash, int from, int to, int color, int pt);
-    void ToggleSquare(ulong& hash, int color, int pt, int idx);
-    void EnPassant(ulong& hash, int file);
-    void ChangeToMove(ulong& hash);
-    ulong GetHash(Horsie::Position& position, ulong* pawnHash, ulong* nonPawnHash);
+    void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove);
+    void Move(u64& hash, i32 from, i32 to, i32 color, i32 pt);
+    void ToggleSquare(u64& hash, i32 color, i32 pt, i32 idx);
+    void EnPassant(u64& hash, i32 file);
+    void ChangeToMove(u64& hash);
+    u64 GetHash(Horsie::Position& position, u64* pawnHash, u64* nonPawnHash);
 
-    constexpr ulong LizardPSQT[2][6][64] = {
+    constexpr u64 LizardPSQT[2][6][64] = {
         0x27821F7EED8D1FFF, 0xE0824EFAA0C38DA9, 0xE7DC348AFABD489F, 0xB00E27C557631971, 0x75BF80FE4CD651C2, 0x78CFCD9EAB04E1BE, 0xF06DACBD88A5BCE3, 0xF456B708F108A0A5,
         0x119F7E75E1D06EC7, 0x2C89230E9638DBF9, 0x270C318AB8220BAF, 0xA38CA7A848F9320C, 0xC75598C31B00D746, 0x7D0848168526AE3, 0x73D7B1A68FAE847F, 0xC2770DED0DE1BDDF,
         0x311835E62298D362, 0x71D4A165F8068582, 0xAA68DADC4035F11F, 0xC02219683EC19104, 0xA82EB40319302030, 0x60370D284A9BB32, 0x4FCA9FF661DD7A93, 0xC02D97C2F0C82E36,
@@ -124,16 +124,16 @@ namespace Zobrist {
         0x96B2853821EE09CB, 0x2E892DEB7A500C6A, 0x7E1DC546521A3C85, 0x9E2610196BB58460, 0xA59E7406A68E4FD5, 0x754370EE1DD5063B, 0xECED9264014F2268, 0x64B4D6A682893BE2,
     };
 
-    constexpr ulong LizardCR[4] = {
+    constexpr u64 LizardCR[4] = {
         0x969517A08A90190C, 0xA915DB1443266CDC, 0x7E9AFBF3DE37E819, 0x922272CFD5A4B844,
     };
 
-    constexpr ulong LizardEP[8] = {
+    constexpr u64 LizardEP[8] = {
         0xCD4C63014AF5EA6D, 0x605F3716E6BE67A, 0x1070D69EBE69E025, 0x6AC7C073E845127F, 
         0xB6A7CAE629D5944A, 0x510D2C8F0D646A9C, 0x97F36408EEAF9DB2, 0xBA5A631DEECBE479,
     };
 
-    constexpr ulong LizardBH = 0x5B20DB1EDD23011F;
+    constexpr u64 LizardBH = 0x5B20DB1EDD23011F;
 }
 
 #endif

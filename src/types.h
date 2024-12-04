@@ -12,11 +12,11 @@
 #include "enums.h"
 
 using nuint = std::size_t;
-using ulong = uint64_t;
-using uint = uint32_t;
-using ushort = uint16_t;
-using byte = uint8_t;
-using sbyte = int8_t;
+using u64 = uint64_t;
+using u32 = uint32_t;
+using u16 = uint16_t;
+using u8 = uint8_t;
+using i8 = int8_t;
 
 // Predefined macros hell:
 //
@@ -56,33 +56,33 @@ using sbyte = int8_t;
 
 namespace Horsie {
 
-constexpr ulong FileABB = 0x0101010101010101ULL;
-constexpr ulong FileBBB = FileABB << 1;
-constexpr ulong FileCBB = FileABB << 2;
-constexpr ulong FileDBB = FileABB << 3;
-constexpr ulong FileEBB = FileABB << 4;
-constexpr ulong FileFBB = FileABB << 5;
-constexpr ulong FileGBB = FileABB << 6;
-constexpr ulong FileHBB = FileABB << 7;
+constexpr u64 FileABB = 0x0101010101010101ULL;
+constexpr u64 FileBBB = FileABB << 1;
+constexpr u64 FileCBB = FileABB << 2;
+constexpr u64 FileDBB = FileABB << 3;
+constexpr u64 FileEBB = FileABB << 4;
+constexpr u64 FileFBB = FileABB << 5;
+constexpr u64 FileGBB = FileABB << 6;
+constexpr u64 FileHBB = FileABB << 7;
 
-constexpr ulong Rank1BB = 0xFF;
-constexpr ulong Rank2BB = Rank1BB << (8 * 1);
-constexpr ulong Rank3BB = Rank1BB << (8 * 2);
-constexpr ulong Rank4BB = Rank1BB << (8 * 3);
-constexpr ulong Rank5BB = Rank1BB << (8 * 4);
-constexpr ulong Rank6BB = Rank1BB << (8 * 5);
-constexpr ulong Rank7BB = Rank1BB << (8 * 6);
-constexpr ulong Rank8BB = Rank1BB << (8 * 7);
+constexpr u64 Rank1BB = 0xFF;
+constexpr u64 Rank2BB = Rank1BB << (8 * 1);
+constexpr u64 Rank3BB = Rank1BB << (8 * 2);
+constexpr u64 Rank4BB = Rank1BB << (8 * 3);
+constexpr u64 Rank5BB = Rank1BB << (8 * 4);
+constexpr u64 Rank6BB = Rank1BB << (8 * 5);
+constexpr u64 Rank7BB = Rank1BB << (8 * 6);
+constexpr u64 Rank8BB = Rank1BB << (8 * 7);
 
 constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 constexpr auto KiwiFEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10";
 
 #define N_TABS(n) \
-        for (int _n_ = 0; _n_ < n; _n_++) std::cout << "\t";
+        for (i32 _n_ = 0; _n_ < n; _n_++) std::cout << "\t";
 
 #define ENABLE_INCR_OPERATORS_ON(T) \
-        inline T& operator++(T& d) { return d = T(int(d) + 1); } \
-        inline T& operator--(T& d) { return d = T(int(d) - 1); }
+        inline T& operator++(T& d) { return d = T(i32(d) + 1); } \
+        inline T& operator--(T& d) { return d = T(i32(d) - 1); }
 
 ENABLE_INCR_OPERATORS_ON(Piece)
 ENABLE_INCR_OPERATORS_ON(Square)
@@ -95,35 +95,35 @@ ENABLE_INCR_OPERATORS_ON(Rank)
 
 namespace {
 
-constexpr Direction operator+(Direction d1, Direction d2) { return Direction(int(d1) + int(d2)); }
-constexpr Direction operator*(int i, Direction d) { return Direction(i * int(d)); }
+constexpr Direction operator+(Direction d1, Direction d2) { return Direction(i32(d1) + i32(d2)); }
+constexpr Direction operator*(i32 i, Direction d) { return Direction(i * i32(d)); }
 
 // Additional operators to add a Direction to a Square
-constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
-constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
+constexpr Square operator+(Square s, Direction d) { return Square(i32(s) + i32(d)); }
+constexpr Square operator-(Square s, Direction d) { return Square(i32(s) - i32(d)); }
 inline Square& operator+=(Square& s, Direction d) { return s = s + d; }
 inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 // Toggle color
 constexpr Color operator~(Color c) { return Color(c ^ 1); }
-constexpr int Not(int c) { return c ^ 1; }
-constexpr Color Not(Color c) { return Color(int(c) ^ 1); }
+constexpr i32 Not(i32 c) { return c ^ 1; }
+constexpr Color Not(Color c) { return Color(i32(c) ^ 1); }
 
 //constexpr CastlingStatus operator~(CastlingStatus l) { return ~l; }
-//constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) & int(r)); }
-//constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(int(l) | int(r)); }
+//constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
+//constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
 //constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l &= r; }
 //constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l |= r; }
 
-constexpr Square operator^(Square s1, Square s2) { return Square(int(s1) ^ int(s2)); }
-constexpr Square operator-(Square s1, Square s2) { return Square(int(s1) - int(s2)); }
-constexpr Square operator+(Square s1, Square s2) { return Square(int(s1) + int(s2)); }
+constexpr Square operator^(Square s1, Square s2) { return Square(i32(s1) ^ i32(s2)); }
+constexpr Square operator-(Square s1, Square s2) { return Square(i32(s1) - i32(s2)); }
+constexpr Square operator+(Square s1, Square s2) { return Square(i32(s1) + i32(s2)); }
 
-constexpr Square operator^(Square s1, int s2) { return Square(int(s1) ^ s2); }
-constexpr Square operator-(Square s1, int s2) { return Square(int(s1) - s2); }
-constexpr Square operator+(Square s1, int s2) { return Square(int(s1) + s2); }
-constexpr Square operator<<(Square s1, int s2) { return Square(int(s1) << s2); }
-constexpr Square operator%(Square s1, int s2) { return Square(int(s1) % s2); }
-constexpr Square operator/(Square s1, int s2) { return Square(int(s1) / s2); }
+constexpr Square operator^(Square s1, i32 s2) { return Square(i32(s1) ^ s2); }
+constexpr Square operator-(Square s1, i32 s2) { return Square(i32(s1) - s2); }
+constexpr Square operator+(Square s1, i32 s2) { return Square(i32(s1) + s2); }
+constexpr Square operator<<(Square s1, i32 s2) { return Square(i32(s1) << s2); }
+constexpr Square operator%(Square s1, i32 s2) { return Square(i32(s1) % s2); }
+constexpr Square operator/(Square s1, i32 s2) { return Square(i32(s1) / s2); }
 
 
 #ifdef USE_PEXT
@@ -141,42 +141,42 @@ constexpr bool HasPext = false;
     }
 
 
-    constexpr inline int popcount(ulong b) {
+    constexpr inline i32 popcount(u64 b) {
         return std::popcount(b);
     }
 
     // Returns the least significant bit in a non-zero bitboard.
-    inline int lsb(ulong b) {
+    inline i32 lsb(u64 b) {
         assert(b);
 
 #if defined(__GNUC__)  // GCC, Clang, ICX
-        return int(__builtin_ctzll(b));
+        return i32(__builtin_ctzll(b));
 #else
         unsigned long idx;
         _BitScanForward64(&idx, b);
-        return int(idx);
+        return i32(idx);
 #endif
     }
 
     // Returns the most significant bit in a non-zero bitboard.
-    inline int msb(ulong b) {
+    inline i32 msb(u64 b) {
         assert(b);
 
 #if defined(__GNUC__)  // GCC, Clang, ICX
-        return int(63 ^ __builtin_clzll(b));
+        return i32(63 ^ __builtin_clzll(b));
 #else
         unsigned long idx;
         _BitScanReverse64(&idx, b);
-        return int(idx);
+        return i32(idx);
 #endif
     }
 
     // Finds and clears the least significant bit in a non-zero bitboard.
-    inline int poplsb(ulong& b) {
+    inline i32 poplsb(u64& b) {
         assert(b);
-        int s = lsb(b);
+        i32 s = lsb(b);
         b &= b - 1;
-        return int(s);
+        return i32(s);
     }
 }
 
@@ -187,28 +187,28 @@ namespace Horsie {
 
     constexpr size_t AllocAlignment = 64;
 
-    constexpr ulong SquareBB(int s) { return (1ULL << s); }
-    constexpr ulong SquareBB(Square s) { return SquareBB((int)s); }
-    constexpr bool MoreThanOne(ulong b) { return b & (b - 1); }
+    constexpr u64 SquareBB(i32 s) { return (1ULL << s); }
+    constexpr u64 SquareBB(Square s) { return SquareBB((i32)s); }
+    constexpr bool MoreThanOne(u64 b) { return b & (b - 1); }
 
-    constexpr ulong RankBB(Rank r) { return Rank1BB << (8 * r); }
-    constexpr ulong FileBB(File f) { return FileABB << f; }
+    constexpr u64 RankBB(Rank r) { return Rank1BB << (8 * r); }
+    constexpr u64 FileBB(File f) { return FileABB << f; }
 
-    constexpr Rank GetIndexRank(int s) { return Rank(int(s) >> 3); }
-    constexpr File GetIndexFile(int s) { return File((int)s & 7); }
+    constexpr Rank GetIndexRank(i32 s) { return Rank(i32(s) >> 3); }
+    constexpr File GetIndexFile(i32 s) { return File((i32)s & 7); }
 
-    constexpr ulong RankBB(int s) { return RankBB(GetIndexRank(s)); }
-    constexpr ulong FileBB(int s) { return FileBB(GetIndexFile(s)); }
+    constexpr u64 RankBB(i32 s) { return RankBB(GetIndexRank(s)); }
+    constexpr u64 FileBB(i32 s) { return FileBB(GetIndexFile(s)); }
 
-    constexpr char GetFileChar(int fileNumber) { return (char)(97 + fileNumber); }
-    constexpr int GetFileInt(char fileLetter) { return fileLetter - 97; }
+    constexpr char GetFileChar(i32 fileNumber) { return (char)(97 + fileNumber); }
+    constexpr i32 GetFileInt(char fileLetter) { return fileLetter - 97; }
 
-    constexpr bool IsOK(int s) { return s >= (int)Square::A1 && s <= (int)Square::H8; }
+    constexpr bool IsOK(i32 s) { return s >= (i32)Square::A1 && s <= (i32)Square::H8; }
 
-    constexpr int ShiftUpDir(int c) { return c == WHITE ? NORTH : SOUTH; };
+    constexpr i32 ShiftUpDir(i32 c) { return c == WHITE ? NORTH : SOUTH; };
 
     template<Direction D>
-    constexpr ulong Shift(ulong b) {
+    constexpr u64 Shift(u64 b) {
         return D == NORTH         ? b << 8
              : D == SOUTH         ? b >> 8
              : D == NORTH + NORTH ? b << 16
@@ -222,7 +222,7 @@ namespace Horsie {
                                   : 0;
     }
 
-    constexpr ulong Shift(Direction D, ulong b) {
+    constexpr u64 Shift(Direction D, u64 b) {
         return D == NORTH         ? b << 8
              : D == SOUTH         ? b >> 8
              : D == NORTH + NORTH ? b << 16
@@ -236,20 +236,20 @@ namespace Horsie {
                                   : 0;
     }
 
-    constexpr ulong Forward(int c, ulong b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
+    constexpr u64 Forward(i32 c, u64 b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
 
 
-    inline ulong  operator&(ulong b, Square s) { return b & SquareBB(s); }
-    inline ulong  operator|(ulong b, Square s) { return b | SquareBB(s); }
-    inline ulong  operator^(ulong b, Square s) { return b ^ SquareBB(s); }
-    inline ulong& operator|=(ulong& b, Square s) { return b |= SquareBB(s); }
-    inline ulong& operator^=(ulong& b, Square s) { return b ^= SquareBB(s); }
+    inline u64  operator&(u64 b, Square s) { return b & SquareBB(s); }
+    inline u64  operator|(u64 b, Square s) { return b | SquareBB(s); }
+    inline u64  operator^(u64 b, Square s) { return b ^ SquareBB(s); }
+    inline u64& operator|=(u64& b, Square s) { return b |= SquareBB(s); }
+    inline u64& operator^=(u64& b, Square s) { return b ^= SquareBB(s); }
 
-    inline ulong operator&(Square s, ulong b) { return b & s; }
-    inline ulong operator|(Square s, ulong b) { return b | s; }
-    inline ulong operator^(Square s, ulong b) { return b ^ s; }
+    inline u64 operator&(Square s, u64 b) { return b & s; }
+    inline u64 operator|(Square s, u64 b) { return b | s; }
+    inline u64 operator^(Square s, u64 b) { return b ^ s; }
 
-    inline ulong operator|(Square s1, Square s2) { return SquareBB(s1) | s2; }
+    inline u64 operator|(Square s1, Square s2) { return SquareBB(s1) | s2; }
 
 
     constexpr bool DirectionOK(Square sq, Direction dir)
@@ -262,23 +262,23 @@ namespace Horsie {
 
         //  The rank and file of (sq + dir) should only change by at most 2 for knight moves,
         //  and 1 for bishop or rook moves.
-        int rankDistance = std::abs(GetIndexRank((int)sq) - GetIndexRank((int)sq + dir));
-        int fileDistance = std::abs(GetIndexFile((int)sq) - GetIndexFile((int)sq + dir));
+        i32 rankDistance = std::abs(GetIndexRank((i32)sq) - GetIndexRank((i32)sq + dir));
+        i32 fileDistance = std::abs(GetIndexFile((i32)sq) - GetIndexFile((i32)sq + dir));
         return std::max(rankDistance, fileDistance) <= 2;
     }
 
-    constexpr void IndexToCoord(int index, int& x, int& y) {
+    constexpr void IndexToCoord(i32 index, i32& x, i32& y) {
         x = index % 8;
         y = index / 8;
     }
 
-    constexpr int CoordToIndex(int x, int y) { return (y * 8) + x; }
+    constexpr i32 CoordToIndex(i32 x, i32 y) { return (y * 8) + x; }
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
-    inline int StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
+    inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
     
-    inline const std::string IndexToString(int sq) { 
-        int x, y;
+    inline const std::string IndexToString(i32 sq) { 
+        i32 x, y;
         IndexToCoord(sq, x, y);
         return std::string { char('a' + x), char('1' + y) }; 
     }
@@ -295,7 +295,7 @@ namespace Horsie {
         }
     }
 
-    inline int StringToPiece(const std::string& pieceName) {
+    inline i32 StringToPiece(const std::string& pieceName) {
         if (pieceName == "Pawn") return PAWN;
         if (pieceName == "Horsie") return HORSIE;
         if (pieceName == "Bishop") return BISHOP;
@@ -305,7 +305,7 @@ namespace Horsie {
         return NONE;
     }
 
-    inline int MakePiece(int pc, int pt) {
+    inline i32 MakePiece(i32 pc, i32 pt) {
         //return (pc * 2) + pt;
         return (pc * 6) + pt;
     }
@@ -315,24 +315,24 @@ namespace Horsie {
     struct StateInfo {
     public:
 
-        ulong CheckSquares[PIECE_NB];
-        ulong BlockingPieces[2];
-        ulong Pinners[2];
-        int KingSquares[2];
-        ulong Checkers = 0;
-        ulong Hash = 0;
-        ulong PawnHash = 0;
-        ulong NonPawnHash[2];
-        int HalfmoveClock = 0;
-        int EPSquare = EP_NONE;
-        int CapturedPiece = Piece::NONE;
-        int PliesFromNull = 0;
+        u64 CheckSquares[PIECE_NB];
+        u64 BlockingPieces[2];
+        u64 Pinners[2];
+        i32 KingSquares[2];
+        u64 Checkers = 0;
+        u64 Hash = 0;
+        u64 PawnHash = 0;
+        u64 NonPawnHash[2];
+        i32 HalfmoveClock = 0;
+        i32 EPSquare = EP_NONE;
+        i32 CapturedPiece = Piece::NONE;
+        i32 PliesFromNull = 0;
         CastlingStatus CastleStatus = CastlingStatus::None;
 
         Accumulator* accumulator;
     };
 
-    constexpr static int StateCopySize = sizeof(StateInfo) - sizeof(ulong);
+    constexpr static i32 StateCopySize = sizeof(StateInfo) - sizeof(u64);
 }
 
 

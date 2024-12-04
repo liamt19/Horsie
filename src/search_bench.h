@@ -21,7 +21,7 @@ using namespace Horsie::Search;
 
 namespace Horsie {
     
-    void DoBench(int depth = 12, bool openBench = false) {
+    void DoBench(i32 depth = 12, bool openBench = false) {
 
         Position pos = Position(InitialFEN);
         SearchThread thread = SearchThread();
@@ -33,7 +33,7 @@ namespace Horsie {
         SearchLimits limits;
         limits.MaxDepth = depth;
 
-        ulong totalNodes = 0;
+        u64 totalNodes = 0;
 
         thread.Reset();
         thread.History.Clear();
@@ -45,7 +45,7 @@ namespace Horsie {
             pos.LoadFromFEN(fen);
             thread.Search(pos, limits);
 
-            ulong thisNodeCount = thread.Nodes;
+            u64 thisNodeCount = thread.Nodes;
             totalNodes += thisNodeCount;
 
             if (!openBench) {
@@ -63,7 +63,7 @@ namespace Horsie {
         auto dur = duration.count();
         auto durSeconds = duration.count() / 1000;
         auto durMillis = duration.count() % 1000;
-        auto nps = (ulong)(totalNodes / ((double)dur / 1000));
+        auto nps = (u64)(totalNodes / ((double)dur / 1000));
 
         if (openBench) {
             std::cout << "info string " << durSeconds << "." << durMillis << " seconds" << std::endl;
