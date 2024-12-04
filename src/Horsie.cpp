@@ -47,6 +47,13 @@ bool inUCI = false;
 SearchThread thread = SearchThread();
 std::barrier is_sync_barrier(2);
 
+#if defined(_MSC_VER) && defined(EVALFILE)
+
+#undef EVALFILE
+#define EVALFILE "net-014-16m8-mc-l.bin"
+
+#endif
+
 int main(int argc, char* argv[])
 {
 #ifdef EVALFILE

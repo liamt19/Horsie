@@ -3,6 +3,7 @@
 
 #include "../nnue/nn.h"
 
+#include <span>
 #include "immintrin.h"
 
 #include <fstream>
@@ -23,49 +24,139 @@ namespace Horsie
 
     namespace NNUE {
 
+        NNZTable nnzTable;
         Network net;
         const Network* g_network;
 
+        int PermuteIndices[L1_SIZE / 2] = {};
+
         void LoadNetwork(const std::string& path) {
+            SetupNNZ();
+
 #if defined(_MSC_VER)
             std::ifstream stream(path, std::ios::binary);
 
-            for (size_t i = 0; i < FeatureWeightElements * InputBuckets; i++)
-                net.FeatureWeights[i] = read_little_endian<int16_t>(stream);
+            std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
 
-            for (size_t i = 0; i < FeatureBiasElements; i++)
-                net.FeatureBiases[i] = read_little_endian<int16_t>(stream);
+            for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
+                UQNet->FTWeights[i] = read_little_endian<int16_t>(stream);
 
-            for (size_t i = 0; i < LayerWeightElements; i++)
-                for (size_t bucket = 0; bucket < OutputBuckets; bucket++)
-                    net.LayerWeights[bucket][i] = read_little_endian<int16_t>(stream);
+            for (size_t i = 0; i < L1_SIZE; i++)
+                UQNet->FTBiases[i] = read_little_endian<int16_t>(stream);
+                
+            sbyte* l1Ptr = reinterpret_cast<sbyte*>(UQNet->L1Weights);
+            for (size_t i = 0; i < L1_SIZE * L2_SIZE * OUTPUT_BUCKETS; i++)
+                l1Ptr[i] = read_little_endian<sbyte>(stream);
 
-            for (size_t i = 0; i < LayerBiasElements; i++)
-                net.LayerBiases[i] = read_little_endian<int16_t>(stream);
+            float* ptr = reinterpret_cast<float*>(UQNet->L1Biases);
+            for (size_t i = 0; i < L2_SIZE * OUTPUT_BUCKETS; i++)
+                ptr[i] = read_little_endian<float>(stream);
 
-            g_network = &net;
+            ptr = reinterpret_cast<float*>(UQNet->L2Weights);
+            for (size_t i = 0; i < L2_SIZE * L3_SIZE * OUTPUT_BUCKETS; i++)
+                ptr[i] = read_little_endian<float>(stream);
+
+            ptr = reinterpret_cast<float*>(UQNet->L2Biases);
+            for (size_t i = 0; i < L3_SIZE * OUTPUT_BUCKETS; i++)
+                ptr[i] = read_little_endian<float>(stream);
+
+            ptr = reinterpret_cast<float*>(UQNet->L3Weights);
+            for (size_t i = 0; i < L3_SIZE * OUTPUT_BUCKETS; i++)
+                ptr[i] = read_little_endian<float>(stream);
+
+            ptr = reinterpret_cast<float*>(UQNet->L3Biases);
+            for (size_t i = 0; i < OUTPUT_BUCKETS; i++)
+                ptr[i] = read_little_endian<float>(stream);
 #else
-            const Network* network = reinterpret_cast<const Network*>(gEVALData);
-
-            for (size_t i = 0; i < FeatureWeightElements * InputBuckets; i++)
-                net.FeatureWeights[i] = network->FeatureWeights[i];
-
-            for (size_t i = 0; i < FeatureBiasElements; i++)
-                net.FeatureBiases[i] = network->FeatureBiases[i];
-
-            const int16_t* buff = reinterpret_cast<const int16_t*>(network->LayerWeights.data()->data());
-            size_t indx = 0;
-            for (size_t i = 0; i < LayerWeightElements; i++)
-                for (size_t bucket = 0; bucket < OutputBuckets; bucket++)
-                    net.LayerWeights[bucket][i] = buff[indx++];
-                    
-            for (size_t i = 0; i < LayerBiasElements; i++) 
-                net.LayerBiases[i] = network->LayerBiases[i];
-
-            g_network = &net;
+            const QuantisedNetwork* UQNet = reinterpret_cast<const QuantisedNetwork*>(gEVALData);
 #endif
 
-            
+            for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
+                net.FTWeights[i] = UQNet->FTWeights[i];
+
+            for (size_t i = 0; i < L1_SIZE; i++)
+                net.FTBiases[i] = UQNet->FTBiases[i];
+
+#if defined(PERMUTE_FT)
+            PermuteFT(net.FTWeights, net.FTBiases);
+            PermuteL1(UQNet->L1Weights);
+#endif
+
+            for (int bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
+            {
+                for (int i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
+                    for (int j = 0; j < L2_SIZE; ++j)
+                        for (int k = 0; k < L1_CHUNK_PER_32; ++k)
+                            net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
+                                                + j * L1_CHUNK_PER_32
+                                                + k] = UQNet->L1Weights[i * L1_CHUNK_PER_32 + k][bucket][j];
+
+                for (int i = 0; i < L2_SIZE; ++i)
+                    net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
+
+                for (int i = 0; i < L2_SIZE; ++i)
+                    for (int j = 0; j < L3_SIZE; ++j)
+                        net.L2Weights[bucket][i * L3_SIZE + j] = UQNet->L2Weights[i][bucket][j];
+
+                for (int i = 0; i < L3_SIZE; ++i)
+                    net.L2Biases[bucket][i] = UQNet->L2Biases[bucket][i];
+
+                for (int i = 0; i < L3_SIZE; ++i)
+                    net.L3Weights[bucket][i] = UQNet->L3Weights[i][bucket];
+
+                net.L3Biases[bucket] = UQNet->L3Biases[bucket];
+            }
+
+            const int numRegi = 4;
+            const int numChunks = (32 / 2) / sizeof(short);
+            constexpr int order[] = {0, 2, 1, 3};
+            __m128i regi[numRegi] = {};
+            auto ws = reinterpret_cast<__m128i*>(&net.FTWeights);
+            auto bs = reinterpret_cast<__m128i*>(&net.FTBiases);
+
+            for (int i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS / numChunks; i += numRegi)
+            {
+                for (int j = 0; j < numRegi; j++)
+                    regi[j] = ws[i + j];
+
+                for (int j = 0; j < numRegi; j++)
+                    ws[i + j] = regi[order[j]];
+            }
+
+            for (int i = 0; i < L1_SIZE / numChunks; i += numRegi)
+            {
+                for (int j = 0; j < numRegi; j++)
+                    regi[j] = bs[i + j];
+
+                for (int j = 0; j < numRegi; j++)
+                    bs[i + j] = regi[order[j]];
+            }
+
+#if !defined(PERMUTE_FT)
+            for (int i = 0; i < L1_PAIR_COUNT; i++)
+            {
+                PermuteIndices[i] = i;
+            }
+#endif
+
+            g_network = &net;
+        }
+
+        static void SetupNNZ()
+        {
+            for (uint i = 0; i < 256; i++)
+            {
+                ushort* ptr = reinterpret_cast<ushort*>(&nnzTable.Entries[i]);
+
+                uint j = i;
+                uint k = 0;
+                while (j != 0)
+                {
+                    uint lsbIndex = std::countr_zero(j);
+                    j &= j - 1;
+                    ptr[k++] = (ushort)lsbIndex;
+                }
+            }
         }
 
 
@@ -86,7 +177,7 @@ namespace Horsie
             Accumulator& accumulator = *pos.State->accumulator;
             Bitboard& bb = pos.bb;
 
-            accumulator.Sides[perspective] = g_network->FeatureBiases;
+            accumulator.Sides[perspective] = g_network->FTBiases;
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
@@ -102,7 +193,7 @@ namespace Horsie
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
 
                 const auto accum   = reinterpret_cast<short*>(&accumulator.Sides[perspective]);
-                const auto weights = &g_network->FeatureWeights[idx];
+                const auto weights = &g_network->FTWeights[idx];
                 Add(accum, accum, weights);
             }
 
@@ -145,7 +236,7 @@ namespace Horsie
                         int sq = poplsb(added);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                        const auto weights = &g_network->FeatureWeights[idx];
+                        const auto weights = &g_network->FTWeights[idx];
                         Add(ourAccumulation, ourAccumulation, weights);
                     }
 
@@ -154,7 +245,7 @@ namespace Horsie
                         int sq = poplsb(removed);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                        const auto weights = &g_network->FeatureWeights[idx];
+                        const auto weights = &g_network->FTWeights[idx];
                         Sub(ourAccumulation, ourAccumulation, weights);
                     }
                 }
@@ -167,48 +258,181 @@ namespace Horsie
         }
 
 
-        int GetEvaluation(Position& pos) {
+        int GetEvaluation(Position& pos)
+        {
+            int occ = (int)popcount(pos.bb.Occupancy);
+            int outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
+            return GetEvaluation(pos, outputBucket);
+        }
+
+        int GetEvaluation(Position& pos, int outputBucket)
+        {
+            Bitboard& bb = pos.bb;
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
 
-            Bitboard& bb = pos.bb;
+            float L1Outputs[L2_SIZE];
+            float L2Outputs[L3_SIZE];
+            float L3Output = 0;
 
-            const __m256i zeroVec = _mm256_setzero_si256();
-            const __m256i maxVec = _mm256_set1_epi16(QA);
-            __m256i sum = _mm256_setzero_si256();
+            auto us = reinterpret_cast<short*>(&accumulator.Sides[pos.ToMove]);
+            auto them = reinterpret_cast<short*>(&accumulator.Sides[Not(pos.ToMove)]);
 
-            int occ = (int)popcount(pos.bb.Occupancy);
-            int outputBucket = std::min((63 - occ) * (32 - occ) / 225, 7);
+            ActivateFTSparse(us, them, reinterpret_cast<sbyte*>(&net.L1Weights[outputBucket]), reinterpret_cast<float*>(&net.L1Biases[outputBucket]), L1Outputs);
+            ActivateL2(L1Outputs, reinterpret_cast<float*>(&net.L2Weights[outputBucket]), reinterpret_cast<float*>(&net.L2Biases[outputBucket]), L2Outputs);
+            ActivateL3(L2Outputs, reinterpret_cast<float*>(&net.L3Weights[outputBucket]), net.L3Biases[outputBucket], L3Output);
 
-            const int Stride = (HiddenSize / (sizeof(__m256i) / sizeof(short))) / 2;
-
-            auto data0 = reinterpret_cast<const __m256i*>(&accumulator.Sides[pos.ToMove]);
-            auto data1 = &data0[Stride];
-            auto weights = reinterpret_cast<const __m256i*>(&g_network->LayerWeights[outputBucket]);
-
-            for (int i = 0; i < Stride; i++) {
-                __m256i c_0 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data0[i]));
-                __m256i c_1 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data1[i]));
-                __m256i mult = _mm256_mullo_epi16(c_0, weights[i]);
-                sum = _mm256_add_epi32(sum, _mm256_madd_epi16(mult, c_1));
-            }
-
-            data0 = reinterpret_cast<const __m256i*>(&accumulator.Sides[Not(pos.ToMove)]);
-            data1 = data0 + Stride;
-            weights = reinterpret_cast<const __m256i*>(&g_network->LayerWeights[outputBucket][HiddenSize / 2]);
-            for (int i = 0; i < Stride; i++) {
-                __m256i c_0 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data0[i]));
-                __m256i c_1 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data1[i]));
-                __m256i mult = _mm256_mullo_epi16(c_0, weights[i]);
-                sum = _mm256_add_epi32(sum, _mm256_madd_epi16(mult, c_1));
-            }
-
-            int output = hsum_8x32(sum);
-            int retVal = (output / QA + g_network->LayerBiases[outputBucket]) * OutputScale / QAB;
-            //std::cout << "retVal: " << retVal << std::endl;
-            return retVal;
+            return (int)(L3Output * OutputScale);
         }
+
+
+
+        static void ActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output)
+        {
+            const auto ft_zero = _mm256_setzero_si256();
+            const auto ft_one = _mm256_set1_epi16(FT_QUANT);
+
+            int nnzCount = 0;
+            int offset = 0;
+
+            sbyte ft_outputs[L1_SIZE];
+            ushort nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
+
+            const __m128i baseInc = _mm_set1_epi16((ushort)8);
+            __m128i baseVec = _mm_setzero_si128();
+
+            for (int perspective = 0; perspective < 2; perspective++)
+            {
+                short* acc = perspective == 0 ? us : them;
+
+                for (int i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2))
+                {
+                    const auto input0a = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
+                    const auto input0b = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
+
+                    const auto input1a = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                    const auto input1b = _mm256_load_si256(reinterpret_cast<const __m256i*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+
+                    const auto clipped0a = _mm256_min_epi16(_mm256_max_epi16(input0a, ft_zero), ft_one);
+                    const auto clipped0b = _mm256_min_epi16(_mm256_max_epi16(input0b, ft_zero), ft_one);
+
+                    const auto clipped1a = _mm256_min_epi16(input1a, ft_one);
+                    const auto clipped1b = _mm256_min_epi16(input1b, ft_one);
+
+                    const auto producta = _mm256_mulhi_epi16(_mm256_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
+                    const auto productb = _mm256_mulhi_epi16(_mm256_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+
+                    const auto product_one = _mm256_packus_epi16(producta, productb);
+                    _mm256_storeu_si256(reinterpret_cast<__m256i*>(&ft_outputs[offset + i]), product_one);
+
+                    const auto nnz_mask = vec_nnz_mask(product_one);
+
+                    for (int j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++)
+                    {
+                        int lookup = (nnz_mask >> (j * 8)) & 0xFF;
+                        auto offsets = nnzTable.Entries[lookup];
+                        _mm_storeu_si128(reinterpret_cast<v128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
+
+                        nnzCount += std::popcount((uint)lookup);
+                        baseVec = _mm_add_epi16(baseVec, baseInc);
+                    }
+
+                }
+
+                offset += L1_PAIR_COUNT;
+            }
+
+#if PERM_COUNT
+            EvalCalls++;
+            ActivationCount += (ulong)nnzCount;
+            lock(NNZCounts)
+            {
+                for (int i = 0; i < L1_SIZE; i++)
+                    NNZCounts[i] += (ft_outputs[i] != 0) ? 1UL : 0;
+            }
+#endif
+
+            ActivateL1Sparse(ft_outputs, weights, biases, output, nnzIndices, nnzCount);
+        }
+
+
+        static void ActivateL1Sparse(sbyte* inputs, sbyte* weights, float* biases, float* output, ushort* nnzIndices, int nnzCount)
+        {
+            __m256i sums[L2_SIZE / I32_CHUNK_SIZE]{};
+
+            const int* inputs32 = (int*)(inputs);
+            for (int i = 0; i < nnzCount; i++)
+            {
+                const auto index = nnzIndices[i];
+                const auto input32 = _mm256_set1_epi32(inputs32[index]);
+                const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
+                for (int k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
+                {
+                    sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
+                }
+            }
+
+            const auto zero = _mm256_set1_ps(0.0f);
+            const auto one = _mm256_set1_ps(1.0f);
+
+            const auto sumMul = _mm256_set1_ps((1 << FT_SHIFT) / (float)(FT_QUANT * FT_QUANT * L1_QUANT));
+            for (int i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i)
+            {
+                const auto biasVec = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+                const auto sumPs = _mm256_fmadd_ps(_mm256_cvtepi32_ps(sums[i]), sumMul, biasVec);
+                const auto clipped = _mm256_min_ps(_mm256_max_ps(sumPs, zero), one);
+                const auto squared = _mm256_mul_ps(clipped, clipped);
+                _mm256_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+            }
+        }
+
+
+        static void ActivateL2(float* inputs, float* weights, float* biases, float* output)
+        {
+            __m256 sumVecs[L3_SIZE / F32_CHUNK_SIZE];
+
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
+                sumVecs[i] = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+
+            for (int i = 0; i < L2_SIZE; ++i)
+            {
+                const auto inputVec = _mm256_set1_ps(inputs[i]);
+                const auto weight = reinterpret_cast<const vec_ps32*>(&weights[i * L3_SIZE]);
+                for (int j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
+                {
+                    sumVecs[j] = vec_mul_add_ps(inputVec, weight[j], sumVecs[j]);
+                }
+            }
+
+            const auto zero = _mm256_set1_ps(0.0f);
+            const auto one = _mm256_set1_ps(1.0f);
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
+            {
+                const auto clipped = _mm256_min_ps(_mm256_max_ps(sumVecs[i], zero), one);
+                const auto squared = _mm256_mul_ps(clipped, clipped);
+                _mm256_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+            }
+        }
+
+
+        static void ActivateL3(float* inputs, float* weights, float bias, float& output)
+        {
+            auto sumVec = _mm256_set1_ps(0.0f);
+
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++)
+            {
+                const auto weightVec = _mm256_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
+                const auto inputsVec = _mm256_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
+                sumVec = vec_mul_add_ps(inputsVec, weightVec, sumVec);
+            }
+
+            output = bias + scuffed_chatgpt_hsum(sumVec);
+        }
+
+
+
+
 
 
 
@@ -352,9 +576,10 @@ namespace Horsie
             }
         }
 
+
         void UpdateSingle(Accumulator* prev, Accumulator* curr, int perspective)
         {
-            auto FeatureWeights = reinterpret_cast<const short*>(&g_network->FeatureWeights[0]);
+            auto FeatureWeights = reinterpret_cast<const short*>(&g_network->FTWeights[0]);
             const auto& updates = curr->Update[perspective];
 
             if (updates.AddCnt == 0 && updates.SubCnt == 0)
@@ -415,8 +640,9 @@ namespace Horsie
             int whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + wSq;
             int blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
 
-            return { whiteIndex * HiddenSize, blackIndex * HiddenSize };
+            return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
         }
+
 
         int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
         {
@@ -435,16 +661,80 @@ namespace Horsie
                 kingSq ^= 7;
             }
 
-            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * HiddenSize;
+            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * L1_SIZE;
         }
 
 
         void ResetCaches(Position& pos) {
             for (auto& bucket : pos.CachedBuckets) {
-                bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = g_network->FeatureBiases;
+                bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = g_network->FTBiases;
                 bucket.Boards[WHITE].Reset();
                 bucket.Boards[BLACK].Reset();
             }
+        }
+
+
+        static void PermuteFT(std::array<short, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS>& ftWeights, std::array<short, L1_SIZE>& ftBiases)
+        {
+            const int OneBucket = (INPUT_SIZE * L1_SIZE);
+            std::vector<short> temp(OneBucket, 0);
+
+            for (int bucket = 0; bucket < INPUT_BUCKETS; bucket++)
+            {
+                std::span<short> ftBucket = std::span<short>(&ftWeights[(bucket * OneBucket)], OneBucket);
+
+                for (size_t i = 0; i < OneBucket; i++)
+                    temp[i] = ftBucket[i];
+
+                for (int i = 0; i < INPUT_SIZE; i++)
+                {
+                    for (int dst = 0; dst < L1_PAIR_COUNT; dst++)
+                    {
+                        int src = PermuteIndices[dst];
+                        auto f = i * L1_SIZE;
+
+                        ftBucket[f + dst] = temp[f + src];
+                        ftBucket[f + dst + L1_PAIR_COUNT] = temp[f + src + L1_PAIR_COUNT];
+                    }
+                }
+            }
+
+            std::vector<short> temp2(L1_SIZE, 0);
+            for (int i = 0; i < L1_SIZE; i++)
+            {
+                temp2[i] = ftBiases[i];
+            }
+
+            for (int dst = 0; dst < L1_PAIR_COUNT; dst++)
+            {
+                int src = PermuteIndices[dst];
+
+                ftBiases[dst] = temp[src];
+                ftBiases[dst + L1_PAIR_COUNT] = temp[src + L1_PAIR_COUNT];
+            }
+        }
+
+
+        static void PermuteL1(sbyte l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE])
+        {
+            auto temp = new sbyte[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
+            std::memcpy(temp, l1Weights, N_L1W);
+
+            for (int dst = 0; dst < L1_PAIR_COUNT; dst++)
+            {
+                int src = PermuteIndices[dst];
+
+                for (int b = 0; b < OUTPUT_BUCKETS; b++)
+                {
+                    for (int l2 = 0; l2 < L2_SIZE; l2++)
+                    {
+                        l1Weights[dst][b][l2] = temp[src][b][l2];
+                        l1Weights[dst + L1_PAIR_COUNT][b][l2] = temp[src + L1_PAIR_COUNT][b][l2];
+                    }
+                }
+            }
+
+            delete[] temp;
         }
 
 
@@ -459,6 +749,41 @@ namespace Horsie
             __m128i sum32 = _mm_add_epi32(sum64, hi32);
             return _mm_cvtsi128_si32(sum32);       // movd
         }
+
+
+        inline float vec_reduce_add_ps(const __m256* vecs) {
+            const __m256 vec = _mm256_add_ps(vecs[0], vecs[1]);
+
+            const __m128 upper_128 = _mm256_extractf128_ps(vec, 1);
+            const __m128 lower_128 = _mm256_castps256_ps128(vec);
+            const __m128 sum_128 = _mm_add_ps(lower_128, upper_128);
+
+            const __m128 upper_64 = _mm_movehl_ps(sum_128, sum_128);
+            const __m128 sum_64 = _mm_add_ps(sum_128, upper_64);
+
+            const __m128 upper_32 = _mm_shuffle_ps(sum_64, sum_64, 1);
+            const __m128 sum_32 = _mm_add_ss(sum_64, upper_32);
+
+            return _mm_cvtss_f32(sum_32);
+        }
+
+
+        inline float scuffed_chatgpt_hsum(const vec_ps32 v) {
+            // Extract the high and low halves
+            __m128 low = _mm256_castps256_ps128(v);          // Lower 128 bits
+            __m128 high = _mm256_extractf128_ps(v, 1);       // Upper 128 bits
+
+            // Add the two halves
+            __m128 sum128 = _mm_add_ps(low, high);
+
+            // Perform the horizontal add
+            sum128 = _mm_hadd_ps(sum128, sum128);
+            sum128 = _mm_hadd_ps(sum128, sum128);
+
+            // Extract the result
+            return _mm_cvtss_f32(sum128);
+        }
+
 
         static void SubSubAddAdd(const short* _src, short* _dst, const short* _sub1, const short* _sub2, const short* _add1, const short* _add2) {
             const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
