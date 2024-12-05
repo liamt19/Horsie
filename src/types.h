@@ -11,26 +11,6 @@
 #include "util.h"
 #include "enums.h"
 
-using nuint = std::size_t;
-using u64 = uint64_t;
-using u32 = uint32_t;
-using u16 = uint16_t;
-using u8 = uint8_t;
-using i8 = int8_t;
-
-// Predefined macros hell:
-//
-// __GNUC__                Compiler is GCC, Clang or ICX
-// __clang__               Compiler is Clang or ICX
-// __INTEL_LLVM_COMPILER   Compiler is ICX
-// _MSC_VER                Compiler is MSVC
-// _WIN32                  Building on Windows (any)
-// _WIN64                  Building on Windows 64 bit
-
-#if defined(__GNUC__) && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ <= 2)) \
-      && defined(_WIN32) && !defined(__clang__)
-#define ALIGNAS_ON_STACK_VARIABLES_BROKEN
-#endif
 
 #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
 

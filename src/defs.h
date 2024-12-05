@@ -3,7 +3,7 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-#include <stdint.h>
+#include <cstdint>
 
 using nuint = std::size_t;
 
