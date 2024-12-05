@@ -48,7 +48,7 @@ namespace Horsie {
 
     static i32 LMRQuietDiv = 12288;
     static i32 LMRCaptureDiv = 10288;
-    static i32 LMRExtMargin = 128;
+    static i32 LMRExtMargin = 48;
 
     static i32 QSFutileMargin = 183;
     static i32 QSSeeMargin = 81;
