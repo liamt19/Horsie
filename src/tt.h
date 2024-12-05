@@ -64,13 +64,13 @@ namespace Horsie {
         constexpr bool PV() const { return (_AgePVType & TT_PV_MASK) != 0; }
         constexpr i32 Bound() const { return _AgePVType & TT_BOUND_MASK; }
 
-        constexpr i32 Depth() const { return (i32)(_depth + DepthOffset); }
-        constexpr void SetDepth(i32 n) { _depth = (u8)(n - DepthOffset); }
+        constexpr i32 Depth() const { return static_cast<i32>(_depth + DepthOffset); }
+        constexpr void SetDepth(i32 n) { _depth = static_cast<u8>(n - DepthOffset); }
         constexpr i32 RawDepth() const { return _depth; }
 
         constexpr bool IsEmpty() const { return _depth == 0; }
 
-        constexpr i8 RelAge(u8 age) const { return (i8)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK); }
+        constexpr i8 RelAge(u8 age) const { return static_cast<i8>((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK); }
 
         void Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, bool isPV = false);
 
@@ -110,7 +110,7 @@ namespace Horsie {
 
         TTCluster* GetCluster(u64 hash) const
         {
-            return Clusters + (u64)(((uint128_t(hash) * uint128_t(ClusterCount)) >> 64));
+            return Clusters + static_cast<u64>((static_cast<uint128_t>(hash) * static_cast<uint128_t>(ClusterCount)) >> 64);
         }
 
         TTCluster* Clusters = nullptr;

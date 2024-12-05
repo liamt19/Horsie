@@ -45,10 +45,10 @@ namespace Zobrist {
     }
 
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove) {
-        u64 change = (u64)(prev & toRemove);
+        u64 change = static_cast<u64>(prev & toRemove);
         while (change != 0)
         {
-            hash ^= CastlingRightsHashes[(i32)poplsb(change)];
+            hash ^= CastlingRightsHashes[poplsb(change)];
         }
     }
 
@@ -78,7 +78,7 @@ namespace Zobrist {
 
         while (white != 0)
         {
-            i32 idx = (i32)poplsb(white);
+            i32 idx = poplsb(white);
             i32 pt = bb.GetPieceAtIndex(idx);
             hash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
 
@@ -92,7 +92,7 @@ namespace Zobrist {
 
         while (black != 0)
         {
-            i32 idx = (i32)poplsb(black);
+            i32 idx = poplsb(black);
             i32 pt = bb.GetPieceAtIndex(idx);
             hash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
 
@@ -121,7 +121,7 @@ namespace Zobrist {
             hash ^= CastlingRightsHashes[3];
         }
 
-        if (position.State->EPSquare != (i32)Square::EP_NONE)
+        if (position.State->EPSquare != static_cast<i32>(Square::EP_NONE))
         {
             hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.State->EPSquare)];
         }
