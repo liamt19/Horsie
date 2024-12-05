@@ -110,8 +110,7 @@ namespace Horsie {
             FullMoves++;
         }
 
-        const i32 moveFrom = move.From();
-        const i32 moveTo = move.To();
+        const auto [moveFrom, moveTo] = move.Unpack();
 
         const i32 ourPiece = bb.GetPieceAtIndex(moveFrom);
         const i32 ourColor = ToMove;
@@ -208,25 +207,12 @@ namespace Horsie {
         ToMove = Not(ToMove);
 
         State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
-        
-
-        //u64 ph = 0;
-        //u64 nph = 0;
-        //u64 h = Zobrist::GetHash(*this, &ph, &nph);
-        //assert(Hash() == h);
-        //assert(PawnHash() == ph);
-
-        //u64 nphw = NonPawnHash(WHITE);
-        //if (nphw != nph) {
-        //    i32 z = 0;
-        //}
 
         SetCheckInfo();
     }
 
     void Position::UnmakeMove(Move move) {
-        i32 moveFrom = move.From();
-        i32 moveTo = move.To();
+        const auto [moveFrom, moveTo] = move.Unpack();
 
         //  Assume that "we" just made the last move, and "they" are undoing it.
         i32 ourPiece = bb.GetPieceAtIndex(moveTo);
@@ -307,14 +293,14 @@ namespace Horsie {
     }
 
     void Position::DoCastling(i32 ourColor, i32 from, i32 to, bool undo = false) {
-        bool kingSide = to > from;
-        i32 rfrom = to;
-        i32 rto = (kingSide ? (i32)Square::F1 : (i32)Square::D1) ^ (ourColor * 56);
-        to = (kingSide ? (i32)Square::G1 : (i32)Square::C1) ^ (ourColor * 56);
+        const bool kingSide = to > from;
+        const auto rfrom = to;
+        const auto rto = (kingSide ? static_cast<i32>(Square::F1) : static_cast<i32>(Square::D1)) ^ (ourColor * 56);
+        const auto kto = (kingSide ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1)) ^ (ourColor * 56);
 
         if (undo)
         {
-            bb.RemovePiece(to, ourColor, KING);
+            bb.RemovePiece(kto, ourColor, KING);
             bb.RemovePiece(rto, ourColor, ROOK);
 
             bb.AddPiece(from, ourColor, KING);
@@ -325,13 +311,13 @@ namespace Horsie {
             bb.RemovePiece(from, ourColor, KING);
             bb.RemovePiece(rfrom, ourColor, ROOK);
 
-            bb.AddPiece(to, ourColor, KING);
+            bb.AddPiece(kto, ourColor, KING);
             bb.AddPiece(rto, ourColor, ROOK);
 
             UpdateHash(ourColor, KING, from);
             UpdateHash(ourColor, ROOK, rfrom);
 
-            UpdateHash(ourColor, KING, to);
+            UpdateHash(ourColor, KING, kto);
             UpdateHash(ourColor, ROOK, rto);
         }
     }
@@ -362,44 +348,46 @@ namespace Horsie {
     }
 
     void Position::SetCastlingStatus(i32 c, i32 rfrom) {
-        i32 kfrom = bb.KingIndex(c);
-        CastlingStatus cr = (c == WHITE && kfrom < rfrom) ? CastlingStatus::WK :
-                            (c == BLACK && kfrom < rfrom) ? CastlingStatus::BK :
-                            (c == WHITE) ?                  CastlingStatus::WQ :
-                                                            CastlingStatus::BQ;
+        const auto kfrom = bb.KingIndex(c);
+        const auto cr = (c == WHITE && kfrom < rfrom) ? CastlingStatus::WK :
+                        (c == BLACK && kfrom < rfrom) ? CastlingStatus::BK :
+                        (c == WHITE) ?                  CastlingStatus::WQ :
+                                                        CastlingStatus::BQ;
 
-        CastlingRookSquares[(i32)cr] = rfrom;
+        CastlingRookSquares[static_cast<i32>(cr)] = rfrom;
 
-        i32 kto = (((i32)cr & (i32)CastlingStatus::Kingside) != (i32)CastlingStatus::None ? (i32)Square::G1 : (i32)Square::C1) ^ (56 * c);
-        i32 rto = (((i32)cr & (i32)CastlingStatus::Kingside) != (i32)CastlingStatus::None ? (i32)Square::F1 : (i32)Square::D1) ^ (56 * c);
+        auto kto = ((cr & CastlingStatus::Kingside) != CastlingStatus::None) ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1);
+        auto rto = ((cr & CastlingStatus::Kingside) != CastlingStatus::None) ? static_cast<i32>(Square::F1) : static_cast<i32>(Square::D1);
 
-        CastlingRookPaths[(i32)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
+        kto ^= (56 * c);
+        rto ^= (56 * c);
 
-        State->CastleStatus = (CastlingStatus) ((i32)State->CastleStatus | (i32)cr);
+        CastlingRookPaths[static_cast<i32>(cr)] = (LineBB[rfrom][static_cast<i32>(rto)] | LineBB[kfrom][static_cast<i32>(kto)]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
+
+        //State->CastleStatus = (CastlingStatus) (static_cast<i32>(State->CastleStatus) | cr);
+        State->CastleStatus |= cr;
     }
 
-    u64 Position::HashAfter(Move m) const {
+    u64 Position::HashAfter(Move move) const {
         u64 hash = State->Hash;
 
-        i32 from = m.From();
-        i32 to = m.To();
-        i32 us = bb.GetColorAtIndex(from);
-        i32 ourPiece = bb.GetPieceAtIndex(from);
+        const auto [moveFrom, moveTo] = move.Unpack();
+        i32 us = bb.GetColorAtIndex(moveFrom);
+        i32 ourPiece = bb.GetPieceAtIndex(moveFrom);
 
-        if (bb.GetPieceAtIndex(to) != Piece::NONE)
+        if (bb.GetPieceAtIndex(moveTo) != Piece::NONE)
         {
-            Zobrist::ToggleSquare(hash, Not(us), bb.GetPieceAtIndex(to), to);
+            Zobrist::ToggleSquare(hash, Not(us), bb.GetPieceAtIndex(moveTo), moveTo);
         }
 
-        Zobrist::Move(hash, from, to, us, ourPiece);
+        Zobrist::Move(hash, moveFrom, moveTo, us, ourPiece);
         Zobrist::ChangeToMove(hash);
 
         return hash;
     }
 
     bool Position::IsPseudoLegal(Move move) const {
-        i32 moveTo = move.To();
-        i32 moveFrom = move.From();
+        const auto [moveFrom, moveTo] = move.Unpack();
 
         i32 pt = bb.GetPieceAtIndex(moveFrom);
         if (pt == Piece::NONE)
@@ -454,10 +442,9 @@ namespace Horsie {
     bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }
 
     bool Position::IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const {
-        i32 moveFrom = move.From();
-        i32 moveTo = move.To();
+        const auto [moveFrom, moveTo] = move.Unpack();
 
-        i32 pt = bb.GetPieceAtIndex(moveFrom);
+        const auto pt = bb.GetPieceAtIndex(moveFrom);
 
         if (pt == NONE)
         {
@@ -470,15 +457,13 @@ namespace Horsie {
             return false;
         }
 
-        i32 ourColor = bb.GetColorAtIndex(moveFrom);
-        i32 theirColor = Not(ourColor);
+        const auto ourColor = ToMove;
+        const auto theirColor = Not(ourColor);
 
-        if (InCheck())
-        {
+        if (InCheck()) {
             //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
 
-            if (pt == Piece::KING)
-            {
+            if (pt == Piece::KING) {
                 //  We need to move to a square that they don't attack.
                 //  We also need to consider (NeighborsMask[moveTo] & SquareBB[theirKing]), because bb.AttackersTo does NOT include king attacks
                 //  and we can't move to a square that their king attacks.
@@ -487,10 +472,7 @@ namespace Horsie {
 
             i32 checker = lsb(State->Checkers);
             if (((LineBB[ourKing][checker] & SquareBB(moveTo)) != 0)
-                || (move.IsEnPassant() && GetIndexFile(moveTo) == GetIndexFile(checker)))
-            {
-                //  This move is another piece which has moved into the LineBB between our king and the checking piece.
-                //  This will be legal as i64 as it isn't pinned.
+                || (move.IsEnPassant() && GetIndexFile(moveTo) == GetIndexFile(checker))) {
 
                 return pinnedPieces == 0 || (pinnedPieces & SquareBB(moveFrom)) == 0;
             }
@@ -499,12 +481,10 @@ namespace Horsie {
             return false;
         }
 
-        if (pt == Piece::KING)
-        {
-            if (move.IsCastle())
-            {
+        if (pt == Piece::KING) {
+            if (move.IsCastle()) {
                 CastlingStatus thisCr = move.RelevantCastlingRight();
-                i32 rookSq = CastlingRookSquares[(i32)thisCr];
+                i32 rookSq = CastlingRookSquares[static_cast<i32>(thisCr)];
 
                 if ((SquareBB(rookSq) & bb.Pieces[ROOK] & bb.Colors[ourColor]) == 0)
                 {
@@ -519,7 +499,7 @@ namespace Horsie {
                     return false;
                 }
 
-                i32 kingTo = (moveTo > moveFrom ? (i32)Square::G1 : (i32)Square::C1) ^ (ourColor * 56);
+                i32 kingTo = (moveTo > moveFrom ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1)) ^ (ourColor * 56);
                 u64 them = bb.Colors[theirColor];
                 i32 dir = (moveFrom < kingTo) ? -1 : 1;
                 for (i32 sq = kingTo; sq != moveFrom; sq += dir)
@@ -559,7 +539,6 @@ namespace Horsie {
         //  The piece is a blocker for our king, but it is moving along the same ray that it had been blocking previously.
         //  (i.e. a rook on B1 moving to A1 to capture a rook that was pinning it to our king on C1)
         
-        auto rayAlign = RayBB[moveFrom][moveTo];
         return ((State->BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
     }
 
@@ -572,12 +551,12 @@ namespace Horsie {
             return false;
         }
 
-        u64 knights = popcount(bb.Pieces[Piece::HORSIE]);
+        u64 horsies = popcount(bb.Pieces[Piece::HORSIE]);
         u64 bishops = popcount(bb.Pieces[Piece::BISHOP]);
 
-        //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
-        //  Some organizations classify 2 knights a draw and others don't.
-        return (knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2);
+        //  Just kings, only 1 bishop, or 1 or 2 horsies is a draw
+        //  Some organizations classify 2 horsies a draw and others don't.
+        return (horsies == 0 && bishops < 2) || (bishops == 0 && horsies <= 2);
     }
 
     bool Position::IsThreefoldRepetition() const {
@@ -627,11 +606,11 @@ namespace Horsie {
     }
 
     constexpr CastlingStatus Position::GetCastlingForRook(i32 sq) const {
-        CastlingStatus cr = sq == CastlingRookSquares[(i32)CastlingStatus::WQ] ? CastlingStatus::WQ :
-                            sq == CastlingRookSquares[(i32)CastlingStatus::WK] ? CastlingStatus::WK :
-                            sq == CastlingRookSquares[(i32)CastlingStatus::BQ] ? CastlingStatus::BQ :
-                            sq == CastlingRookSquares[(i32)CastlingStatus::BK] ? CastlingStatus::BK : 
-                                                                                 CastlingStatus::None;
+        CastlingStatus cr = sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WQ)] ? CastlingStatus::WQ :
+                            sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WK)] ? CastlingStatus::WK :
+                            sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BQ)] ? CastlingStatus::BQ :
+                            sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BK)] ? CastlingStatus::BK : 
+                                                                                              CastlingStatus::None;
 
         return cr;
     }
@@ -715,7 +694,7 @@ namespace Horsie {
 
         unsigned char col, row, token;
         size_t idx;
-        i32 sq = (i32) Square::A8;
+        i32 sq = static_cast<i32>(Square::A8);
         std::istringstream ss(fen);
         ss >> std::noskipws;
 
@@ -745,14 +724,14 @@ namespace Horsie {
             char upper = toupper(token);
 
             if (upper == 'K') {
-                for (rsq = ((i32)Square::H1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; --rsq) { }
+                for (rsq = (static_cast<i32>(Square::H1) ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; --rsq) { }
             }
             else if (upper == 'Q') {
-                for (rsq = ((i32)Square::A1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; ++rsq) { }
+                for (rsq = (static_cast<i32>(Square::A1) ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; ++rsq) { }
             }
             else if (upper >= 'A' && upper <= 'H') {
                 IsChess960 = true;
-                rsq = CoordToIndex((i32)upper - 'A', (0 ^ (color * 7)));
+                rsq = CoordToIndex(static_cast<i32>(upper) - 'A', (0 ^ (color * 7)));
             }
             else
                 continue;
@@ -897,27 +876,26 @@ namespace Horsie {
 
 
 
-    bool Position::SEE_GE(Move m, i32 threshold) const
+    bool Position::SEE_GE(Move move, i32 threshold) const
     {
-        if (m.IsCastle() || m.IsEnPassant() || m.IsPromotion())
+        if (move.IsCastle() || move.IsEnPassant() || move.IsPromotion())
         {
             return threshold <= 0;
         }
 
-        i32 from = m.From();
-        i32 to = m.To();
+        const auto [moveFrom, moveTo] = move.Unpack();
 
-        i32 swap = GetSEEValue(bb.PieceTypes[to]) - threshold;
+        i32 swap = GetSEEValue(bb.PieceTypes[moveTo]) - threshold;
         if (swap < 0)
             return false;
 
-        swap = GetSEEValue(bb.PieceTypes[from]) - swap;
+        swap = GetSEEValue(bb.PieceTypes[moveFrom]) - swap;
         if (swap <= 0)
             return true;
 
-        u64 occ = (bb.Occupancy ^ SquareBB(from) | SquareBB(to));
+        u64 occ = (bb.Occupancy ^ SquareBB(moveFrom) | SquareBB(moveTo));
 
-        u64 attackers = bb.AttackersTo(to, occ);
+        u64 attackers = bb.AttackersTo(moveTo, occ);
         u64 stmAttackers;
         u64 temp;
 
@@ -951,7 +929,7 @@ namespace Horsie {
                 if ((swap = GetSEEValue(PAWN) - swap) < res)
                     break;
 
-                attackers |= attacks_bb<BISHOP>(to, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+                attackers |= attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[HORSIE]) != 0)
             {
@@ -965,7 +943,7 @@ namespace Horsie {
                 if ((swap = GetSEEValue(BISHOP) - swap) < res)
                     break;
 
-                attackers |= attacks_bb<BISHOP>(to, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+                attackers |= attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[ROOK]) != 0)
             {
@@ -973,7 +951,7 @@ namespace Horsie {
                 if ((swap = GetSEEValue(ROOK) - swap) < res)
                     break;
 
-                attackers |= attacks_bb<ROOK>(to, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
+                attackers |= attacks_bb<ROOK>(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[QUEEN]) != 0)
             {
@@ -981,7 +959,7 @@ namespace Horsie {
                 if ((swap = GetSEEValue(QUEEN) - swap) < res)
                     break;
 
-                attackers |= (attacks_bb<BISHOP>(to, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN])) | (attacks_bb<ROOK>(to, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
+                attackers |= (attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN])) | (attacks_bb<ROOK>(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
             }
             else
             {
@@ -1021,9 +999,8 @@ namespace Horsie {
                 diff != keys[(slot = hash2(diff))])
                 continue;
 
-            Move m = moves[slot];
-            i32 moveFrom = m.From();
-            i32 moveTo = m.To();
+            Move move = moves[slot];
+            const auto [moveFrom, moveTo] = move.Unpack();
 
             if ((bb.Occupancy & LineBB[moveFrom][moveTo]) == 0)
             {

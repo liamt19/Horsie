@@ -37,8 +37,8 @@ namespace Horsie {
 
         bool UpdateNN;
 
-        i32 CastlingRookSquares[(i32) CastlingStatus::All];
-        u64 CastlingRookPaths[(i32) CastlingStatus::All];
+        i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)];
+        u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)];
 
         bool IsChess960;
 
@@ -58,10 +58,12 @@ namespace Horsie {
         }
 
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
-        constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[(i32)cr]); }
-        constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[(i32)cr]) & ourOcc); }
+        constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[static_cast<i32>(cr)]); }
+        constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[static_cast<i32>(cr)]) & ourOcc); }
         constexpr bool HasNonPawnMaterial(i32 pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
-        constexpr bool IsCapture(Move m) const { return ((bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle()) || m.IsEnPassant()); }
+        
+        constexpr bool IsCapture(Move m) const { return bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle(); }
+        constexpr bool IsNoisy(Move m) const { return IsCapture(m) || m.IsEnPassant(); }
 
         void RemoveCastling(CastlingStatus cr) const;
         void UpdateHash(i32 pc, i32 pt, i32 sq) const;
@@ -82,7 +84,7 @@ namespace Horsie {
         void SetCheckInfo();
         void SetCastlingStatus(i32 c, i32 rfrom);
 
-        u64 HashAfter(Move m) const;
+        u64 HashAfter(Move move) const;
 
         bool IsPseudoLegal(Move move) const;
         bool IsLegal(Move move) const;
@@ -103,11 +105,11 @@ namespace Horsie {
 
 
         inline i32 PawnCorrectionIndex(i32 pc) const {
-            return (pc * 16384) + (i32)(PawnHash() % 16384);
+            return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);
         }
 
         inline i32 NonPawnCorrectionIndex(i32 pc, i32 side) const {
-            return (pc * 16384) + (i32)(NonPawnHash(side) % 16384);
+            return (pc * 16384) + static_cast<i32>(NonPawnHash(side) % 16384);
         }
 
     private:

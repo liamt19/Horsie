@@ -22,7 +22,7 @@ i32 MakePromotionChecks(ScoredMove* list, i32 from, i32 promotionSquare, bool is
 
     if (!noisyMoves || isCapture)
     {
-        list[size++].move = Move(from, promotionSquare, FlagPromoKnight);
+        list[size++].move = Move(from, promotionSquare, FlagPromoHorsie);
         list[size++].move = Move(from, promotionSquare, FlagPromoRook);
         list[size++].move = Move(from, promotionSquare, FlagPromoBishop);
     }
@@ -48,17 +48,17 @@ i32 GenPawns(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
     const u64 rank7 = (stm == WHITE) ? Rank7BB : Rank2BB;
     const u64 rank3 = (stm == WHITE) ? Rank3BB : Rank6BB;
 
-    u64 us   = bb.Colors[stm];
-    u64 them = bb.Colors[theirColor];
-    u64 captureSquares = evasions ? pos.State->Checkers : them;
+    const u64 us   = bb.Colors[stm];
+    const u64 them = bb.Colors[theirColor];
+    const u64 captureSquares = evasions ? pos.State->Checkers : them;
 
-    u64 emptySquares = ~bb.Occupancy;
+    const u64 emptySquares = ~bb.Occupancy;
 
-    u64 ourPawns = us & bb.Pieces[Piece::PAWN];
-    u64 promotingPawns    = ourPawns & rank7;
-    u64 notPromotingPawns = ourPawns & ~rank7;
+    const u64 ourPawns = us & bb.Pieces[Piece::PAWN];
+    const u64 promotingPawns    = ourPawns & rank7;
+    const u64 notPromotingPawns = ourPawns & ~rank7;
 
-    i32 theirKing = pos.State->KingSquares[theirColor];
+    const i32 theirKing = pos.State->KingSquares[theirColor];
 
     if (!noisyMoves) {
         //  Include pawn pushes
@@ -141,7 +141,7 @@ i32 GenPawns(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
 i32 GenNormal(const Position& pos, ScoredMove* list, i32 pt, u64 targets, i32 size) {
     const Color stm = pos.ToMove;
     const Bitboard& bb = pos.bb;
-    u64 occ = bb.Occupancy;
+    const u64 occ = bb.Occupancy;
     u64 ourPieces = bb.Pieces[pt] & bb.Colors[stm];
 
     while (ourPieces != 0) {
@@ -198,21 +198,21 @@ i32 GenAll(const Position& pos, ScoredMove* list, i32 size) {
 
     if (nonEvasions)
     {
-        if (stm == Color::WHITE && (ourKing == (i32)Square::E1 || pos.IsChess960))
+        if (stm == Color::WHITE && (ourKing == static_cast<i32>(Square::E1) || pos.IsChess960))
         {
             if (pos.CanCastle(occ, us, CastlingStatus::WK))
-                list[size++].move = Move(ourKing, pos.CastlingRookSquares[(i32)CastlingStatus::WK], FlagCastle);
+                list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::WK)], FlagCastle);
 
             if (pos.CanCastle(occ, us, CastlingStatus::WQ))
-                list[size++].move = Move(ourKing, pos.CastlingRookSquares[(i32)CastlingStatus::WQ], FlagCastle);
+                list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::WQ)], FlagCastle);
         }
-        else if (stm == Color::BLACK && (ourKing == (i32)Square::E8 || pos.IsChess960))
+        else if (stm == Color::BLACK && (ourKing == static_cast<i32>(Square::E8) || pos.IsChess960))
         {
             if (pos.CanCastle(occ, us, CastlingStatus::BK))
-                list[size++].move = Move(ourKing, pos.CastlingRookSquares[(i32)CastlingStatus::BK], FlagCastle);
+                list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::BK)], FlagCastle);
 
             if (pos.CanCastle(occ, us, CastlingStatus::BQ))
-                list[size++].move = Move(ourKing, pos.CastlingRookSquares[(i32)CastlingStatus::BQ], FlagCastle);
+                list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::BQ)], FlagCastle);
         }
     }
 

@@ -68,9 +68,9 @@ namespace Horsie {
 
     i32 Bitboard::KingIndex(i32 pc) const
     {
-        assert((i32) lsb(KingMask(pc)) != SQUARE_NB);
+        assert(lsb(KingMask(pc)) != SQUARE_NB);
 
-        return (i32) lsb(KingMask(pc));
+        return lsb(KingMask(pc));
     }
 
 
@@ -80,21 +80,21 @@ namespace Horsie {
         *pinners = 0;
 
         u64 temp;
-        u64 us = Colors[pc];
-        u64 them = Colors[Not(pc)];
+        const u64 us = Colors[pc];
+        const u64 them = Colors[Not(pc)];
 
-        i32 ourKing = KingIndex(pc);
+        const i32 ourKing = KingIndex(pc);
 
         //  Candidates are their pieces that are on the same rank/file/diagonal as our king.
         u64 candidates = ((RookRays[ourKing] & (Pieces[Piece::QUEEN] | Pieces[Piece::ROOK]))
             | (BishopRays[ourKing] & (Pieces[Piece::QUEEN] | Pieces[Piece::BISHOP]))) & them;
 
-        u64 occ = us | them;
+        const u64 occ = us | them;
 
         while (candidates != 0) {
             i32 idx = poplsb(candidates);
 
-            temp = between_bb(ourKing, (i32)idx) & occ;
+            temp = between_bb(ourKing, idx) & occ;
 
             if (temp != 0 && !MoreThanOne(temp)) {
                 //  If there is one and only one piece between the candidate and our king, that piece is a blocker
@@ -114,21 +114,21 @@ namespace Horsie {
     {
         return (attacks_bb<BISHOP>(idx, occupied) & (Pieces[BISHOP] | Pieces[QUEEN]))
             | (attacks_bb<ROOK>(idx, occupied) & (Pieces[ROOK] | Pieces[QUEEN]))
-            | (PseudoAttacks[HORSIE][(i32)idx] & Pieces[HORSIE])
-            | (PawnAttackMasks[WHITE][(i32)idx] & Colors[BLACK] & Pieces[PAWN])
-            | (PawnAttackMasks[BLACK][(i32)idx] & Colors[WHITE] & Pieces[PAWN]);
+            | (PseudoAttacks[HORSIE][idx] & Pieces[HORSIE])
+            | (PawnAttackMasks[WHITE][idx] & Colors[BLACK] & Pieces[PAWN])
+            | (PawnAttackMasks[BLACK][idx] & Colors[WHITE] & Pieces[PAWN]);
     }
 
     u64 Bitboard::AttackMask(i32 idx, i32 pc, i32 pt, u64 occupied) const
     {
         switch (pt)
         {
-        case PAWN: return PawnAttackMasks[pc][(i32)idx];
-        case HORSIE: return PseudoAttacks[HORSIE][(i32)idx];
+        case PAWN: return PawnAttackMasks[pc][idx];
+        case HORSIE: return PseudoAttacks[HORSIE][idx];
         case BISHOP: return attacks_bb<BISHOP>(idx, occupied);
         case ROOK: return attacks_bb<ROOK>(idx, occupied);
         case QUEEN: return attacks_bb<QUEEN>(idx, occupied);
-        case KING: return PseudoAttacks[KING][(i32)idx];
+        case KING: return PseudoAttacks[KING][idx];
         default:
             return 0;
         };

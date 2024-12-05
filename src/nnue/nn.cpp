@@ -172,16 +172,14 @@ namespace Horsie
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
 
-            Bitboard& bb = pos.bb;
-
             const __m256i zeroVec = _mm256_setzero_si256();
             const __m256i maxVec = _mm256_set1_epi16(QA);
             __m256i sum = _mm256_setzero_si256();
 
-            i32 occ = (i32)popcount(pos.bb.Occupancy);
-            i32 outputBucket = std::min((63 - occ) * (32 - occ) / 225, 7);
+            const auto occ = popcount(pos.bb.Occupancy);
+            const auto outputBucket = std::min((63 - occ) * (32 - occ) / 225, 7);
 
-            const i32 Stride = (HiddenSize / (sizeof(__m256i) / sizeof(i16))) / 2;
+            const auto Stride = (HiddenSize / (sizeof(__m256i) / sizeof(i16))) / 2;
 
             auto data0 = reinterpret_cast<const __m256i*>(&accumulator.Sides[pos.ToMove]);
             auto data1 = &data0[Stride];
@@ -206,7 +204,7 @@ namespace Horsie
 
             i32 output = hsum_8x32(sum);
             i32 retVal = (output / QA + g_network->LayerBiases[outputBucket]) * OutputScale / QAB;
-            //std::cout << "retVal: " << retVal << std::endl;
+
             return retVal;
         }
 
@@ -223,14 +221,13 @@ namespace Horsie
 
             dst->Computed[WHITE] = dst->Computed[BLACK] = false;
 
-            i32 moveTo = m.To();
-            i32 moveFrom = m.From();
+            const auto [moveFrom, moveTo] = m.Unpack();
 
-            i32 us = pos.ToMove;
-            i32 ourPiece = bb.GetPieceAtIndex(moveFrom);
+            const auto us = pos.ToMove;
+            const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
 
-            i32 them = Not(us);
-            i32 theirPiece = bb.GetPieceAtIndex(moveTo);
+            const auto them = Not(us);
+            const auto theirPiece = bb.GetPieceAtIndex(moveTo);
 
             PerspectiveUpdate& wUpdate = dst->Update[WHITE];
             PerspectiveUpdate& bUpdate = dst->Update[BLACK];

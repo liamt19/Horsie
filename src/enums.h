@@ -39,8 +39,13 @@ enum class Square : i32 {
     SQUARE_NB = 64,
 };
 
-constexpr i32 EP_NONE = (i32)Square::EP_NONE;
-constexpr i32 SQUARE_NB = (i32)Square::SQUARE_NB;
+constexpr bool operator<(Square l, int r) { return static_cast<i32>(l) < r; }
+constexpr bool operator<(int l, Square r) { return l < static_cast<i32>(r); }
+constexpr bool operator>(Square l, int r) { return static_cast<i32>(l) > r; }
+constexpr bool operator>(int l, Square r) { return l > static_cast<i32>(r); }
+
+constexpr i32 EP_NONE = static_cast<i32>(Square::EP_NONE);
+constexpr i32 SQUARE_NB = static_cast<i32>(Square::SQUARE_NB);
 
 enum File : i32 {
     FILE_A = 0,

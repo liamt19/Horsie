@@ -53,8 +53,8 @@ namespace Horsie {
     static i32 QSFutileMargin = 183;
     static i32 QSSeeMargin = 81;
 
-    static i32 OrderingGivesCheckBonus = 9546;
-    static i32 OrderingVictimValueMultiplier = 14;
+    static i32 CheckBonus = 9546;
+    static i32 MVVMult = 14;
 
     static i32 IIRMinDepth = 3;
     static i32 AspWindow = 12;

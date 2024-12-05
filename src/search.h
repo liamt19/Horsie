@@ -195,7 +195,7 @@ namespace Horsie {
                 newSearchTime = std::min(newSearchTime, limits.PlayerTime);
 
                 //  Values from Clarity
-                SoftTimeLimit = (i32)(0.65 * ((static_cast<double>(limits.PlayerTime) / limits.MovesToGo) + (limits.Increment * 3 / 4.0)));
+                SoftTimeLimit = static_cast<i32>(0.65 * ((static_cast<double>(limits.PlayerTime) / limits.MovesToGo) + (limits.Increment * 3 / 4.0)));
                 HasSoftTime = true;
 
                 limits.MaxSearchTime = newSearchTime;

@@ -11,26 +11,6 @@
 #include "util.h"
 #include "enums.h"
 
-using nuint = std::size_t;
-using u64 = uint64_t;
-using u32 = uint32_t;
-using u16 = uint16_t;
-using u8 = uint8_t;
-using i8 = int8_t;
-
-// Predefined macros hell:
-//
-// __GNUC__                Compiler is GCC, Clang or ICX
-// __clang__               Compiler is Clang or ICX
-// __INTEL_LLVM_COMPILER   Compiler is ICX
-// _MSC_VER                Compiler is MSVC
-// _WIN32                  Building on Windows (any)
-// _WIN64                  Building on Windows 64 bit
-
-#if defined(__GNUC__) && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ <= 2)) \
-      && defined(_WIN32) && !defined(__clang__)
-#define ALIGNAS_ON_STACK_VARIABLES_BROKEN
-#endif
 
 #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
 
@@ -188,14 +168,14 @@ namespace Horsie {
     constexpr size_t AllocAlignment = 64;
 
     constexpr u64 SquareBB(i32 s) { return (1ULL << s); }
-    constexpr u64 SquareBB(Square s) { return SquareBB((i32)s); }
+    constexpr u64 SquareBB(Square s) { return SquareBB(static_cast<i32>(s)); }
     constexpr bool MoreThanOne(u64 b) { return b & (b - 1); }
 
     constexpr u64 RankBB(Rank r) { return Rank1BB << (8 * r); }
     constexpr u64 FileBB(File f) { return FileABB << f; }
 
-    constexpr Rank GetIndexRank(i32 s) { return Rank(i32(s) >> 3); }
-    constexpr File GetIndexFile(i32 s) { return File((i32)s & 7); }
+    constexpr Rank GetIndexRank(i32 s) { return Rank(s >> 3); }
+    constexpr File GetIndexFile(i32 s) { return File(s & 7); }
 
     constexpr u64 RankBB(i32 s) { return RankBB(GetIndexRank(s)); }
     constexpr u64 FileBB(i32 s) { return FileBB(GetIndexFile(s)); }
@@ -203,7 +183,7 @@ namespace Horsie {
     constexpr char GetFileChar(i32 fileNumber) { return (char)(97 + fileNumber); }
     constexpr i32 GetFileInt(char fileLetter) { return fileLetter - 97; }
 
-    constexpr bool IsOK(i32 s) { return s >= (i32)Square::A1 && s <= (i32)Square::H8; }
+    constexpr bool IsOK(i32 s) { return s >= static_cast<i32>(Square::A1) && s <= static_cast<i32>(Square::H8); }
 
     constexpr i32 ShiftUpDir(i32 c) { return c == WHITE ? NORTH : SOUTH; };
 
@@ -260,7 +240,7 @@ namespace Horsie {
             return false;
         }
 
-        //  The rank and file of (sq + dir) should only change by at most 2 for knight moves,
+        //  The rank and file of (sq + dir) should only change by at most 2 for horsie moves,
         //  and 1 for bishop or rook moves.
         i32 rankDistance = std::abs(GetIndexRank((i32)sq) - GetIndexRank((i32)sq + dir));
         i32 fileDistance = std::abs(GetIndexFile((i32)sq) - GetIndexFile((i32)sq + dir));
@@ -306,7 +286,6 @@ namespace Horsie {
     }
 
     inline i32 MakePiece(i32 pc, i32 pt) {
-        //return (pc * 2) + pt;
         return (pc * 6) + pt;
     }
 

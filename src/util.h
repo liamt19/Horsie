@@ -96,7 +96,7 @@ namespace Horsie {
     }
 
     constexpr i32 MakeDrawScore(u64 nodes) {
-        return -1 + (i32)(nodes & 2);
+        return -1 + static_cast<i32>(nodes & 2);
     }
 
     constexpr i32 MakeMateScore(i32 ply) {
@@ -109,10 +109,10 @@ namespace Horsie {
             return score;
 
         if (score >= ScoreTTWin)
-            return (i16)(score + ply);
+            return static_cast<i16>(score + ply);
 
         if (score <= ScoreTTLoss)
-            return (i16)(score - ply);
+            return static_cast<i16>(score - ply);
 
         return score;
     }
@@ -123,10 +123,10 @@ namespace Horsie {
             return ttScore;
 
         if (ttScore >= ScoreTTWin)
-            return (i16)(ttScore - ply);
+            return static_cast<i16>(ttScore - ply);
 
         if (ttScore <= ScoreTTLoss)
-            return (i16)(ttScore + ply);
+            return static_cast<i16>(ttScore + ply);
 
         return ttScore;
     }
@@ -160,7 +160,7 @@ namespace Horsie {
         else
         {
             const double NormalizeEvalFactor = 252;
-            return "cp " + std::to_string((i32)((score * 100) / NormalizeEvalFactor));
+            return "cp " + std::to_string(static_cast<i32>((score * 100) / NormalizeEvalFactor));
         }
     }
 

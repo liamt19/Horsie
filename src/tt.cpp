@@ -10,7 +10,7 @@ namespace Horsie {
         TTCluster* const cluster = GetCluster(hash);
         tte = (TTEntry*)cluster;
 
-        auto key = (u16)hash;
+        auto key = static_cast<u16>(hash);
 
         for (i32 i = 0; i < EntriesPerCluster; i++)
         {
@@ -60,7 +60,7 @@ namespace Horsie {
 
     void TTEntry::Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, bool isPV) {
 
-        u16 k = (u16)key;
+        u16 k = static_cast<u16>(key);
 
         if (move != Move::Null() || k != Key)
         {
@@ -74,8 +74,8 @@ namespace Horsie {
             Key = k;
             SetScore(score);
             SetStatEval(statEval);
-            _depth = (u8)(depth - DepthOffset);
-            _AgePVType = (u8)(TT.Age | ((isPV ? 1 : 0) << 2) | (u32)nodeType);
+            _depth = static_cast<u8>(depth - DepthOffset);
+            _AgePVType = static_cast<u8>(TT.Age | ((isPV ? 1 : 0) << 2) | static_cast<u32>(nodeType));
         }
     }
 
