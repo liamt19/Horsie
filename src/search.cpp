@@ -622,7 +622,7 @@ namespace Horsie {
                 (ss + 1)->PVLength = 0;
             }
 
-            i32 newDepth = depth + extend - 1;
+            i32 newDepth = depth + extend;
 
             if (depth >= 2
                 && legalMoves >= 2
@@ -646,35 +646,38 @@ namespace Horsie {
 
                 R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
-                i32 reducedDepth = std::max(0, std::min((newDepth - R), newDepth));
+                R = std::max(1, std::min(R, newDepth));
+                i32 reducedDepth = (newDepth - R);
 
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
-                if (score > alpha && reducedDepth < newDepth) {
-                    bool deeper    = score > (bestScore + LMRExtMargin + 2 * newDepth);
-                    bool shallower = score < (bestScore + newDepth);
+                if (score > alpha && R > 1) {
+                    newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
+                    newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
 
-                    newDepth += deeper - shallower;
-
-                    if (newDepth > reducedDepth) {
-                        score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
+                    if (newDepth - 1 > reducedDepth) {
+                        score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
                     }
 
-                    i32 bonus = score <= alpha ? -StatBonus(newDepth) :
-                                score >= beta  ?  StatBonus(newDepth) :
-                                                  0;
+                    i32 bonus = 0;
+                    if (score <= alpha) {
+                        bonus = -StatBonus(newDepth - 1);
+                    }
+                    else if (score >= beta) {
+                        bonus = StatBonus(newDepth - 1);
+                    }
 
-                    UpdateContinuations(ss, us, ourPiece, m.To(), bonus);
+                    UpdateContinuations(ss, us, ourPiece, moveTo, bonus);
                 }
             }
             else if (!isPV || legalMoves > 1) {
-                score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
+                score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
             }
 
             if (isPV && (playedMoves == 1 || score > alpha)) {
                 (ss + 1)->PV[0] = Move::Null();
                 (ss + 1)->PVLength = 0;
-                score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth, false);
+                score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth - 1, false);
             }
 
             pos.UnmakeMove(m);
