@@ -54,7 +54,7 @@ namespace Horsie {
     static i32 QSSeeMargin = 81;
 
     static i32 CheckBonus = 9546;
-    static i32 MVVMult = 14;
+    static i32 MVVMult = 12;
 
     static i32 IIRMinDepth = 3;
     static i32 AspWindow = 12;
