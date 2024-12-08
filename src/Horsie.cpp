@@ -47,6 +47,13 @@ bool inUCI = false;
 SearchThread thread = SearchThread();
 std::barrier is_sync_barrier(2);
 
+#if defined(_MSC_VER) && defined(EVALFILE)
+
+#undef EVALFILE
+#define EVALFILE "meow.bin"
+
+#endif
+
 i32 main(i32 argc, char* argv[])
 {
 #ifdef EVALFILE

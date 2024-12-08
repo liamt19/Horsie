@@ -33,7 +33,7 @@ namespace Horsie {
 
 
         StateInfo* State;
-        std::array<BucketCache, InputBuckets * 2> CachedBuckets;
+        std::array<BucketCache, INPUT_BUCKETS * 2> CachedBuckets;
 
         bool UpdateNN;
 
