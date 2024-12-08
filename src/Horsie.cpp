@@ -41,6 +41,7 @@ void HandleStopCommand(std::thread& searchThread);
 void HandleEvalCommand(Position& pos);
 void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
+void ScuffedChatGPTPrintActivations();
 
 
 bool inUCI = false;
@@ -157,6 +158,9 @@ i32 main(i32 argc, char* argv[])
 
         else if (token == "setoption")
             HandleSetOptionCommand(is);
+
+        else if (token == "activations")
+            ScuffedChatGPTPrintActivations();
 
     } while (true);
 
@@ -460,4 +464,50 @@ void HandleListMovesCommand(Position& pos) {
         cout << Move::ToString(legals[i].move) << " ";
     }
     cout << endl;
+}
+
+#if defined(PERM_COUNT)
+#include <fstream>
+#include <iostream>
+#include <vector>
+#endif
+
+void ScuffedChatGPTPrintActivations() {
+#if defined(PERM_COUNT)
+    std::ofstream file("perm.txt");
+    for (size_t i = 0; i < NNZCounts.size(); ++i) {
+        file << i << " " << NNZCounts[i] << "\n";
+    }
+    file.close();
+
+    std::cout << ActivationCount << " / " << EvalCalls << " = " << ((double)ActivationCount / EvalCalls) << std::endl;
+    
+    std::vector<std::pair<size_t, uint64_t>> indexedCounts;
+
+    // Create the index-value pairs
+    for (size_t i = 0; i < NNZCounts.size(); ++i) {
+        indexedCounts.emplace_back(i, NNZCounts[i]);
+    }
+
+    // Filter pairs where index is less than L1_SIZE / 2
+    indexedCounts.erase(
+        std::remove_if(indexedCounts.begin(), indexedCounts.end(), [&](const auto& pair) { return pair.first >= L1_SIZE / 2; }), indexedCounts.end());
+
+    // Sort by value in descending order
+    std::sort(indexedCounts.begin(), indexedCounts.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
+
+    std::vector<size_t> indices;
+    std::transform(indexedCounts.begin(), indexedCounts.end(), std::back_inserter(indices), [](const auto& pair) { return pair.first; });
+
+    // Chunk the indices into groups of 16 and print
+    const size_t chunkSize = 16;
+    for (size_t i = 0; i < indices.size(); i += chunkSize) {
+        std::ostringstream oss;
+        for (size_t j = i; j < i + chunkSize && j < indices.size(); ++j) {
+            if (j > i) oss << ", ";
+            oss << indices[j];
+        }
+        std::cout << oss.str() << ",\n";
+    }
+#endif
 }

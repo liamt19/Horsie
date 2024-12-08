@@ -21,6 +21,12 @@ namespace Horsie
 
     namespace NNUE {
 
+#if defined(PERM_COUNT)
+        std::array<u64, L1_SIZE> NNZCounts = {};
+        u64 ActivationCount = 0;
+        u64 EvalCalls = 0;
+#endif
+
         NNZTable nnzTable;
         Network net;
         const Network* g_network;
@@ -327,12 +333,9 @@ namespace Horsie
 
 #if defined(PERM_COUNT)
             EvalCalls++;
-            ActivationCount += (ulong)nnzCount;
-            lock(NNZCounts)
-            {
-                for (i32 i = 0; i < L1_SIZE; i++)
-                    NNZCounts[i] += (ft_outputs[i] != 0) ? 1UL : 0;
-            }
+            ActivationCount += static_cast<u64>(nnzCount);
+            for (i32 i = 0; i < L1_SIZE; i++)
+                NNZCounts[i] += (ft_outputs[i] ? 1UL : 0);
 #endif
 
             ActivateL1Sparse(Span<i8>(ft_outputs), weights, biases, output, Span<u16>(nnzIndices), nnzCount);
