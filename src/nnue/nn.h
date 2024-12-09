@@ -23,12 +23,6 @@ namespace Horsie
 {
     namespace NNUE {
 
-        using vec_i8 = __m256i;
-        using vec_i16 = __m256i;
-        using vec_i32 = __m256i;
-        using vec_ps32 = __m256;
-        using vec_128i = __m128i;
-
         template <typename T, typename W, typename U>
         struct alignas(64) QuantisedNetworkBase {
             T FTWeights[INPUT_SIZE * L1_SIZE * INPUT_BUCKETS];
@@ -125,37 +119,6 @@ namespace Horsie
         static void SubAdd(const i16* src, i16* dst, const i16* sub1, const i16* add1);
         static void SubSubAdd(const i16* src, i16* dst, const i16* sub1, const i16* sub2, const i16* add1);
         static void SubSubAddAdd(const i16* src, i16* dst, const i16* sub1, const i16* sub2, const i16* add1, const i16* add2);
-
-
-        //  https://stackoverflow.com/questions/63106143/simd-c-avx2-intrinsics-getting-sum-of-m256i-vector-with-16bit-integers
-        inline int32_t hsum_8x32(__m256i v) {
-            // silly GCC uses a longer AXV512VL instruction if AVX512 is enabled :/
-            __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
-
-            __m128i hi64 = _mm_unpackhi_epi64(sum128, sum128);
-            __m128i sum64 = _mm_add_epi32(hi64, sum128);
-            __m128i hi32 = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));
-            __m128i sum32 = _mm_add_epi32(sum64, hi32);
-            return _mm_cvtsi128_si32(sum32);
-        }
-
-        inline float scuffed_chatgpt_hsum(const vec_ps32 v) {
-            __m128 sum128 = _mm_add_ps(_mm256_castps256_ps128(v), _mm256_extractf128_ps(v, 1));
-            sum128 = _mm_hadd_ps(sum128, sum128);
-            sum128 = _mm_hadd_ps(sum128, sum128);
-            return _mm_cvtss_f32(sum128);
-        }
-
-        inline uint16_t vec_nnz_mask(const vec_i32 vec) { return _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(vec, _mm256_setzero_si256()))); }
-
-        inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
-            const vec_i16 product16 = _mm256_maddubs_epi16(vec0, vec1);
-            const vec_i32 product32 = _mm256_madd_epi16(product16, _mm256_set1_epi16(1));
-            return _mm256_add_epi32(sum, product32);
-        }
-
-        inline vec_ps32 vec_mul_add_ps(const vec_ps32 vec0, const vec_ps32 vec1, const vec_ps32 vec2) { return _mm256_fmadd_ps(vec0, vec1, vec2); }
-
 
 
         constexpr i32 BestPermuteIndices[] = {

@@ -1,19 +1,15 @@
 
 # Compiler and flags
 CXX := g++
-ARCH := -march=native
-_THIS := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-_ROOT := $(_THIS)
-
 PGO = off
+
+EXE := horsie
 
 SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/tt.cpp src/zobrist.cpp src/nnue/nn.cpp src/zstd/zstddeclib.c
 
-LDFLAGS := 
-
 COMPILER_VERSION := $(shell $(CXX) --version)
+ARCH_DEFINES := $(shell echo | $(CXX) -march=native -E -dM -)
 
-EXE := horsie
 
 ifeq ($(UNAME_S),Darwin)
 	DEFAULT_NET := $(shell cat network.txt)
@@ -28,19 +24,14 @@ endif
 
 
 CXXFLAGS:= -mavx -mavx2 -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -DUSE_PEXT -DUSE_POPCNT -funroll-loops
-
-COMMON_CXXFLAGS := -std=c++23 -DEVALFILE=\"$(EVALFILE)\" $(ARCH) $(GXX_FLAGS)
-
-
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
-BUILD_CXXFLAGS := $(COMMON_CXXFLAGS) -O3 -DNDEBUG
 
 CXXFLAGS_NATIVE := -march=native
 CXXFLAGS_AVX2_BMI2 := -march=haswell -mtune=haswell
 
-# Directories
-SRC_DIR := src
-BUILD_DIR := build
+ifneq ($(findstring __AVX512BW__, $(ARCH_DEFINES)),)
+CXXFLAGS_NATIVE += -DAVX512
+endif
 
 ifeq ($(CXX),clang++)
 	STACK_SIZE := -Wl,/STACK:12582912
@@ -51,13 +42,10 @@ endif
 ifeq ($(OS),Windows_NT) 
 	CXXFLAGS += -fuse-ld=lld
 	RM_FILE_CMD = del
-	RM_FOLDER_CMD = rmdir /s /q
 	LDFLAGS += $(STACK_SIZE)
 	SUFFIX := .exe
 else
-	NNUE_DIR_CMD = -mkdir $(BUILD_DIR)/nnue
 	RM_FILE_CMD = rm
-	RM_FOLDER_CMD = rm -rf
 endif
 
 #	https://github.com/Ciekce/Stormphrax/blob/main/Makefile

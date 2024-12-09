@@ -1,8 +1,8 @@
 
 #include "../nnue/nn.h"
+#include "../nnue/simd.h"
 
-#include "immintrin.h"
-
+#include <immintrin.h>
 #include <fstream>
 #include <cstring>
 
@@ -88,12 +88,17 @@ namespace Horsie
                 net.L3Biases[bucket] = UQNet->L3Biases[bucket];
             }
 
-            const i32 numRegi = 4;
-            const i32 numChunks = (32 / 2) / sizeof(i16);
-            constexpr i32 order[] = {0, 2, 1, 3};
-            __m128i regi[numRegi] = {};
             auto ws = reinterpret_cast<__m128i*>(&net.FTWeights);
             auto bs = reinterpret_cast<__m128i*>(&net.FTBiases);
+            const i32 numChunks = sizeof(__m128i) / sizeof(i16);
+#if defined(AVX512)
+            const i32 numRegi = 8;
+            constexpr i32 order[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
+#else
+            const i32 numRegi = 4;
+            constexpr i32 order[] = { 0, 2, 1, 3 };
+#endif
+            __m128i regi[numRegi] = {};
 
             for (i32 i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS / numChunks; i += numRegi)
             {
@@ -235,7 +240,6 @@ namespace Horsie
         }
 
         i32 GetEvaluation(Position& pos, i32 outputBucket) {
-            Bitboard& bb = pos.bb;
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
 
@@ -250,14 +254,14 @@ namespace Horsie
             ActivateL2(L1Outputs, Span<float>(net.L2Weights[outputBucket]), Span<float>(net.L2Biases[outputBucket]), L2Outputs);
             ActivateL3(L2Outputs, Span<float>(net.L3Weights[outputBucket]), net.L3Biases[outputBucket], L3Output);
 
-            return (i32)(L3Output * OutputScale);
+            return static_cast<i32>(L3Output * OutputScale);
         }
 
 
 
         static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output) {
-            const auto ft_zero = _mm256_setzero_si256();
-            const auto ft_one = _mm256_set1_epi16(FT_QUANT);
+            const auto ft_zero = vec_setzero_epi16();
+            const auto ft_one = vec_set1_epi16(FT_QUANT);
 
             i32 nnzCount = 0;
             i32 offset = 0;
@@ -265,29 +269,29 @@ namespace Horsie
             i8 ft_outputs[L1_SIZE];
             u16 nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
 
-            const vec_128i baseInc = _mm_set1_epi16((u16)8);
+            const vec_128i baseInc = _mm_set1_epi16(u16(8));
             vec_128i baseVec = _mm_setzero_si128();
 
             
             for (const auto acc : { us, them }) {
                 for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
-                    const auto input0a = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
-                    const auto input0b = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
+                    const auto input0a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
+                    const auto input0b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
 
-                    const auto input1a = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
-                    const auto input1b = _mm256_load_si256(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                    const auto input1a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                    const auto input1b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
 
-                    const auto clipped0a = _mm256_min_epi16(_mm256_max_epi16(input0a, ft_zero), ft_one);
-                    const auto clipped0b = _mm256_min_epi16(_mm256_max_epi16(input0b, ft_zero), ft_one);
+                    const auto clipped0a = vec_min_epi16(vec_max_epi16(input0a, ft_zero), ft_one);
+                    const auto clipped0b = vec_min_epi16(vec_max_epi16(input0b, ft_zero), ft_one);
 
-                    const auto clipped1a = _mm256_min_epi16(input1a, ft_one);
-                    const auto clipped1b = _mm256_min_epi16(input1b, ft_one);
+                    const auto clipped1a = vec_min_epi16(input1a, ft_one);
+                    const auto clipped1b = vec_min_epi16(input1b, ft_one);
 
-                    const auto producta = _mm256_mulhi_epi16(_mm256_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
-                    const auto productb = _mm256_mulhi_epi16(_mm256_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+                    const auto producta = vec_mulhi_epi16(vec_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
+                    const auto productb = vec_mulhi_epi16(vec_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
 
-                    const auto product_one = _mm256_packus_epi16(producta, productb);
-                    _mm256_storeu_si256(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), product_one);
+                    const auto product_one = vec_packus_epi16(producta, productb);
+                    vec_storeu_epi8(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), product_one);
 
                     const auto nnz_mask = vec_nnz_mask(product_one);
 
@@ -296,7 +300,7 @@ namespace Horsie
                         auto offsets = nnzTable.Entries[lookup];
                         _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
 
-                        nnzCount += std::popcount((u32)lookup);
+                        nnzCount += std::popcount(static_cast<u32>(lookup));
                         baseVec = _mm_add_epi16(baseVec, baseInc);
                     }
 
@@ -322,59 +326,59 @@ namespace Horsie
             const auto inputs32 = (i32*)(inputs.data());
             for (i32 i = 0; i < nnzCount; i++) {
                 const auto index = nnzIndices[i];
-                const auto input32 = _mm256_set1_epi32(inputs32[index]);
+                const auto input32 = vec_set1_epi32(inputs32[index]);
                 const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
                 for (i32 k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
                     sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
             }
 
-            const auto zero = _mm256_set1_ps(0.0f);
-            const auto one = _mm256_set1_ps(1.0f);
+            const auto zero = vec_set1_ps(0.0f);
+            const auto one = vec_set1_ps(1.0f);
 
-            const auto sumMul = _mm256_set1_ps((1 << FT_SHIFT) / (float)(FT_QUANT * FT_QUANT * L1_QUANT));
+            const auto sumMul = vec_set1_ps(L1_MUL);
             for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
-                const auto biasVec = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
-                const auto sumPs = _mm256_fmadd_ps(_mm256_cvtepi32_ps(sums[i]), sumMul, biasVec);
-                const auto clipped = _mm256_min_ps(_mm256_max_ps(sumPs, zero), one);
-                const auto squared = _mm256_mul_ps(clipped, clipped);
-                _mm256_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+                const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+                const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
+                const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
+                const auto squared = vec_mul_ps(clipped, clipped);
+                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
             }
         }
 
 
         static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output) {
-            vec_ps32 sumVecs[L3_SIZE / F32_CHUNK_SIZE];
+            vec_ps sumVecs[L3_SIZE / F32_CHUNK_SIZE];
 
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
-                sumVecs[i] = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+                sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
 
             for (i32 i = 0; i < L2_SIZE; ++i) {
-                const auto inputVec = _mm256_set1_ps(inputs[i]);
-                const auto weight = reinterpret_cast<const vec_ps32*>(&weights[i * L3_SIZE]);
+                const auto inputVec = vec_set1_ps(inputs[i]);
+                const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_SIZE]);
                 for (i32 j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
-                    sumVecs[j] = vec_mul_add_ps(inputVec, weight[j], sumVecs[j]);
+                    sumVecs[j] = vec_fmadd_ps(inputVec, weight[j], sumVecs[j]);
             }
 
-            const auto zero = _mm256_set1_ps(0.0f);
-            const auto one = _mm256_set1_ps(1.0f);
+            const auto zero = vec_set1_ps(0.0f);
+            const auto one = vec_set1_ps(1.0f);
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
-                const auto clipped = _mm256_min_ps(_mm256_max_ps(sumVecs[i], zero), one);
-                const auto squared = _mm256_mul_ps(clipped, clipped);
-                _mm256_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+                const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
+                const auto squared = vec_mul_ps(clipped, clipped);
+                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
             }
         }
 
 
         static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output) {
-            auto sumVec = _mm256_set1_ps(0.0f);
+            auto sumVec = vec_set1_ps(0.0f);
 
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
-                const auto weightVec = _mm256_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
-                const auto inputsVec = _mm256_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
-                sumVec = vec_mul_add_ps(inputsVec, weightVec, sumVec);
+                const auto weightVec = vec_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
+                const auto inputsVec = vec_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
+                sumVec = vec_fmadd_ps(inputsVec, weightVec, sumVec);
             }
 
-            output = bias + scuffed_chatgpt_hsum(sumVec);
+            output = bias + vec_hsum_ps(sumVec);
         }
 
 
@@ -755,55 +759,55 @@ namespace Horsie
 
 
         static void SubSubAddAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _sub2, const i16* _add1, const i16* _add2) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
-            const __m256i* sub2 = reinterpret_cast<const __m256i*>(_sub2);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
-            const __m256i* add2 = reinterpret_cast<const __m256i*>(_add2);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
+            const vec_i16* sub2 = reinterpret_cast<const vec_i16*>(_sub2);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
+            const vec_i16* add2 = reinterpret_cast<const vec_i16*>(_add2);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
             {
-                dst[i] = _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(_mm256_add_epi16(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
+                dst[i] = vec_sub_epi16(vec_sub_epi16(vec_add_epi16(vec_add_epi16(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
             }
         }
 
         static void SubSubAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _sub2, const i16* _add1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
-            const __m256i* sub2 = reinterpret_cast<const __m256i*>(_sub2);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
+            const vec_i16* sub2 = reinterpret_cast<const vec_i16*>(_sub2);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
             {
-                dst[i] = _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(src[i], add1[i]), sub1[i]), sub2[i]);
+                dst[i] = vec_sub_epi16(vec_sub_epi16(vec_add_epi16(src[i], add1[i]), sub1[i]), sub2[i]);
             }
         }
 
         static void SubAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _add1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
             {
-                dst[i] = _mm256_sub_epi16(_mm256_add_epi16(src[i], add1[i]), sub1[i]);
+                dst[i] = vec_sub_epi16(vec_add_epi16(src[i], add1[i]), sub1[i]);
             }
         }
 
         static void Add(const i16* _src, i16* _dst, const i16* _add1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
-                dst[i] = _mm256_add_epi16(src[i], add1[i]);
+                dst[i] = vec_add_epi16(src[i], add1[i]);
         }
 
         static void Sub(const i16* _src, i16* _dst, const i16* _sub1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
-                dst[i] = _mm256_sub_epi16(src[i], sub1[i]);
+                dst[i] = vec_sub_epi16(src[i], sub1[i]);
         }
     }
 
