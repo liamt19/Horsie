@@ -7,8 +7,10 @@
 #include <cstring>
 
 #include "../incbin/incbin.h"
+#include "../zstd/zstd.h"
 
 #if !defined(_MSC_VER)
+#include <sstream>
 INCBIN(EVAL, EVALFILE);
 #else
 const unsigned char gEVALData[1] = {};
@@ -34,47 +36,23 @@ namespace Horsie
         void LoadNetwork(const std::string& path) {
             SetupNNZ();
 
+            std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
+            const auto dst = reinterpret_cast<std::byte*>(UQNet.get());
+
 #if defined(_MSC_VER)
             std::ifstream stream(path, std::ios::binary);
+#else
+            std::istringstream stream(std::string(reinterpret_cast<const char*>(gEVALData), gEVALSize));
+#endif
 
-            std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
-
-            for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
-                UQNet->FTWeights[i] = read_little_endian<int16_t>(stream);
-
-            for (size_t i = 0; i < L1_SIZE; i++)
-                UQNet->FTBiases[i] = read_little_endian<int16_t>(stream);
-                
-            i8* l1Ptr = reinterpret_cast<i8*>(UQNet->L1Weights);
-            for (size_t i = 0; i < L1_SIZE * L2_SIZE * OUTPUT_BUCKETS; i++)
-                l1Ptr[i] = read_little_endian<i8>(stream);
-
-            float* ptr = reinterpret_cast<float*>(UQNet->L1Biases);
-            for (size_t i = 0; i < L2_SIZE * OUTPUT_BUCKETS; i++)
-                ptr[i] = read_little_endian<float>(stream);
-
-            ptr = reinterpret_cast<float*>(UQNet->L2Weights);
-            for (size_t i = 0; i < L2_SIZE * L3_SIZE * OUTPUT_BUCKETS; i++)
-                ptr[i] = read_little_endian<float>(stream);
-
-            ptr = reinterpret_cast<float*>(UQNet->L2Biases);
-            for (size_t i = 0; i < L3_SIZE * OUTPUT_BUCKETS; i++)
-                ptr[i] = read_little_endian<float>(stream);
-
-            ptr = reinterpret_cast<float*>(UQNet->L3Weights);
-            for (size_t i = 0; i < L3_SIZE * OUTPUT_BUCKETS; i++)
-                ptr[i] = read_little_endian<float>(stream);
-
-            ptr = reinterpret_cast<float*>(UQNet->L3Biases);
-            for (size_t i = 0; i < OUTPUT_BUCKETS; i++)
-                ptr[i] = read_little_endian<float>(stream);
+            if (IsCompressed(stream)) {
+                LoadZSTD(stream, dst);
+            }
+            else {
+                stream.read(reinterpret_cast<char*>(dst), sizeof(QuantisedNetwork));
+            }
 
             auto& tempL1 = UQNet->L1Weights;
-#else
-            const QuantisedNetwork* UQNet = reinterpret_cast<const QuantisedNetwork*>(gEVALData);
-            auto tempL1 = new i8[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
-            std::memcpy(tempL1, UQNet->L1Weights, L1_SIZE * OUTPUT_BUCKETS * L2_SIZE);
-#endif
 
             for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
                 net.FTWeights[i] = UQNet->FTWeights[i];
@@ -135,22 +113,18 @@ namespace Horsie
                     bs[i + j] = regi[order[j]];
             }
 
-#if !defined(_MSC_VER)
-            delete[] tempL1;
-#endif
-
             g_network = &net;
         }
 
-        static void SetupNNZ()
+        static void SetupNNZ() 
         {
-            for (u32 i = 0; i < 256; i++)
+            for (u32 i = 0; i < 256; i++) 
             {
                 u16* ptr = reinterpret_cast<u16*>(&nnzTable.Entries[i]);
 
                 u32 j = i;
                 u32 k = 0;
-                while (j != 0)
+                while (j != 0) 
                 {
                     u32 lsbIndex = std::countr_zero(j);
                     j &= j - 1;
@@ -638,6 +612,83 @@ namespace Horsie
                 bucket.Boards[WHITE].Reset();
                 bucket.Boards[BLACK].Reset();
             }
+        }
+        
+        
+        //  See https://github.com/Ciekce/Stormphrax/pull/176 for the non-scuffed impl of this.
+        void LoadZSTD(std::istream& m_stream, std::byte* dst) {
+
+            size_t m_pos = 0;
+            size_t m_end = 0;
+            size_t m_result = 0;
+
+            std::vector<std::byte> m_inBuf(ZSTD_DStreamInSize());
+            std::vector<std::byte> m_outBuf(ZSTD_DStreamOutSize());
+            ZSTD_inBuffer m_input{};
+            ZSTD_outBuffer m_output{};
+
+            m_input.src = m_inBuf.data();
+            m_output.dst = m_outBuf.data();
+
+            auto m_dStream = ZSTD_createDStream();
+
+            size_t n = sizeof(QuantisedNetwork);
+            while (n > 0) {
+                while (m_pos >= m_end && (m_input.pos < m_input.size || !m_stream.fail())) {
+
+                    if (m_input.pos == m_input.size) {
+                        if (!m_stream) {
+                            break;
+                        }
+
+                        m_stream.read(reinterpret_cast<char*>(m_inBuf.data()), static_cast<std::streamsize>(m_inBuf.size()));
+
+                        m_input.size = m_stream.gcount();
+                        m_input.pos = 0;
+                    }
+
+                    if (m_result == 0 && m_input.pos < m_input.size)
+                        ZSTD_initDStream(m_dStream);
+
+                    m_output.size = m_outBuf.size();
+                    m_output.pos = 0;
+
+                    m_result = ZSTD_decompressStream(m_dStream, &m_output, &m_input);
+
+                    if (ZSTD_isError(m_result)) {
+                        const auto code = ZSTD_getErrorCode(m_result);
+                        std::cerr << "zstd error: " << ZSTD_getErrorString(code) << std::endl;
+                        break;
+                    }
+
+                    m_pos = 0;
+                    m_end = m_output.pos;
+                }
+
+                if (m_pos >= m_end) {
+                    return;
+                }
+
+                const auto remaining = m_end - m_pos;
+                const auto count = std::min(n, remaining);
+
+                std::memcpy(dst, &m_outBuf[m_pos], count);
+
+                m_pos += count;
+                dst += count;
+
+                n -= count;
+            }
+
+            ZSTD_freeDStream(m_dStream);
+        }
+
+        bool IsCompressed(std::istream& stream) {
+            const i32 ZSTD_HEADER = -47205080;
+            const i32 headerMaybe = read_little_endian<i32>(stream);
+            stream.seekg(0);
+
+            return (headerMaybe == ZSTD_HEADER);
         }
 
 
