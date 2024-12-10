@@ -9,18 +9,18 @@
 
 #include <array>
 
-constexpr i32 ByteSize = HiddenSize * sizeof(i16);
+constexpr i32 ByteSize = L1_SIZE * sizeof(i16);
 
 namespace Horsie {
 
     struct alignas(64) Accumulator {
     public:
-        std::array<std::array<i16, HiddenSize>, 2> Sides{};
+        std::array<std::array<i16, L1_SIZE>, 2> Sides{};
         std::array<bool, 2> NeedsRefresh = {true, true};
         std::array<bool, 2> Computed = { false, false };
         NetworkUpdate Update{};
 
-        const std::array<i16, HiddenSize> operator[](const i32 c) { return Sides[c]; }
+        const std::array<i16, L1_SIZE> operator[](const i32 c) { return Sides[c]; }
 
         void CopyTo(Accumulator* target) const
         {

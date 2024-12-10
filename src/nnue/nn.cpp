@@ -1,16 +1,16 @@
 
-
-
 #include "../nnue/nn.h"
+#include "../nnue/simd.h"
 
-#include "immintrin.h"
-
+#include <immintrin.h>
 #include <fstream>
 #include <cstring>
 
 #include "../incbin/incbin.h"
+#include "../zstd/zstd.h"
 
 #if !defined(_MSC_VER)
+#include <sstream>
 INCBIN(EVAL, EVALFILE);
 #else
 const unsigned char gEVALData[1] = {};
@@ -23,54 +23,119 @@ namespace Horsie
 
     namespace NNUE {
 
+#if defined(PERM_COUNT)
+        std::array<u64, L1_SIZE> NNZCounts = {};
+        u64 ActivationCount = 0;
+        u64 EvalCalls = 0;
+#endif
+
+        NNZTable nnzTable;
         Network net;
         const Network* g_network;
 
         void LoadNetwork(const std::string& path) {
+            SetupNNZ();
+
+            std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
+            const auto dst = reinterpret_cast<std::byte*>(UQNet.get());
+
 #if defined(_MSC_VER)
             std::ifstream stream(path, std::ios::binary);
-
-            for (size_t i = 0; i < FeatureWeightElements * InputBuckets; i++)
-                net.FeatureWeights[i] = read_little_endian<int16_t>(stream);
-
-            for (size_t i = 0; i < FeatureBiasElements; i++)
-                net.FeatureBiases[i] = read_little_endian<int16_t>(stream);
-
-            for (size_t i = 0; i < LayerWeightElements; i++)
-                for (size_t bucket = 0; bucket < OutputBuckets; bucket++)
-                    net.LayerWeights[bucket][i] = read_little_endian<int16_t>(stream);
-
-            for (size_t i = 0; i < LayerBiasElements; i++)
-                net.LayerBiases[i] = read_little_endian<int16_t>(stream);
-
-            g_network = &net;
 #else
-            const Network* network = reinterpret_cast<const Network*>(gEVALData);
-
-            for (size_t i = 0; i < FeatureWeightElements * InputBuckets; i++)
-                net.FeatureWeights[i] = network->FeatureWeights[i];
-
-            for (size_t i = 0; i < FeatureBiasElements; i++)
-                net.FeatureBiases[i] = network->FeatureBiases[i];
-
-            const int16_t* buff = reinterpret_cast<const int16_t*>(network->LayerWeights.data()->data());
-            size_t indx = 0;
-            for (size_t i = 0; i < LayerWeightElements; i++)
-                for (size_t bucket = 0; bucket < OutputBuckets; bucket++)
-                    net.LayerWeights[bucket][i] = buff[indx++];
-                    
-            for (size_t i = 0; i < LayerBiasElements; i++) 
-                net.LayerBiases[i] = network->LayerBiases[i];
-
-            g_network = &net;
+            std::istringstream stream(std::string(reinterpret_cast<const char*>(gEVALData), gEVALSize));
 #endif
 
-            
+            if (IsCompressed(stream)) {
+                LoadZSTD(stream, dst);
+            }
+            else {
+                stream.read(reinterpret_cast<char*>(dst), sizeof(QuantisedNetwork));
+            }
+
+            auto& tempL1 = UQNet->L1Weights;
+
+            for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
+                net.FTWeights[i] = UQNet->FTWeights[i];
+
+            for (size_t i = 0; i < L1_SIZE; i++)
+                net.FTBiases[i] = UQNet->FTBiases[i];
+
+            PermuteFT(Span<i16>(net.FTWeights), Span<i16>(net.FTBiases));
+            PermuteL1(tempL1);
+
+            for (i32 bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
+            {
+                for (i32 i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
+                    for (i32 j = 0; j < L2_SIZE; ++j)
+                        for (i32 k = 0; k < L1_CHUNK_PER_32; ++k)
+                            net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
+                                                + j * L1_CHUNK_PER_32
+                                                + k] = tempL1[i * L1_CHUNK_PER_32 + k][bucket][j];
+
+                for (i32 i = 0; i < L2_SIZE; ++i)
+                    net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
+
+                for (i32 i = 0; i < L2_SIZE; ++i)
+                    for (i32 j = 0; j < L3_SIZE; ++j)
+                        net.L2Weights[bucket][i * L3_SIZE + j] = UQNet->L2Weights[i][bucket][j];
+
+                for (i32 i = 0; i < L3_SIZE; ++i)
+                    net.L2Biases[bucket][i] = UQNet->L2Biases[bucket][i];
+
+                for (i32 i = 0; i < L3_SIZE; ++i)
+                    net.L3Weights[bucket][i] = UQNet->L3Weights[i][bucket];
+
+                net.L3Biases[bucket] = UQNet->L3Biases[bucket];
+            }
+
+            auto ws = reinterpret_cast<__m128i*>(&net.FTWeights);
+            auto bs = reinterpret_cast<__m128i*>(&net.FTBiases);
+            const i32 numChunks = sizeof(__m128i) / sizeof(i16);
+#if defined(AVX512)
+            const i32 numRegi = 8;
+            constexpr i32 order[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
+#else
+            const i32 numRegi = 4;
+            constexpr i32 order[] = { 0, 2, 1, 3 };
+#endif
+            __m128i regi[numRegi] = {};
+
+            for (i32 i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS / numChunks; i += numRegi)
+            {
+                for (i32 j = 0; j < numRegi; j++)
+                    regi[j] = ws[i + j];
+
+                for (i32 j = 0; j < numRegi; j++)
+                    ws[i + j] = regi[order[j]];
+            }
+
+            for (i32 i = 0; i < L1_SIZE / numChunks; i += numRegi)
+            {
+                for (i32 j = 0; j < numRegi; j++)
+                    regi[j] = bs[i + j];
+
+                for (i32 j = 0; j < numRegi; j++)
+                    bs[i + j] = regi[order[j]];
+            }
+
+            g_network = &net;
         }
 
+        static void SetupNNZ() 
+        {
+            for (u32 i = 0; i < 256; i++) 
+            {
+                u16* ptr = reinterpret_cast<u16*>(&nnzTable.Entries[i]);
 
-        static constexpr i32 BucketForPerspective(i32 ksq, i32 perspective) {
-            return (KingBuckets[(ksq ^ (56 * perspective))]);
+                u32 j = i;
+                u32 k = 0;
+                while (j != 0) 
+                {
+                    u32 lsbIndex = std::countr_zero(j);
+                    j &= j - 1;
+                    ptr[k++] = (u16)lsbIndex;
+                }
+            }
         }
 
 
@@ -86,7 +151,7 @@ namespace Horsie
             Accumulator& accumulator = *pos.State->accumulator;
             Bitboard& bb = pos.bb;
 
-            accumulator.Sides[perspective] = g_network->FeatureBiases;
+            accumulator.Sides[perspective] = g_network->FTBiases;
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
@@ -102,7 +167,7 @@ namespace Horsie
                 i32 idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
 
                 const auto accum   = reinterpret_cast<i16*>(&accumulator.Sides[perspective]);
-                const auto weights = &g_network->FeatureWeights[idx];
+                const auto weights = &g_network->FTWeights[idx];
                 Add(accum, accum, weights);
             }
 
@@ -145,7 +210,7 @@ namespace Horsie
                         i32 sq = poplsb(added);
                         i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                        const auto weights = &g_network->FeatureWeights[idx];
+                        const auto weights = &g_network->FTWeights[idx];
                         Add(ourAccumulation, ourAccumulation, weights);
                     }
 
@@ -154,7 +219,7 @@ namespace Horsie
                         i32 sq = poplsb(removed);
                         i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                        const auto weights = &g_network->FeatureWeights[idx];
+                        const auto weights = &g_network->FTWeights[idx];
                         Sub(ourAccumulation, ourAccumulation, weights);
                     }
                 }
@@ -168,46 +233,153 @@ namespace Horsie
 
 
         i32 GetEvaluation(Position& pos) {
+            const auto occ = popcount(pos.bb.Occupancy);
+            const auto outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
+            return GetEvaluation(pos, outputBucket);
+        }
+
+        i32 GetEvaluation(Position& pos, i32 outputBucket) {
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
 
-            const __m256i zeroVec = _mm256_setzero_si256();
-            const __m256i maxVec = _mm256_set1_epi16(QA);
-            __m256i sum = _mm256_setzero_si256();
+            float L1Outputs[L2_SIZE];
+            float L2Outputs[L3_SIZE];
+            float L3Output = 0;
 
-            const auto occ = popcount(pos.bb.Occupancy);
-            const auto outputBucket = std::min((63 - occ) * (32 - occ) / 225, 7);
+            auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
+            auto them = Span<i16>(accumulator.Sides[Not(pos.ToMove)]);
 
-            const auto Stride = (HiddenSize / (sizeof(__m256i) / sizeof(i16))) / 2;
+            ActivateFTSparse(us, them, Span<i8>(net.L1Weights[outputBucket]), Span<float>(net.L1Biases[outputBucket]), L1Outputs);
+            ActivateL2(L1Outputs, Span<float>(net.L2Weights[outputBucket]), Span<float>(net.L2Biases[outputBucket]), L2Outputs);
+            ActivateL3(L2Outputs, Span<float>(net.L3Weights[outputBucket]), net.L3Biases[outputBucket], L3Output);
 
-            auto data0 = reinterpret_cast<const __m256i*>(&accumulator.Sides[pos.ToMove]);
-            auto data1 = &data0[Stride];
-            auto weights = reinterpret_cast<const __m256i*>(&g_network->LayerWeights[outputBucket]);
-
-            for (i32 i = 0; i < Stride; i++) {
-                __m256i c_0 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data0[i]));
-                __m256i c_1 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data1[i]));
-                __m256i mult = _mm256_mullo_epi16(c_0, weights[i]);
-                sum = _mm256_add_epi32(sum, _mm256_madd_epi16(mult, c_1));
-            }
-
-            data0 = reinterpret_cast<const __m256i*>(&accumulator.Sides[Not(pos.ToMove)]);
-            data1 = data0 + Stride;
-            weights = reinterpret_cast<const __m256i*>(&g_network->LayerWeights[outputBucket][HiddenSize / 2]);
-            for (i32 i = 0; i < Stride; i++) {
-                __m256i c_0 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data0[i]));
-                __m256i c_1 = _mm256_min_epi16(maxVec, _mm256_max_epi16(zeroVec, data1[i]));
-                __m256i mult = _mm256_mullo_epi16(c_0, weights[i]);
-                sum = _mm256_add_epi32(sum, _mm256_madd_epi16(mult, c_1));
-            }
-
-            i32 output = hsum_8x32(sum);
-            i32 retVal = (output / QA + g_network->LayerBiases[outputBucket]) * OutputScale / QAB;
-
-            return retVal;
+            return static_cast<i32>(L3Output * OutputScale);
         }
 
+
+
+        static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output) {
+            const auto ft_zero = vec_setzero_epi16();
+            const auto ft_one = vec_set1_epi16(FT_QUANT);
+
+            i32 nnzCount = 0;
+            i32 offset = 0;
+
+            i8 ft_outputs[L1_SIZE];
+            u16 nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
+
+            const vec_128i baseInc = _mm_set1_epi16(u16(8));
+            vec_128i baseVec = _mm_setzero_si128();
+
+            
+            for (const auto acc : { us, them }) {
+                for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
+                    const auto input0a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
+                    const auto input0b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
+
+                    const auto input1a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                    const auto input1b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+
+                    const auto clipped0a = vec_min_epi16(vec_max_epi16(input0a, ft_zero), ft_one);
+                    const auto clipped0b = vec_min_epi16(vec_max_epi16(input0b, ft_zero), ft_one);
+
+                    const auto clipped1a = vec_min_epi16(input1a, ft_one);
+                    const auto clipped1b = vec_min_epi16(input1b, ft_one);
+
+                    const auto producta = vec_mulhi_epi16(vec_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
+                    const auto productb = vec_mulhi_epi16(vec_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+
+                    const auto product_one = vec_packus_epi16(producta, productb);
+                    vec_storeu_epi8(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), product_one);
+
+                    const auto nnz_mask = vec_nnz_mask(product_one);
+
+                    for (i32 j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++) {
+                        i32 lookup = (nnz_mask >> (j * 8)) & 0xFF;
+                        auto offsets = nnzTable.Entries[lookup];
+                        _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
+
+                        nnzCount += std::popcount(static_cast<u32>(lookup));
+                        baseVec = _mm_add_epi16(baseVec, baseInc);
+                    }
+
+                }
+
+                offset += L1_PAIR_COUNT;
+            }
+
+#if defined(PERM_COUNT)
+            EvalCalls++;
+            ActivationCount += static_cast<u64>(nnzCount);
+            for (i32 i = 0; i < L1_SIZE; i++)
+                NNZCounts[i] += (ft_outputs[i] ? 1UL : 0);
+#endif
+
+            ActivateL1Sparse(Span<i8>(ft_outputs), weights, biases, output, Span<u16>(nnzIndices), nnzCount);
+        }
+
+
+        static void ActivateL1Sparse(Span<i8> inputs, Span<i8> weights, Span<float> biases, Span<float> output, Span<u16> nnzIndices, const i32 nnzCount) {
+            vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
+
+            const auto inputs32 = (i32*)(inputs.data());
+            for (i32 i = 0; i < nnzCount; i++) {
+                const auto index = nnzIndices[i];
+                const auto input32 = vec_set1_epi32(inputs32[index]);
+                const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
+                for (i32 k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
+                    sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
+            }
+
+            const auto zero = vec_set1_ps(0.0f);
+            const auto one = vec_set1_ps(1.0f);
+
+            const auto sumMul = vec_set1_ps(L1_MUL);
+            for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
+                const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+                const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
+                const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
+                const auto squared = vec_mul_ps(clipped, clipped);
+                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+            }
+        }
+
+
+        static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output) {
+            vec_ps sumVecs[L3_SIZE / F32_CHUNK_SIZE];
+
+            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
+                sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+
+            for (i32 i = 0; i < L2_SIZE; ++i) {
+                const auto inputVec = vec_set1_ps(inputs[i]);
+                const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_SIZE]);
+                for (i32 j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
+                    sumVecs[j] = vec_fmadd_ps(inputVec, weight[j], sumVecs[j]);
+            }
+
+            const auto zero = vec_set1_ps(0.0f);
+            const auto one = vec_set1_ps(1.0f);
+            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
+                const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
+                const auto squared = vec_mul_ps(clipped, clipped);
+                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+            }
+        }
+
+
+        static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output) {
+            auto sumVec = vec_set1_ps(0.0f);
+
+            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
+                const auto weightVec = vec_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
+                const auto inputsVec = vec_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
+                sumVec = vec_fmadd_ps(inputsVec, weightVec, sumVec);
+            }
+
+            output = bias + vec_hsum_ps(sumVec);
+        }
 
 
         void MakeMoveNN(Position& pos, Move m) {
@@ -349,9 +521,10 @@ namespace Horsie
             }
         }
 
+
         void UpdateSingle(Accumulator* prev, Accumulator* curr, i32 perspective)
         {
-            auto FeatureWeights = reinterpret_cast<const i16*>(&g_network->FeatureWeights[0]);
+            auto FeatureWeights = reinterpret_cast<const i16*>(&g_network->FTWeights[0]);
             const auto& updates = curr->Update[perspective];
 
             if (updates.AddCnt == 0 && updates.SubCnt == 0)
@@ -412,8 +585,9 @@ namespace Horsie
             i32 whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + wSq;
             i32 blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
 
-            return { whiteIndex * HiddenSize, blackIndex * HiddenSize };
+            return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
         }
+
 
         i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective)
         {
@@ -432,81 +606,208 @@ namespace Horsie
                 kingSq ^= 7;
             }
 
-            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * HiddenSize;
+            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * L1_SIZE;
         }
 
 
         void ResetCaches(Position& pos) {
             for (auto& bucket : pos.CachedBuckets) {
-                bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = g_network->FeatureBiases;
+                bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = g_network->FTBiases;
                 bucket.Boards[WHITE].Reset();
                 bucket.Boards[BLACK].Reset();
             }
         }
+        
+        
+        //  See https://github.com/Ciekce/Stormphrax/pull/176 for the non-scuffed impl of this.
+        void LoadZSTD(std::istream& m_stream, std::byte* dst) {
 
+            size_t m_pos = 0;
+            size_t m_end = 0;
+            size_t m_result = 0;
 
-        //  https://stackoverflow.com/questions/63106143/simd-c-avx2-intrinsics-getting-sum-of-m256i-vector-with-16bit-integers
-        static int32_t hsum_8x32(__m256i v) {
-            // silly GCC uses a longer AXV512VL instruction if AVX512 is enabled :/
-            __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
+            std::vector<std::byte> m_inBuf(ZSTD_DStreamInSize());
+            std::vector<std::byte> m_outBuf(ZSTD_DStreamOutSize());
+            ZSTD_inBuffer m_input{};
+            ZSTD_outBuffer m_output{};
 
-            __m128i hi64 = _mm_unpackhi_epi64(sum128, sum128);                  // 3-operand non-destructive AVX lets us save a u8 without needing a movdqa
-            __m128i sum64 = _mm_add_epi32(hi64, sum128);
-            __m128i hi32 = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
-            __m128i sum32 = _mm_add_epi32(sum64, hi32);
-            return _mm_cvtsi128_si32(sum32);       // movd
+            m_input.src = m_inBuf.data();
+            m_output.dst = m_outBuf.data();
+
+            auto m_dStream = ZSTD_createDStream();
+
+            size_t n = sizeof(QuantisedNetwork);
+            while (n > 0) {
+                while (m_pos >= m_end && (m_input.pos < m_input.size || !m_stream.fail())) {
+
+                    if (m_input.pos == m_input.size) {
+                        if (!m_stream) {
+                            break;
+                        }
+
+                        m_stream.read(reinterpret_cast<char*>(m_inBuf.data()), static_cast<std::streamsize>(m_inBuf.size()));
+
+                        m_input.size = m_stream.gcount();
+                        m_input.pos = 0;
+                    }
+
+                    if (m_result == 0 && m_input.pos < m_input.size)
+                        ZSTD_initDStream(m_dStream);
+
+                    m_output.size = m_outBuf.size();
+                    m_output.pos = 0;
+
+                    m_result = ZSTD_decompressStream(m_dStream, &m_output, &m_input);
+
+                    if (ZSTD_isError(m_result)) {
+                        const auto code = ZSTD_getErrorCode(m_result);
+                        std::cerr << "zstd error: " << ZSTD_getErrorString(code) << std::endl;
+                        break;
+                    }
+
+                    m_pos = 0;
+                    m_end = m_output.pos;
+                }
+
+                if (m_pos >= m_end) {
+                    return;
+                }
+
+                const auto remaining = m_end - m_pos;
+                const auto count = std::min(n, remaining);
+
+                std::memcpy(dst, &m_outBuf[m_pos], count);
+
+                m_pos += count;
+                dst += count;
+
+                n -= count;
+            }
+
+            ZSTD_freeDStream(m_dStream);
         }
 
+        bool IsCompressed(std::istream& stream) {
+            const i32 ZSTD_HEADER = -47205080;
+            const i32 headerMaybe = read_little_endian<i32>(stream);
+            stream.seekg(0);
+
+            return (headerMaybe == ZSTD_HEADER);
+        }
+
+
+        static void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases)
+        {
+            const i32 OneBucket = (INPUT_SIZE * L1_SIZE);
+            std::vector<i16> temp(OneBucket, 0);
+
+            for (i32 bucket = 0; bucket < INPUT_BUCKETS; bucket++)
+            {
+                Span<i16> ftBucket = Span<i16>(&ftWeights[(bucket * OneBucket)], OneBucket);
+
+                for (size_t i = 0; i < OneBucket; i++)
+                    temp[i] = ftBucket[i];
+
+                for (i32 i = 0; i < INPUT_SIZE; i++)
+                {
+                    for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++)
+                    {
+                        i32 src = PermuteIndices[dst];
+                        auto f = i * L1_SIZE;
+
+                        ftBucket[f + dst] = temp[f + src];
+                        ftBucket[f + dst + L1_PAIR_COUNT] = temp[f + src + L1_PAIR_COUNT];
+                    }
+                }
+            }
+
+            std::vector<i16> temp2(L1_SIZE, 0);
+            for (i32 i = 0; i < L1_SIZE; i++)
+                temp2[i] = ftBiases[i];
+
+            for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++)
+            {
+                i32 src = PermuteIndices[dst];
+
+                ftBiases[dst] = temp2[src];
+                ftBiases[dst + L1_PAIR_COUNT] = temp2[src + L1_PAIR_COUNT];
+            }
+        }
+
+
+        static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE])
+        {
+            auto temp = new i8[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
+            std::memcpy(temp, l1Weights, N_L1W);
+
+            for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++)
+            {
+                i32 src = PermuteIndices[dst];
+
+                for (i32 b = 0; b < OUTPUT_BUCKETS; b++)
+                {
+                    for (i32 l2 = 0; l2 < L2_SIZE; l2++)
+                    {
+                        l1Weights[dst][b][l2] = temp[src][b][l2];
+                        l1Weights[dst + L1_PAIR_COUNT][b][l2] = temp[src + L1_PAIR_COUNT][b][l2];
+                    }
+                }
+            }
+
+            delete[] temp;
+        }
+
+
         static void SubSubAddAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _sub2, const i16* _add1, const i16* _add2) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
-            const __m256i* sub2 = reinterpret_cast<const __m256i*>(_sub2);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
-            const __m256i* add2 = reinterpret_cast<const __m256i*>(_add2);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
+            const vec_i16* sub2 = reinterpret_cast<const vec_i16*>(_sub2);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
+            const vec_i16* add2 = reinterpret_cast<const vec_i16*>(_add2);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
             {
-                dst[i] = _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(_mm256_add_epi16(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
+                dst[i] = vec_sub_epi16(vec_sub_epi16(vec_add_epi16(vec_add_epi16(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
             }
         }
 
         static void SubSubAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _sub2, const i16* _add1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
-            const __m256i* sub2 = reinterpret_cast<const __m256i*>(_sub2);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
+            const vec_i16* sub2 = reinterpret_cast<const vec_i16*>(_sub2);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
             {
-                dst[i] = _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(src[i], add1[i]), sub1[i]), sub2[i]);
+                dst[i] = vec_sub_epi16(vec_sub_epi16(vec_add_epi16(src[i], add1[i]), sub1[i]), sub2[i]);
             }
         }
 
         static void SubAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _add1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
             {
-                dst[i] = _mm256_sub_epi16(_mm256_add_epi16(src[i], add1[i]), sub1[i]);
+                dst[i] = vec_sub_epi16(vec_add_epi16(src[i], add1[i]), sub1[i]);
             }
         }
 
         static void Add(const i16* _src, i16* _dst, const i16* _add1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* add1 = reinterpret_cast<const __m256i*>(_add1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
-                dst[i] = _mm256_add_epi16(src[i], add1[i]);
+                dst[i] = vec_add_epi16(src[i], add1[i]);
         }
 
         static void Sub(const i16* _src, i16* _dst, const i16* _sub1) {
-            const __m256i* src  = reinterpret_cast<const __m256i*>(_src);
-                  __m256i* dst  = reinterpret_cast<      __m256i*>(_dst);
-            const __m256i* sub1 = reinterpret_cast<const __m256i*>(_sub1);
+            const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
+                  vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
+            const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
             for (i32 i = 0; i < SIMD_CHUNKS; i++)
-                dst[i] = _mm256_sub_epi16(src[i], sub1[i]);
+                dst[i] = vec_sub_epi16(src[i], sub1[i]);
         }
     }
 
