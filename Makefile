@@ -5,7 +5,7 @@ PGO = off
 
 EXE := horsie
 
-SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/tt.cpp src/zobrist.cpp src/nnue/nn.cpp src/zstd/zstddeclib.c
+SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/tt.cpp src/zobrist.cpp src/nnue/nn.cpp src/3rdparty/zstd/zstddeclib.c
 
 COMPILER_VERSION := $(shell $(CXX) --version)
 ARCH_DEFINES := $(shell echo | $(CXX) -march=native -E -dM -)

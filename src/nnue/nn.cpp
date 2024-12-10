@@ -6,8 +6,8 @@
 #include <fstream>
 #include <cstring>
 
-#include "../incbin/incbin.h"
-#include "../zstd/zstd.h"
+#include "../3rdparty/incbin/incbin.h"
+#include "../3rdparty/zstd/zstd.h"
 
 #if !defined(_MSC_VER)
 #include <sstream>
@@ -20,7 +20,6 @@ const unsigned int gEVALSize = 1;
 
 namespace Horsie
 {
-
     namespace NNUE {
 
 #if defined(PERM_COUNT)
@@ -133,7 +132,7 @@ namespace Horsie
                 {
                     u32 lsbIndex = std::countr_zero(j);
                     j &= j - 1;
-                    ptr[k++] = (u16)lsbIndex;
+                    ptr[k++] = static_cast<u16>(lsbIndex);
                 }
             }
         }
@@ -186,7 +185,6 @@ namespace Horsie
             Bitboard& bb = pos.bb;
 
             i32 ourKing = pos.State->KingSquares[perspective];
-            i32 thisBucket = KingBuckets[ourKing];
 
             BucketCache& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
             Bitboard& entryBB = rtEntry.Boards[perspective];
