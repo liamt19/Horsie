@@ -72,7 +72,7 @@ namespace Horsie {
 
         constexpr i8 RelAge(u8 age) const { return static_cast<i8>((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK); }
 
-        void Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, bool isPV = false);
+        void Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, u8 age, bool isPV = false);
 
         static constexpr i32 DepthNone = -6;
 
@@ -114,14 +114,14 @@ namespace Horsie {
         }
 
         TTCluster* Clusters = nullptr;
-        u16 Age = 0;
+        u8 Age = 0;
         u64 ClusterCount = 0;
 
         static const i32 DefaultTTSize = 32;
         static const i32 MaxSize = 1048576;
     };
 
-    extern TranspositionTable TT;
+    //extern TranspositionTable TT;
 
 }
 

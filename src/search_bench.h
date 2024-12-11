@@ -12,6 +12,7 @@
 #include <thread>
 #include <barrier>
 
+#include "threadpool.h"
 #include "position.h"
 #include "util.h"
 #include "search.h"
@@ -21,40 +22,39 @@ using namespace Horsie::Search;
 
 namespace Horsie {
     
-    void DoBench(i32 depth = 12, bool openBench = false) {
+    void DoBench(SearchThreadPool& SearchPool, i32 depth = 12, bool openBench = false) {
 
         Position pos = Position(InitialFEN);
-        SearchThread thread = SearchThread();
-        thread.IsMain = true;
-        thread.OnDepthFinish = []() {
-            //Do nothing
-        };
+        SearchThread* thread = SearchPool.MainThread();
+        thread->OnDepthFinish = []() {};
+        thread->OnSearchFinish = []() {};
 
         SearchLimits limits;
         limits.MaxDepth = depth;
+        limits.MaxSearchTime = INT32_MAX;
 
         u64 totalNodes = 0;
 
-        thread.Reset();
-        thread.History.Clear();
-        TT.Clear();
+        SearchPool.TTable.Clear();
+        SearchPool.Clear();
 
         auto before = std::chrono::system_clock::now();
         for (std::string fen : BenchFENs)
         {
             pos.LoadFromFEN(fen);
-            thread.Search(pos, limits);
+            //thread.Search(pos, limits);
+            SearchPool.StartSearch(pos, limits);
+            SearchPool.MainThreadBase()->WaitForThreadFinished();
 
-            u64 thisNodeCount = thread.Nodes;
+            u64 thisNodeCount = SearchPool.GetNodeCount();
             totalNodes += thisNodeCount;
 
             if (!openBench) {
                 std::cout << std::left << std::setw(76) << fen << "\t" << std::to_string(thisNodeCount) << std::endl;
             }
 
-            thread.Reset();
-            thread.History.Clear();
-            TT.Clear();
+            SearchPool.TTable.Clear();
+            SearchPool.Clear();
         }
 
         auto now = std::chrono::system_clock::now();
