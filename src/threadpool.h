@@ -127,7 +127,7 @@ namespace Horsie {
 
         void Reset() {
             Nodes = 0;
-            PVIndex = RootDepth = SelDepth = CompletedDepth = CheckupCount = NMPPly = SoftTimeLimit = 0;
+            PVIndex = RootDepth = SelDepth = CompletedDepth = CheckupCount = NMPPly = 0;
         }
 
         constexpr bool HasSoftTime() const { return SoftTimeLimit != 0; }
