@@ -39,7 +39,7 @@ void HandleMoveCommand(Position& pos, std::istringstream& is);
 void HandleListMovesCommand(Position& pos);
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is);
 void HandleGoCommand(Position& pos, std::istringstream& is);
-void HandleStopCommand(std::thread& searchThread);
+void HandleStopCommand();
 void HandleEvalCommand(Position& pos);
 void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
@@ -49,6 +49,7 @@ void ScuffedChatGPTPrintActivations();
 bool inUCI = false;
 std::unique_ptr<SearchThreadPool> SearchPool;
 std::barrier is_sync_barrier(2);
+ThreadSetup setup;
 
 #if defined(_MSC_VER) && !defined(EVALFILE)
 
@@ -89,7 +90,6 @@ i32 main(i32 argc, char* argv[])
         }
     }
 
-    std::thread searcher;
     std::string token, cmd;
 
     do
@@ -130,21 +130,11 @@ i32 main(i32 argc, char* argv[])
             HandleThreadsCommand(is);
 
         else if (token == "go") {
-
-            if (searcher.joinable())
-                searcher.join();
-
-            searcher = std::thread(HandleGoCommand, std::ref(pos), std::ref(is));
-
-            //  The HandleGoCommand function is going to call ParseGoParameters, 
-            //  so wait for it to finish doing that before getline is called again and modifies the input stream
-            is_sync_barrier.arrive_and_wait();
+            HandleGoCommand(pos, is);
         }
 
         else if (token == "wait") {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            if (searcher.joinable())
-                searcher.join();
         }
 
         else if (token == "eval")
@@ -157,7 +147,7 @@ i32 main(i32 argc, char* argv[])
             std::cout << "readyok" << std::endl;
 
         else if (token == "stop")
-            HandleStopCommand(searcher);
+            HandleStopCommand();
 
         else if (token == "ucinewgame")
             HandleNewGameCommand(pos);
@@ -196,10 +186,11 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
             fen += token + " ";
     }
 
-
     pos.IsChess960 = Horsie::UCI_Chess960;
-
     pos.LoadFromFEN(fen);
+
+    setup.StartFEN = fen;
+    setup.SetupMoves.clear();
 
     while (is >> token)
     {
@@ -207,6 +198,7 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
         Move m = pos.TryFindMove(token, found);
         if (found) {
             pos.MakeMove(m);
+            setup.SetupMoves.push_back(m);
         }
         else {
             std::cout << "Move " << token << " not found!" << std::endl;
@@ -314,11 +306,7 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
         SearchPool->TTable.Clear();
     }
 
-    //thread->Reset();
     SearchLimits limits = ParseGoParameters(pos, is);
-    is_sync_barrier.arrive_and_wait();
-
-    //thread->StartTime = std::chrono::system_clock::now();
 
     if (!limits.HasMoveTime() && limits.HasPlayerTime()) {
         thread->MakeMoveTime(limits);
@@ -331,13 +319,6 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
     }
 
     SearchPool->StartSearch(pos, limits);
-    //SearchPool->BlockCallerUntilFinished();
-    //thread->Search(pos, limits);
-
-    //const auto bm = thread->RootMoves[0].move;
-    //const auto bm = SearchPool->GetBestThread()->RootMoves[0].move;
-    //const auto bmStr = bm.SmithNotation(pos.IsChess960);
-    //std::cout << "bestmove " << bmStr << std::endl;
 }
 
 
@@ -369,10 +350,8 @@ void HandleEvalCommand(Position& pos) {
 
 
 
-void HandleStopCommand(std::thread& searchThread) {
+void HandleStopCommand() {
     SearchPool->StopThreads.store(true, std::memory_order_relaxed);
-    //thread.StopSearching = true;
-    //searchThread.join();
 }
 
 
