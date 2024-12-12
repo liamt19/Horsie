@@ -371,15 +371,16 @@ namespace Horsie
 
 
         static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output) {
-            auto sumVec = vec_set1_ps(0.0f);
+            constexpr auto SUM_COUNT = 64 / sizeof(vec_ps);
+            vec_ps sumVecs[SUM_COUNT]{};
 
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
                 const auto weightVec = vec_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
                 const auto inputsVec = vec_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
-                sumVec = vec_fmadd_ps(inputsVec, weightVec, sumVec);
+                sumVecs[i % SUM_COUNT] = vec_fmadd_ps(inputsVec, weightVec, sumVecs[i % SUM_COUNT]);
             }
 
-            output = bias + vec_hsum_ps(sumVec);
+            output = bias + vec_hsum_ps(sumVecs);
         }
 
 

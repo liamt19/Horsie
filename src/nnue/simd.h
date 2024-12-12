@@ -41,8 +41,8 @@ inline vec_i32 vec_madd_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_
 
 inline uint16_t vec_nnz_mask(const vec_i32 vec) { return _mm512_cmpgt_epi32_mask(vec, _mm512_setzero_si512()); }
 
-inline float vec_hsum_ps(const vec_ps v) {
-    return _mm512_reduce_add_ps(v);
+inline float vec_hsum_ps(const vec_ps* v) {
+    return _mm512_reduce_add_ps(v[0]);
 }
 
 inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
@@ -89,11 +89,13 @@ inline vec_i32 vec_madd_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_
 
 inline uint16_t vec_nnz_mask(const vec_i32 vec) { return _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(vec, _mm256_setzero_si256()))); }
 
-inline float vec_hsum_ps(const vec_ps v) {
-    __m128 sum128 = _mm_add_ps(_mm256_castps256_ps128(v), _mm256_extractf128_ps(v, 1));
-    sum128 = _mm_hadd_ps(sum128, sum128);
-    sum128 = _mm_hadd_ps(sum128, sum128);
-    return _mm_cvtss_f32(sum128);
+inline float vec_hsum_ps(const vec_ps* v) {
+    const auto vec = _mm256_add_ps(v[0], v[1]);
+    const auto sum_128 = _mm_add_ps(_mm256_castps256_ps128(vec), _mm256_extractf128_ps(vec, 1));
+    const auto sum_64 = _mm_add_ps(sum_128, _mm_movehl_ps(sum_128, sum_128));
+    const auto sum_32 = _mm_add_ss(sum_64, _mm_shuffle_ps(sum_64, sum_64, 1));
+
+    return _mm_cvtss_f32(sum_32);
 }
 
 inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
@@ -140,11 +142,12 @@ inline vec_i32 vec_madd_epi16(const vec_i16 a, const vec_i16 b) { return _mm_mad
 
 inline uint16_t vec_nnz_mask(const vec_i32 vec) { return _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(vec, _mm_setzero_si128()))); }
 
-inline float vec_hsum_ps(const vec_ps v) {
-    __m128 sum128 = v;
-    sum128 = _mm_hadd_ps(sum128, sum128);
-    sum128 = _mm_hadd_ps(sum128, sum128);
-    return _mm_cvtss_f32(sum128);
+inline float vec_hsum_ps(const vec_ps* v) {
+    const auto vec = _mm_add_ps(_mm_add_ps(v[0], v[2]), _mm_add_ps(v[1], v[3]));
+    const auto sum_64 = _mm_add_ps(vec, _mm_movehl_ps(vec, vec));
+    const auto sum_32 = _mm_add_ss(sum_64, _mm_shuffle_ps(sum_64, sum_64, 1));
+
+    return _mm_cvtss_f32(sum_32);
 }
 
 inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
