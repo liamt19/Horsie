@@ -46,12 +46,12 @@ namespace Horsie {
 
 
     struct TTEntry {
-        i16 _Score;           //  16 bits
-        i16 _StatEval;		//  16 bits
-        Move BestMove;          //  16 bits
-        u16 Key;             //  16 bits
-        u8 _AgePVType;        //  5 + 2 + 1 bits
-        u8 _depth;            //  8 bits
+        i16 _Score;     //  16 bits
+        i16 _StatEval;  //  16 bits
+        Move BestMove;  //  16 bits
+        u16 Key;        //  16 bits
+        u8 _AgePVType;  //  5 + 2 + 1 bits
+        u8 _depth;      //  8 bits
 
 
         constexpr i16 Score() const { return _Score; }
@@ -120,8 +120,6 @@ namespace Horsie {
         static const i32 DefaultTTSize = 32;
         static const i32 MaxSize = 1048576;
     };
-
-    //extern TranspositionTable TT;
 
 }
 

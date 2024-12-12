@@ -3,8 +3,6 @@
 
 namespace Horsie {
 
-    //TranspositionTable TT;
-
     bool TranspositionTable::Probe(u64 hash, TTEntry*& tte) const
     {
         TTCluster* const cluster = GetCluster(hash);

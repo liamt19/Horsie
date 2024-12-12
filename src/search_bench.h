@@ -45,7 +45,7 @@ namespace Horsie {
         for (std::string fen : BenchFENs)
         {
             pos.LoadFromFEN(fen);
-            //thread.Search(pos, limits);
+
             SearchPool.StartSearch(pos, limits);
             SearchPool.WaitForMain();
 

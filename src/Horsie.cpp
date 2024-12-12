@@ -69,7 +69,6 @@ i32 main(i32 argc, char* argv[])
     Precomputed::init();
     Zobrist::init();
     Cuckoo::init();
-    //TT.Initialize(Horsie::Hash);
 
     SearchPool = std::make_unique<SearchThreadPool>(Horsie::Threads);
 
@@ -224,7 +223,6 @@ void HandleSetOptionCommand(std::istringstream& is) {
         i32 hashVal = std::stoi(value);
         if (hashVal >= 1 && hashVal <= TranspositionTable::MaxSize) {
             Horsie::Hash = hashVal;
-            //TT.Initialize(Horsie::Hash);
             SearchPool->TTable.Initialize(Horsie::Hash);
             std::cout << "info string set hash to " << Horsie::Hash << std::endl;
         }
