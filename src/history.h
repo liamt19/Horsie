@@ -56,7 +56,7 @@ namespace Horsie {
     using PlyHistoryT = Stats<i16, LowPlyClamp, LowPlyCount, 64 * 64>;
     using PieceToHistory = Stats<int16_t, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
-    using CorrectionT = Util::NDArray<i16, 2, 16384>;
+    using CorrectionT = Util::NDArray<i32, 2, 16384>;
 
     struct HistoryTable {
     public:

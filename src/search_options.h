@@ -21,7 +21,7 @@ namespace Horsie {
 
     const i32 CorrectionScale = 1024;
     const i32 CorrectionGrain = 256;
-    const i32 CorrectionMax = CorrectionGrain * 64;
+    const i32 CorrectionMax = 16384;
 
     static i32 SEMinDepth = 5;
     static i32 SENumerator = 11;

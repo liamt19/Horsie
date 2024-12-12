@@ -20,6 +20,8 @@ namespace Horsie {
     extern i32 LogarithmicReductionTable[MaxPly][MoveListSize];
     extern i32 LMPTable[2][MaxDepth];
 
+    extern i32 CorrectionWeightTable[24];
+
     namespace Precomputed {
         void init();
     }

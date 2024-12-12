@@ -27,6 +27,7 @@ namespace Horsie {
 
     i32 LogarithmicReductionTable[MaxPly][MoveListSize];
     i32 LMPTable[2][MaxDepth];
+    i32 CorrectionWeightTable[24];
 
     namespace {
         u64 RookTable[0x19000];   // To store rook attacks
@@ -127,12 +128,14 @@ namespace Horsie {
             }
         }
 
-        const i32 not_improving = 0;
-        const i32 improving = 1;
         for (i32 depth = 0; depth < MaxDepth; depth++)
         {
-            LMPTable[not_improving][depth] = (3 + (depth * depth)) / 2;
-            LMPTable[    improving][depth] =  3 + (depth * depth);
+            LMPTable[0][depth] = (3 + (depth * depth)) / 2;
+            LMPTable[1][depth] =  3 + (depth * depth);
+        }
+
+        for (i32 depth = 0; depth < 24; depth++) {
+            CorrectionWeightTable[depth] = static_cast<i32>((16.0 * depth) / (12.0 + depth));
         }
     }
 
