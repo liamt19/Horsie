@@ -23,7 +23,7 @@ ifndef EVALFILE
 endif
 
 
-CXXFLAGS:= -mavx -mavx2 -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -DUSE_PEXT -DUSE_POPCNT -funroll-loops
+CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -DUSE_PEXT -DUSE_POPCNT -funroll-loops
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 
 CXXFLAGS_NATIVE := -march=native
@@ -32,6 +32,13 @@ CXXFLAGS_AVX2_BMI2 := -march=haswell -mtune=haswell
 ifneq ($(findstring __AVX512BW__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DAVX512
 endif
+ifneq ($(findstring __AVX2__, $(ARCH_DEFINES)),)
+CXXFLAGS_NATIVE += -DAVX256
+endif
+ifneq ($(findstring __AVX__, $(ARCH_DEFINES)),)
+CXXFLAGS_NATIVE += -DAVX128
+endif
+
 
 ifeq ($(CXX),clang++)
 	STACK_SIZE := -Wl,/STACK:12582912

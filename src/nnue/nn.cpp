@@ -93,9 +93,12 @@ namespace Horsie
 #if defined(AVX512)
             const i32 numRegi = 8;
             constexpr i32 order[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
-#else
+#elif defined(AVX256)
             const i32 numRegi = 4;
             constexpr i32 order[] = { 0, 2, 1, 3 };
+#else
+            const i32 numRegi = 2;
+            constexpr i32 order[] = { 0, 1 };
 #endif
             __m128i regi[numRegi] = {};
 
@@ -267,7 +270,7 @@ namespace Horsie
             i8 ft_outputs[L1_SIZE];
             u16 nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
 
-            const vec_128i baseInc = _mm_set1_epi16(u16(8));
+            const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
             vec_128i baseVec = _mm_setzero_si128();
 
             
