@@ -3,8 +3,6 @@
 
 namespace Horsie {
 
-    TranspositionTable TT;
-
     bool TranspositionTable::Probe(u64 hash, TTEntry*& tte) const
     {
         TTCluster* const cluster = GetCluster(hash);
@@ -58,7 +56,7 @@ namespace Horsie {
         std::memset(Clusters, 0, sizeof(TTCluster) * size);
     }
 
-    void TTEntry::Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, bool isPV) {
+    void TTEntry::Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, u8 age, bool isPV) {
 
         u16 k = static_cast<u16>(key);
 
@@ -75,7 +73,7 @@ namespace Horsie {
             SetScore(score);
             SetStatEval(statEval);
             _depth = static_cast<u8>(depth - DepthOffset);
-            _AgePVType = static_cast<u8>(TT.Age | ((isPV ? 1 : 0) << 2) | static_cast<u32>(nodeType));
+            _AgePVType = static_cast<u8>(age | ((isPV ? 1 : 0) << 2) | static_cast<u32>(nodeType));
         }
     }
 

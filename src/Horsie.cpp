@@ -7,6 +7,7 @@
 #include <thread>
 #include <barrier>
 
+#include "threadpool.h"
 #include "zobrist.h"
 #include "precomputed.h"
 #include "cuckoo.h"
@@ -30,6 +31,7 @@ i32 main(i32 argc, char* argv[]);
 void HandleSetPosition(Position& pos, std::istringstream& is);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
+void HandleThreadsCommand(std::istringstream& is);
 void HandleBenchCommand(std::istringstream& is);
 void HandleSetOptionCommand(std::istringstream& is);
 void HandleBenchPerftCommand(Position& pos);
@@ -37,7 +39,7 @@ void HandleMoveCommand(Position& pos, std::istringstream& is);
 void HandleListMovesCommand(Position& pos);
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is);
 void HandleGoCommand(Position& pos, std::istringstream& is);
-void HandleStopCommand(std::thread& searchThread);
+void HandleStopCommand();
 void HandleEvalCommand(Position& pos);
 void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
@@ -45,8 +47,9 @@ void ScuffedChatGPTPrintActivations();
 
 
 bool inUCI = false;
-SearchThread thread = SearchThread();
+std::unique_ptr<SearchThreadPool> SearchPool;
 std::barrier is_sync_barrier(2);
+ThreadSetup setup;
 
 #if defined(_MSC_VER) && !defined(EVALFILE)
 
@@ -66,7 +69,8 @@ i32 main(i32 argc, char* argv[])
     Precomputed::init();
     Zobrist::init();
     Cuckoo::init();
-    TT.Initialize(Horsie::Hash);
+
+    SearchPool = std::make_unique<SearchThreadPool>(Horsie::Threads);
 
     Position pos = Position(InitialFEN);
 
@@ -80,12 +84,11 @@ i32 main(i32 argc, char* argv[])
                 depth = std::stoi(std::string(argv[2]));
             }
 
-            Horsie::DoBench(depth, true);
+            Horsie::DoBench(*SearchPool, depth, true);
             return 0;
         }
     }
 
-    std::thread searcher;
     std::string token, cmd;
 
     do
@@ -122,22 +125,15 @@ i32 main(i32 argc, char* argv[])
         else if (token == "move")
             HandleMoveCommand(pos, is);
 
+        else if (token == "threads")
+            HandleThreadsCommand(is);
+
         else if (token == "go") {
-
-            if (searcher.joinable())
-                searcher.join();
-
-            searcher = std::thread(HandleGoCommand, std::ref(pos), std::ref(is));
-
-            //  The HandleGoCommand function is going to call ParseGoParameters, 
-            //  so wait for it to finish doing that before getline is called again and modifies the input stream
-            is_sync_barrier.arrive_and_wait();
+            HandleGoCommand(pos, is);
         }
 
         else if (token == "wait") {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            if (searcher.joinable())
-                searcher.join();
         }
 
         else if (token == "eval")
@@ -150,7 +146,7 @@ i32 main(i32 argc, char* argv[])
             std::cout << "readyok" << std::endl;
 
         else if (token == "stop")
-            HandleStopCommand(searcher);
+            HandleStopCommand();
 
         else if (token == "ucinewgame")
             HandleNewGameCommand(pos);
@@ -189,10 +185,11 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
             fen += token + " ";
     }
 
-
     pos.IsChess960 = Horsie::UCI_Chess960;
-
     pos.LoadFromFEN(fen);
+
+    setup.StartFEN = fen;
+    setup.SetupMoves.clear();
 
     while (is >> token)
     {
@@ -200,6 +197,7 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
         Move m = pos.TryFindMove(token, found);
         if (found) {
             pos.MakeMove(m);
+            setup.SetupMoves.push_back(m);
         }
         else {
             std::cout << "Move " << token << " not found!" << std::endl;
@@ -225,8 +223,17 @@ void HandleSetOptionCommand(std::istringstream& is) {
         i32 hashVal = std::stoi(value);
         if (hashVal >= 1 && hashVal <= TranspositionTable::MaxSize) {
             Horsie::Hash = hashVal;
-            TT.Initialize(Horsie::Hash);
+            SearchPool->TTable.Initialize(Horsie::Hash);
             std::cout << "info string set hash to " << Horsie::Hash << std::endl;
+        }
+    }
+
+    if (name == "threads") {
+        i32 cnt = std::stoi(value);
+        if (cnt >= 1 && cnt <= SearchThreadPool::MaxThreads) {
+            Horsie::Threads = cnt;
+            SearchPool->Resize(Horsie::Threads);
+            std::cout << "info string set threads to " << Horsie::Threads << std::endl;
         }
     }
 
@@ -291,33 +298,17 @@ SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
 
 void HandleGoCommand(Position& pos, std::istringstream& is) {
 
+    auto thread = SearchPool->MainThread();
     if (!inUCI) {
-        thread.History.Clear();
-        TT.Clear();
+        thread->History.Clear();
+        SearchPool->TTable.Clear();
     }
 
-    thread.IsMain = true;
-    thread.Reset();
     SearchLimits limits = ParseGoParameters(pos, is);
-    is_sync_barrier.arrive_and_wait();
 
-    thread.TimeStart = std::chrono::system_clock::now();
+    thread->SoftTimeLimit = limits.SetTimeLimits();
 
-    if (!limits.HasMoveTime() && limits.HasPlayerTime()) {
-        thread.MakeMoveTime(limits);
-    }
-    else if (limits.HasMoveTime()) {
-        limits.MaxSearchTime = limits.MoveTime;
-    }
-    else {
-        limits.MaxSearchTime = INT32_MAX;
-    }
-
-    thread.Search(pos, limits);
-
-    const auto bm = thread.RootMoves[0].move;
-    const auto bmStr = bm.SmithNotation(pos.IsChess960);
-    std::cout << "bestmove " << bmStr << std::endl;
+    SearchPool->StartSearch(pos, limits);
 }
 
 
@@ -349,9 +340,8 @@ void HandleEvalCommand(Position& pos) {
 
 
 
-void HandleStopCommand(std::thread& searchThread) {
-    thread.StopSearching = true;
-    searchThread.join();
+void HandleStopCommand() {
+    SearchPool->SetStop();
 }
 
 
@@ -359,7 +349,7 @@ void HandleStopCommand(std::thread& searchThread) {
 void HandleUCICommand() {
     std::cout << "id name Horsie" << std::endl;
     std::cout << "option name Hash type spin default " << TranspositionTable::DefaultTTSize << " min 1 max " << TranspositionTable::MaxSize << std::endl;
-    std::cout << "option name Threads type spin default 1 min 1 max 1" << std::endl;
+    std::cout << "option name Threads type spin default 1 min 1 max " << SearchThreadPool::MaxThreads << std::endl;
     std::cout << "option name UCI_Chess960 type check default false" << std::endl;
     std::cout << "uciok" << std::endl;
     inUCI = true;
@@ -369,8 +359,8 @@ void HandleUCICommand() {
 
 void HandleNewGameCommand(Position& pos) {
     pos.LoadFromFEN(InitialFEN);
-    thread.History.Clear();
-    TT.Clear();
+    SearchPool->Clear();
+    SearchPool->TTable.Clear();
 }
 
 
@@ -441,7 +431,7 @@ void HandleBenchCommand(std::istringstream& is) {
     if (is && is.peek() != EOF)
         is >> depth;
 
-    Horsie::DoBench(depth);
+    Horsie::DoBench(*SearchPool, depth);
 }
 
 
@@ -464,6 +454,21 @@ void HandleListMovesCommand(Position& pos) {
     }
     cout << endl;
 }
+
+
+void HandleThreadsCommand(std::istringstream& is) {
+
+    i32 cnt = 1;
+    if (is && is.peek() != EOF)
+        is >> cnt;
+
+    if (cnt >= 1 && cnt <= SearchThreadPool::MaxThreads) {
+        Horsie::Threads = cnt;
+        SearchPool->Resize(Horsie::Threads);
+        std::cout << "info string set threads to " << Horsie::Threads << std::endl;
+    }
+}
+
 
 #if defined(PERM_COUNT)
 #include <fstream>
