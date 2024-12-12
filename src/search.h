@@ -18,11 +18,6 @@
 
 namespace Horsie {
 
-    static const i32 DepthQChecks = 0;
-    static const i32 DepthQNoChecks = -1;
-
-    static const i32 SEARCH_TIME_BUFFER = 25;
-
     enum SearchNodeType {
         PVNode,
         NonPVNode,
@@ -50,6 +45,24 @@ namespace Horsie {
             const bool HasPlayerTime() const { return PlayerTime != 0; }
 
             const bool IsInfinite() const { return MaxDepth == Horsie::MaxDepth && MaxSearchTime == INT32_MAX; }
+
+            const i32 SetTimeLimits() {
+                i32 softLimit = 0;
+
+                if (HasMoveTime()) {
+                    MaxSearchTime = MoveTime;
+                }
+                else if (HasPlayerTime()) {
+                    MaxSearchTime = Increment + (PlayerTime / std::min(MovesToGo, 2));
+                    MaxSearchTime = std::min(MaxSearchTime, PlayerTime);
+                    softLimit = static_cast<i32>(0.65 * ((static_cast<double>(PlayerTime) / MovesToGo) + (Increment * 3 / 4.0)));
+                }
+                else {
+                    MaxSearchTime = INT32_MAX;
+                }
+
+                return softLimit;
+            }
 
             void PrintLimits() const {
 				std::cout << "MaxDepth:      " << MaxDepth << std::endl;

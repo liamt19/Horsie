@@ -308,15 +308,7 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
 
     SearchLimits limits = ParseGoParameters(pos, is);
 
-    if (!limits.HasMoveTime() && limits.HasPlayerTime()) {
-        thread->MakeMoveTime(limits);
-    }
-    else if (limits.HasMoveTime()) {
-        limits.MaxSearchTime = limits.MoveTime;
-    }
-    else {
-        limits.MaxSearchTime = INT32_MAX;
-    }
+    thread->SoftTimeLimit = limits.SetTimeLimits();
 
     SearchPool->StartSearch(pos, limits);
 }
@@ -351,7 +343,7 @@ void HandleEvalCommand(Position& pos) {
 
 
 void HandleStopCommand() {
-    SearchPool->StopThreads.store(true, std::memory_order_relaxed);
+    SearchPool->SetStop();
 }
 
 

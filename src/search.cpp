@@ -32,35 +32,18 @@ namespace Horsie {
 
         while (!AssocPool->StopThreads && AssocPool->SharedInfo.IsInfinite()) {}
 
-        AssocPool->StopThreads.store(true, std::memory_order_relaxed);
-
+        AssocPool->SetStop();
         AssocPool->WaitForSearchFinished();
 
         if (OnSearchFinish) {
             OnSearchFinish();
         }
-        else {
-            const auto bm = AssocPool->GetBestThread()->RootMoves[0].move;
-            const auto bmStr = bm.SmithNotation(RootPosition.IsChess960);
-            std::cout << "bestmove " << bmStr << std::endl;
-        }
-
-        //AssocPool->SharedInfo.OnSearchFinish ? .Invoke(ref AssocPool.SharedInfo);
-        //AssocPool->SharedInfo.TimeManager.ResetTimer();
-
-        //AssocPool->SharedInfo.SearchActive = false;
-
-        //if (AssocPool->Blocker.ParticipantCount == 2) {
-        //    AssocPool->Blocker.SignalAndWait(1);
-        //}
     }
 
     void SearchThread::Search(SearchLimits& info) {
 
-        MaxNodes = info.MaxNodes;
-        TimeLimit = info.MaxSearchTime;
-
-        //TT->TTUpdate();
+        HardNodeLimit = info.MaxNodes;
+        HardTimeLimit = info.MaxSearchTime;
 
         SearchStackEntry _SearchStackBlock[MaxPly] = {};
         SearchStackEntry* ss = &_SearchStackBlock[10];
@@ -76,15 +59,6 @@ namespace Horsie {
         NNUE::ResetCaches(RootPosition);
 
         NodeTable = {};
-
-        //RootMoves.clear();
-        //ScoredMove rms[MoveListSize] = {};
-        //i32 rmsSize = Generate<GenLegal>(RootPosition, &rms[0], 0);
-        //for (size_t i = 0; i < rmsSize; i++)
-        //{
-        //    RootMove rm = RootMove(rms[i].move);
-        //    RootMoves.push_back(rm);
-        //}
 
         i32 multiPV = std::min(MultiPV, i32(RootMoves.size()));
 
@@ -152,36 +126,6 @@ namespace Horsie {
                 if (IsMain()) {
                     if (OnDepthFinish) {
                         OnDepthFinish();
-                    }
-                    else {
-                        RootMove& rm = RootMoves[0];
-
-                        bool moveSearched = rm.Score != -ScoreInfinite;
-                        i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
-                        i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
-
-                        auto nodes = AssocPool->GetNodeCount();
-                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
-                        auto durCnt = std::max(1.0, (double) duration.count());
-                        i32 nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
-
-                        std::cout << "info depth " << depth;
-                        std::cout << " seldepth " << rm.Depth;
-                        std::cout << " time " << durCnt;
-                        std::cout << " score " << FormatMoveScore(moveScore);
-                        std::cout << " nodes " << nodes;
-                        std::cout << " nps " << nodesPerSec;
-                        std::cout << " pv";
-
-                        for (i32 j = 0; j < rm.PV.size(); j++)
-                        {
-                            if (rm.PV[j] == Move::Null())
-                                break;
-
-                            std::cout << " " + rm.PV[j].SmithNotation(RootPosition.IsChess960);
-                        }
-
-                        std::cout << std::endl;
                     }
                 }
             }
@@ -260,9 +204,9 @@ namespace Horsie {
             }
         }
 
-        if (IsMain() && RootDepth >= MaxDepth && Nodes != MaxNodes && !AssocPool->StopThreads)
+        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !AssocPool->StopThreads)
         {
-            AssocPool->StopThreads.store(true, std::memory_order::relaxed);
+            AssocPool->SetStop();
         }
 
         for (i32 i = -10; i < MaxSearchStackPly; i++)
@@ -313,15 +257,14 @@ namespace Horsie {
             if ((++CheckupCount) >= CheckupMax) {
                 CheckupCount = 0;
 
-                if (CheckTime()) {
-                    AssocPool->StopThreads.store(true, std::memory_order::relaxed);
+                if (HardTimeReached()) {
+                    AssocPool->SetStop();
                 }
             }
             
-            if ((Threads == 1 && Nodes >= MaxNodes)
-                || (CheckupCount == 0 && Nodes >= MaxNodes)) {
-                //  CheckupCount == 0 && thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.NodeLimit
-                AssocPool->StopThreads.store(true, std::memory_order::relaxed);
+            if ((Threads == 1 && Nodes >= HardNodeLimit)
+                || (CheckupCount == 0 && AssocPool->GetNodeCount() >= HardNodeLimit)) {
+                AssocPool->SetStop();
             }
         }
 
@@ -334,7 +277,7 @@ namespace Horsie {
                 return MakeDrawScore(Nodes);
             }
 
-            if (AssocPool->StopThreads || ss->Ply >= MaxSearchStackPly - 1) {
+            if (AssocPool->StopThreads.load(std::memory_order::relaxed) || ss->Ply >= MaxSearchStackPly - 1) {
                 if (pos.Checked()) {
                     return ScoreDraw;
                 }
@@ -715,7 +658,7 @@ namespace Horsie {
                 NodeTable[moveFrom][moveTo] += Nodes - prevNodes;
             }
 
-            if (AssocPool->StopThreads) {
+            if (AssocPool->StopThreads.load(std::memory_order::relaxed)) {
                 return ScoreDraw;
             }
 
@@ -1006,7 +949,7 @@ namespace Horsie {
 
 
 
-    void SearchThread::UpdatePV(Move* pv, Move move, Move* childPV) {
+    void SearchThread::UpdatePV(Move* pv, Move move, Move* childPV) const {
         for (*pv++ = move; childPV != nullptr && *childPV != Move::Null();) {
             *pv++ = *childPV++;
         }
@@ -1077,7 +1020,7 @@ namespace Horsie {
     }
 
 
-    i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) {
+    i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
         rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
@@ -1107,7 +1050,7 @@ namespace Horsie {
     }
 
 
-    void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) {
+    void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) const {
         const auto piece = MakePiece(pc, pt);
 
         for (auto i : {1, 2, 4, 6}) {
@@ -1124,10 +1067,40 @@ namespace Horsie {
     }
 
 
+    void SearchThread::PrintSearchInfo() const {
+        const RootMove& rm = RootMoves[0];
+
+        bool moveSearched = rm.Score != -ScoreInfinite;
+        i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
+        i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+
+        auto nodes = AssocPool->GetNodeCount();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
+        auto durCnt = std::max(1.0, (double)duration.count());
+        i32 nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
+
+        std::cout << "info depth " << depth;
+        std::cout << " seldepth " << rm.Depth;
+        std::cout << " time " << durCnt;
+        std::cout << " score " << FormatMoveScore(moveScore);
+        std::cout << " nodes " << nodes;
+        std::cout << " nps " << nodesPerSec;
+        std::cout << " pv";
+
+        for (i32 j = 0; j < rm.PV.size(); j++) {
+            if (rm.PV[j] == Move::Null())
+                break;
+
+            std::cout << " " + rm.PV[j].SmithNotation(RootPosition.IsChess960);
+        }
+
+        std::cout << std::endl;
+    }
 
 
 
-    Move SearchThread::OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) {
+
+    Move SearchThread::OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const {
         i32 max = INT32_MIN;
         i32 maxIndex = listIndex;
 
@@ -1145,7 +1118,7 @@ namespace Horsie {
 
 
 
-    void SearchThread::AssignProbCutScores(Position& pos, ScoredMove* list, i32 size) {
+    void SearchThread::AssignProbCutScores(Position& pos, ScoredMove* list, i32 size) const {
         
         Bitboard& bb = pos.bb;
         for (i32 i = 0; i < size; i++) {
@@ -1160,7 +1133,7 @@ namespace Horsie {
 
 
 
-    void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) {
+    void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
         Bitboard& bb = pos.bb;
         const auto pc = pos.ToMove;
 
@@ -1199,7 +1172,7 @@ namespace Horsie {
 
 
 
-    void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) {
+    void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
         
         Bitboard& bb = pos.bb;
         const auto pc = pos.ToMove;
@@ -1245,7 +1218,7 @@ namespace Horsie {
         }
     }
 
-    std::string SearchThread::Debug_GetMovesPlayed(SearchStackEntry* ss) {
+    std::string SearchThread::Debug_GetMovesPlayed(SearchStackEntry* ss) const {
         
         std::string moves = "";
 

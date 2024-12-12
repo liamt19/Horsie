@@ -26,6 +26,9 @@ namespace Horsie {
 
         Position pos = Position(InitialFEN);
         SearchThread* thread = SearchPool.MainThread();
+
+        auto odf = thread->OnDepthFinish;
+        auto osf = thread->OnSearchFinish;
         thread->OnDepthFinish = []() {};
         thread->OnSearchFinish = []() {};
 
@@ -44,7 +47,7 @@ namespace Horsie {
             pos.LoadFromFEN(fen);
             //thread.Search(pos, limits);
             SearchPool.StartSearch(pos, limits);
-            SearchPool.MainThreadBase()->WaitForThreadFinished();
+            SearchPool.WaitForMain();
 
             u64 thisNodeCount = SearchPool.GetNodeCount();
             totalNodes += thisNodeCount;
@@ -72,6 +75,9 @@ namespace Horsie {
         else {
             std::cout << std::endl << "Nodes searched: " << totalNodes << " in " << durSeconds << "." << durMillis << " s (" << FormatWithCommas(nps) << " nps)" << std::endl;
         }
+
+        thread->OnDepthFinish = odf;
+        thread->OnSearchFinish = osf;
     }
 
 }

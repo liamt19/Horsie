@@ -11,6 +11,7 @@ namespace Horsie {
 
     static i32 Hash = 32;
 
+    static i32 MoveOverhead = 25;
     static bool UCI_Chess960 = false;
 
     const bool ShallowPruning = true;
