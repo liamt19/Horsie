@@ -93,9 +93,12 @@ namespace Horsie
 #if defined(AVX512)
             const i32 numRegi = 8;
             constexpr i32 order[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
-#else
+#elif defined(AVX256)
             const i32 numRegi = 4;
             constexpr i32 order[] = { 0, 2, 1, 3 };
+#else
+            const i32 numRegi = 2;
+            constexpr i32 order[] = { 0, 1 };
 #endif
             __m128i regi[numRegi] = {};
 
@@ -267,7 +270,7 @@ namespace Horsie
             i8 ft_outputs[L1_SIZE];
             u16 nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
 
-            const vec_128i baseInc = _mm_set1_epi16(u16(8));
+            const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
             vec_128i baseVec = _mm_setzero_si128();
 
             
@@ -368,15 +371,16 @@ namespace Horsie
 
 
         static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output) {
-            auto sumVec = vec_set1_ps(0.0f);
+            constexpr auto SUM_COUNT = 64 / sizeof(vec_ps);
+            vec_ps sumVecs[SUM_COUNT]{};
 
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
                 const auto weightVec = vec_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
                 const auto inputsVec = vec_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
-                sumVec = vec_fmadd_ps(inputsVec, weightVec, sumVec);
+                sumVecs[i % SUM_COUNT] = vec_fmadd_ps(inputsVec, weightVec, sumVecs[i % SUM_COUNT]);
             }
 
-            output = bias + vec_hsum_ps(sumVec);
+            output = bias + vec_hsum_ps(sumVecs);
         }
 
 
