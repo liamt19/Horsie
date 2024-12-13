@@ -51,7 +51,7 @@ namespace Horsie {
     static i32 LMRCaptureDiv = 10288;
     static i32 LMRExtMargin = 128;
 
-    static i32 QSFutileMargin = 183;
+    static i32 QSFutileMargin = 300;
     static i32 QSSeeMargin = 81;
 
     static i32 CheckBonus = 9546;

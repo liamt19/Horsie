@@ -831,7 +831,7 @@ namespace Horsie {
                     tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, false);
 
                 if (std::abs(eval) < ScoreTTWin)
-                    eval = static_cast<i16>((4 * eval + beta) / 5);
+                    eval = static_cast<i16>((eval + beta) / 2);
 
                 return eval;
             }
@@ -842,7 +842,7 @@ namespace Horsie {
 
             bestScore = eval;
 
-            futility = (std::min(ss->StaticEval, static_cast<i16>(bestScore)) + QSFutileMargin);
+            futility = bestScore + QSFutileMargin;
         }
 
         const auto prevSquare = (ss - 1)->CurrentMove == Move::Null() ? SQUARE_NB : (ss - 1)->CurrentMove.To();

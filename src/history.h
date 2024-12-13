@@ -69,7 +69,7 @@ namespace Horsie {
 
         void Clear() {
             MainHistory.fill(0);
-            CaptureHistory.fill(0);
+            CaptureHistory.fill(-60);
             PlyHistory.fill(0);
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
             std::memset(&NonPawnCorrection, 0, sizeof(NonPawnCorrection));
