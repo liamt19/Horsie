@@ -842,7 +842,7 @@ namespace Horsie {
 
             bestScore = eval;
 
-            futility = (std::min(ss->StaticEval, static_cast<i16>(bestScore)) + QSFutileMargin);
+            futility = ss->StaticEval + QSFutileMargin;
         }
 
         const auto prevSquare = (ss - 1)->CurrentMove == Move::Null() ? SQUARE_NB : (ss - 1)->CurrentMove.To();
