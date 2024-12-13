@@ -3,6 +3,18 @@
 #include "threadpool.h"
 #include "movegen.h"
 
+/*
+
+Copied from https://github.com/liamt19/Lizard/blob/main/Logic/Threads/SearchThreadPool.cs:
+
+Some of the thread logic in this class is based on Stockfish's Thread class
+(StartThreads, WaitForSearchFinished, and the general concepts in StartSearch), the sources of which are here:
+https://github.com/official-stockfish/Stockfish/blob/master/src/thread.cpp
+https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
+
+*/
+
+
 namespace Horsie {
 
 	void SearchThreadPool::Resize(int newThreadCount) {
@@ -72,7 +84,7 @@ namespace Horsie {
 			}
 		}
 
-		MainThreadBase()->start_searching();
+		MainThreadBase()->WakeUp();
 	}
 
 	void SearchThreadPool::WaitForMain() const { MainThreadBase()->WaitForThreadFinished(); };
@@ -87,7 +99,7 @@ namespace Horsie {
 
 	void SearchThreadPool::StartThreads() const {
 		for (i32 i = 1; i < Threads.size(); i++)
-			Threads[i]->start_searching();
+			Threads[i]->WakeUp();
 	}
 
 	void SearchThreadPool::WaitForSearchFinished() const {
@@ -105,37 +117,37 @@ namespace Horsie {
 
 	Thread::Thread(i32 n) {
 		worker = std::make_unique<SearchThread>();
-		stdThread = std::thread(&Thread::idle_loop, this);
+		_SysThread = std::thread(&Thread::IdleLoop, this);
 	}
 
 	Thread::~Thread() {
 		assert(!searching);
-		exit = true;
-		start_searching();
-		stdThread.join();
+		Quit = true;
+		WakeUp();
+		_SysThread.join();
 	}
 
 
-	void Thread::start_searching() {
-		mutex.lock();
+	void Thread::WakeUp() {
+		_Mutex.lock();
 		searching = true;
-		mutex.unlock();
-		cv.notify_one();
+		_Mutex.unlock();
+		_SearchCond.notify_one();
 	}
 
 	void Thread::WaitForThreadFinished() {
-		std::unique_lock<std::mutex> lk(mutex);
-		cv.wait(lk, [&] { return !searching; });
+		std::unique_lock<std::mutex> lk(_Mutex);
+		_SearchCond.wait(lk, [&] { return !searching; });
 	}
 
-	void Thread::idle_loop() {
+	void Thread::IdleLoop() {
 		while (true) {
-			std::unique_lock<std::mutex> lk(mutex);
+			std::unique_lock<std::mutex> lk(_Mutex);
 			searching = false;
-			cv.notify_one();
-			cv.wait(lk, [&] { return searching; });
+			_SearchCond.notify_one();
+			_SearchCond.wait(lk, [&] { return searching; });
 
-			if (exit)
+			if (Quit)
 				return;
 
 			lk.unlock();

@@ -3,6 +3,19 @@
 #ifndef THREADPOOL_H
 #define THREADPOOL_H
 
+
+/*
+
+Copied from https://github.com/liamt19/Lizard/blob/main/Logic/Threads/SearchThreadPool.cs:
+
+Some of the thread logic in this class is based on Stockfish's Thread class
+(StartThreads, WaitForSearchFinished, and the general concepts in StartSearch), the sources of which are here:
+https://github.com/official-stockfish/Stockfish/blob/master/src/thread.cpp
+https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
+
+*/
+
+
 #include <thread>
 #include <barrier>
 
@@ -34,18 +47,18 @@ namespace Horsie {
         Thread(i32 n);
         virtual ~Thread();
 
-        void   idle_loop();
-        void   start_searching();
+        void   IdleLoop();
+        void   WakeUp();
         void   WaitForThreadFinished();
 
         std::unique_ptr<SearchThread> worker;
 
     private:
-        std::mutex mutex;
-        std::condition_variable cv;
-        bool exit = false;
+        std::mutex _Mutex;
+        std::condition_variable _SearchCond;
+        bool Quit = false;
         bool searching = true;
-        std::thread stdThread;
+        std::thread _SysThread;
     };
 
 
