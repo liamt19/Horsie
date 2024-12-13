@@ -221,7 +221,7 @@ void HandleSetOptionCommand(std::istringstream& is) {
 
     if (name == "hash") {
         i32 hashVal = std::stoi(value);
-        if (hashVal >= 1 && hashVal <= TranspositionTable::MaxSize) {
+        if (hashVal >= Horsie::Hash.MinValue && hashVal <= Horsie::Hash.MaxValue) {
             Horsie::Hash = hashVal;
             SearchPool->TTable.Initialize(Horsie::Hash);
             std::cout << "info string set hash to " << Horsie::Hash << std::endl;
@@ -230,7 +230,7 @@ void HandleSetOptionCommand(std::istringstream& is) {
 
     if (name == "threads") {
         i32 cnt = std::stoi(value);
-        if (cnt >= 1 && cnt <= SearchThreadPool::MaxThreads) {
+        if (cnt >= Horsie::Threads.MinValue && cnt <= Horsie::Threads.MaxValue) {
             Horsie::Threads = cnt;
             SearchPool->Resize(Horsie::Threads);
             std::cout << "info string set threads to " << Horsie::Threads << std::endl;
@@ -348,8 +348,8 @@ void HandleStopCommand() {
 
 void HandleUCICommand() {
     std::cout << "id name Horsie" << std::endl;
-    std::cout << "option name Hash type spin default " << TranspositionTable::DefaultTTSize << " min 1 max " << TranspositionTable::MaxSize << std::endl;
-    std::cout << "option name Threads type spin default 1 min 1 max " << SearchThreadPool::MaxThreads << std::endl;
+    std::cout << "option name Hash type spin default " << Horsie::Hash.DefaultValue << " min " << Horsie::Hash.MinValue << " max " << Horsie::Hash.MaxValue << std::endl;
+    std::cout << "option name Threads type spin default 1 min 1 max " << Horsie::Threads.MaxValue << std::endl;
     std::cout << "option name UCI_Chess960 type check default false" << std::endl;
     std::cout << "uciok" << std::endl;
     inUCI = true;
@@ -462,7 +462,7 @@ void HandleThreadsCommand(std::istringstream& is) {
     if (is && is.peek() != EOF)
         is >> cnt;
 
-    if (cnt >= 1 && cnt <= SearchThreadPool::MaxThreads) {
+    if (cnt >= Horsie::Threads.MinValue && cnt <= Horsie::Threads.MaxValue) {
         Horsie::Threads = cnt;
         SearchPool->Resize(Horsie::Threads);
         std::cout << "info string set threads to " << Horsie::Threads << std::endl;

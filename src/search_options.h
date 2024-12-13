@@ -3,13 +3,13 @@
 #ifndef SEARCH_OPTIONS_H
 #define SEARCH_OPTIONS_H
 
+#include "tunable.h"
+
 namespace Horsie {
 
-    static i32 Threads = 1;
-
-    static i32 MultiPV = 1;
-
-    static i32 Hash = 32;
+    TUNABLE_PARAM_SPECIAL(Threads, 1, 1, 512)
+    TUNABLE_PARAM_SPECIAL(MultiPV, 1, 1, 256)
+    TUNABLE_PARAM_SPECIAL(Hash, 32, 1, 1048576)
 
     static i32 MoveOverhead = 25;
     static bool UCI_Chess960 = false;
@@ -24,61 +24,61 @@ namespace Horsie {
     const i32 CorrectionGrain = 256;
     const i32 CorrectionMax = CorrectionGrain * 64;
 
-    static i32 SEMinDepth = 5;
-    static i32 SENumerator = 11;
-    static i32 SEDoubleMargin = 24;
-    static i32 SETripleMargin = 96;
-    static i32 SETripleCapSub = 75;
-    static i32 SEDepthAdj = -1;
+    TUNABLE_PARAM(SEMinDepth, 5)
+    TUNABLE_PARAM(SENumerator, 11)
+    TUNABLE_PARAM(SEDoubleMargin, 24)
+    TUNABLE_PARAM(SETripleMargin, 96)
+    TUNABLE_PARAM(SETripleCapSub, 75)
+    TUNABLE_PARAM_CUSTOM(SEDepthAdj, -1, -3, 2)
 
-    static i32 NMPMinDepth = 6;
-    static i32 NMPBaseRed = 4;
-    static i32 NMPDepthDiv = 4;
-    static i32 NMPEvalDiv = 181;
-    static i32 NMPEvalMin = 2;
+    TUNABLE_PARAM(NMPMinDepth, 6)
+    TUNABLE_PARAM(NMPBaseRed, 4)
+    TUNABLE_PARAM(NMPDepthDiv, 4)
+    TUNABLE_PARAM(NMPEvalDiv, 181)
+    TUNABLE_PARAM_CUSTOM(NMPEvalMin, 2, 0, 6)
 
-    static i32 RFPMaxDepth = 6;
-    static i32 RFPMargin = 47;
+    TUNABLE_PARAM(RFPMaxDepth, 6)
+    TUNABLE_PARAM(RFPMargin, 47)
 
-    static i32 ProbCutMinDepth = 2;
-    static i32 ProbCutBeta = 256;
-    static i32 ProbcutBetaImp = 101;
+    TUNABLE_PARAM_CUSTOM(ProbCutMinDepth, 2, 1, 5)
+    TUNABLE_PARAM(ProbCutBeta, 256)
+    TUNABLE_PARAM(ProbcutBetaImp, 101)
 
-    static i32 ShallowSEEMargin = 216;
-    static i32 ShallowMaxDepth = 9;
+    TUNABLE_PARAM(ShallowSEEMargin, 216)
+    TUNABLE_PARAM(ShallowMaxDepth, 9)
 
-    static i32 LMRQuietDiv = 12288;
-    static i32 LMRCaptureDiv = 10288;
-    static i32 LMRExtMargin = 128;
+    TUNABLE_PARAM(LMRQuietDiv, 12288)
+    TUNABLE_PARAM(LMRCaptureDiv, 10288)
+    TUNABLE_PARAM(LMRExtMargin, 128)
 
-    static i32 QSFutileMargin = 183;
-    static i32 QSSeeMargin = 81;
+    TUNABLE_PARAM(QSFutileMargin, 183)
+    TUNABLE_PARAM(QSSeeMargin, 81)
 
-    static i32 CheckBonus = 9546;
-    static i32 MVVMult = 12;
+    TUNABLE_PARAM(CheckBonus, 9546)
+    TUNABLE_PARAM(MVVMult, 12)
 
-    static i32 IIRMinDepth = 3;
-    static i32 AspWindow = 12;
+    TUNABLE_PARAM_CUSTOM(IIRMinDepth, 3, 2, 6)
+    TUNABLE_PARAM(AspWindow, 12)
 
-    static i32 StatBonusMult = 184;
-    static i32 StatBonusSub = 80;
-    static i32 StatBonusMax = 1667;
+    TUNABLE_PARAM(StatBonusMult, 184)
+    TUNABLE_PARAM(StatBonusSub, 80)
+    TUNABLE_PARAM(StatBonusMax, 1667)
 
-    static i32 StatMalusMult = 611;
-    static i32 StatMalusSub = 111;
-    static i32 StatMalusMax = 1663;
+    TUNABLE_PARAM(StatMalusMult, 611)
+    TUNABLE_PARAM(StatMalusSub, 111)
+    TUNABLE_PARAM(StatMalusMax, 1663)
 
-    static i32 SEEValue_Pawn = 105;
-    static i32 SEEValue_Horsie = 900;
-    static i32 SEEValue_Bishop = 1054;
-    static i32 SEEValue_Rook = 1332;
-    static i32 SEEValue_Queen = 2300;
+    TUNABLE_PARAM(SEEValue_Pawn, 105)
+    TUNABLE_PARAM(SEEValue_Horsie, 900)
+    TUNABLE_PARAM(SEEValue_Bishop, 1054)
+    TUNABLE_PARAM(SEEValue_Rook, 1332);
+    TUNABLE_PARAM(SEEValue_Queen, 2300);
 
-    static i32 ValuePawn = 171;
-    static i32 ValueHorsie = 794;
-    static i32 ValueBishop = 943;
-    static i32 ValueRook = 1620;
-    static i32 ValueQueen = 2994;
+    TUNABLE_PARAM(ValuePawn, 171)
+    TUNABLE_PARAM(ValueHorsie, 794)
+    TUNABLE_PARAM(ValueBishop, 943)
+    TUNABLE_PARAM(ValueRook, 1620)
+    TUNABLE_PARAM(ValueQueen, 2994)
 
 }
 

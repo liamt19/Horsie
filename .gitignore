@@ -46,3 +46,4 @@
 *.bin
 /obj
 /horsie
+/cpp.hint
