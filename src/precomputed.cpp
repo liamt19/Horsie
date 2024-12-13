@@ -6,7 +6,13 @@
 
 #include <cmath>
 
-constexpr bool Is64Bit = true;
+/*
+
+The magic bitboard code here is taken verbatim from Stockfish (primarily because it is trivial to implement).
+Lizard uses the same process for it's magic code:
+https://github.com/liamt19/Lizard/blob/d77783b19dcbae0f267d8b30c38258251014780b/Logic/Magic/MagicBitboards.cs#L173
+
+*/
 
 namespace Horsie {
 
@@ -162,7 +168,7 @@ namespace Horsie {
             u64 occupancy[4096], reference[4096], edges, b;
             i32      epoch[4096] = {}, cnt = 0, size = 0;
 
-            for (i32 s = (i32)Square::A1; s <= (i32)Square::H8; ++s)
+            for (i32 s = static_cast<i32>(Square::A1); s <= static_cast<i32>(Square::H8); ++s)
             {
                 // Board edges are not considered in the relevant occupancies
                 edges = ((Rank1BB | Rank8BB) & ~RankBB(s)) | ((FileABB | FileHBB) & ~FileBB(s));
@@ -173,12 +179,12 @@ namespace Horsie {
                 // the number of 1s of the mask. Hence we deduce the size of the shift to
                 // apply to the 64 or 32 bits word to get the index.
                 Magic& m = magics[s];
-                m.mask = sliding_attack(pt, (Square)s, 0) & ~edges;
+                m.mask = sliding_attack(pt, static_cast<Square>(s), 0) & ~edges;
                 m.shift = (64 - popcount(m.mask));
 
                 // Set the offset for the attacks table of the square. We have individual
                 // table sizes for each square with "Fancy Magic Bitboards".
-                m.attacks = s == (i32)Square::A1 ? table : magics[s - 1].attacks + size;
+                m.attacks = s == static_cast<i32>(Square::A1) ? table : magics[s - 1].attacks + size;
 
                 // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
                 // store the corresponding sliding attack bitboard in reference[].
