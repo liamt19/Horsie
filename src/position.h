@@ -104,6 +104,8 @@ namespace Horsie {
         bool HasCycle(i32 ply) const;
 
 
+        inline i32 PawnHistoryIndex() const { return static_cast<i32>(PawnHash() % 512); }
+
         inline i32 PawnCorrectionIndex(i32 pc) const {
             return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);
         }

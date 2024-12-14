@@ -994,6 +994,8 @@ namespace Horsie {
 
             UpdateContinuations(ss, us, bmPiece, bmTo, bonus);
 
+            const auto pIdx = pos.PawnHistoryIndex();
+            history.PawnHistory[pIdx][MakePiece(us, bmPiece)][bmTo] << ((2 * bonus) / 3);
 
             for (i32 i = 0; i < quietCount; i++) {
                 Move m = quietMoves[i];
@@ -1005,6 +1007,7 @@ namespace Horsie {
                     history.PlyHistory[ss->Ply][m.GetMoveMask()] << -malus;
 
                 UpdateContinuations(ss, us, thisPiece, moveTo, -malus);
+                history.PawnHistory[pIdx][MakePiece(us, thisPiece)][moveTo] << ((2 * -malus) / 3);
             }
         }
 
@@ -1176,6 +1179,7 @@ namespace Horsie {
         
         Bitboard& bb = pos.bb;
         const auto pc = pos.ToMove;
+        const auto pIdx = pos.PawnHistoryIndex();
 
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;
@@ -1197,6 +1201,7 @@ namespace Horsie {
                 i32 contIdx = MakePiece(pc, pt);
 
                 list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].Score +=     history.PawnHistory[pIdx][contIdx][moveTo];
                 list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
