@@ -7,7 +7,7 @@
 constexpr auto INPUT_BUCKETS = 14;
 constexpr auto INPUT_SIZE = 768;
 constexpr auto L1_SIZE = 1536;
-constexpr auto L2_SIZE = 32;
+constexpr auto L2_SIZE = 64;
 constexpr auto L3_SIZE = 32;
 constexpr auto OUTPUT_BUCKETS = 8;
 
