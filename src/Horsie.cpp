@@ -210,37 +210,35 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
 
 
 void HandleSetOptionCommand(std::istringstream& is) {
-    std::string name{}, value{};
-    is >> name;
-    is >> name;
+    std::string rawName{}, value{};
+    is >> rawName;
+    is >> rawName;
 
     is >> value;
     is >> value;
 
+    std::string name = rawName;
     std::transform(name.begin(), name.end(), name.begin(), [](auto c) { return std::tolower(c); });
 
+    auto opt = FindUCIOption(name);
+
+    if (!opt) return;
+
+    i32 newVal = (value == "false") ? 0
+               : (value == "true")  ? 1
+               :                      std::stoi(value);
+
+    if (newVal < opt->MinValue || newVal > opt->MaxValue) return;
+
+    opt->CurrentValue = newVal;
+
     if (name == "hash") {
-        i32 hashVal = std::stoi(value);
-        if (hashVal >= Horsie::Hash.MinValue && hashVal <= Horsie::Hash.MaxValue) {
-            Horsie::Hash = hashVal;
-            SearchPool->TTable.Initialize(Horsie::Hash);
-            std::cout << "info string set hash to " << Horsie::Hash << std::endl;
-        }
+        SearchPool->TTable.Initialize(Horsie::Hash);
+        std::cout << "info string set hash to " << Horsie::Hash << std::endl;
     }
-
-    if (name == "threads") {
-        i32 cnt = std::stoi(value);
-        if (cnt >= Horsie::Threads.MinValue && cnt <= Horsie::Threads.MaxValue) {
-            Horsie::Threads = cnt;
-            SearchPool->Resize(Horsie::Threads);
-            std::cout << "info string set threads to " << Horsie::Threads << std::endl;
-        }
-    }
-
-    if (name == "uci_chess960") {
-        if (value == "true" || value == "false") {
-            Horsie::UCI_Chess960 = (value == "true");
-        }
+    else if (name == "threads") {
+        SearchPool->Resize(Horsie::Threads);
+        std::cout << "info string set threads to " << Horsie::Threads << std::endl;
     }
 }
 
@@ -347,12 +345,15 @@ void HandleStopCommand() {
 
 
 void HandleUCICommand() {
+    
     std::cout << "id name Horsie" << std::endl;
-    std::cout << "option name Hash type spin default " << Horsie::Hash.DefaultValue << " min " << Horsie::Hash.MinValue << " max " << Horsie::Hash.MaxValue << std::endl;
-    std::cout << "option name Threads type spin default 1 min 1 max " << Horsie::Threads.MaxValue << std::endl;
-    std::cout << "option name UCI_Chess960 type check default false" << std::endl;
+    const auto& opts = GetUCIOptions();
+    for (auto& opt : opts) {
+        std::cout << opt << std::endl;
+    }
     std::cout << "uciok" << std::endl;
     inUCI = true;
+
 }
 
 

@@ -4,6 +4,7 @@
 #define DEFS_H
 
 #include <cstdint>
+#include <cstddef>
 
 using nuint = std::size_t;
 

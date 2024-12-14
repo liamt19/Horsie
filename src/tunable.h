@@ -9,9 +9,9 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
-
-struct TunableParam {
+struct TunableOption {
     std::string Name;
     i32 DefaultValue;
     i32 CurrentValue;
@@ -19,7 +19,7 @@ struct TunableParam {
     i32 MaxValue;
     double Step;
 
-    TunableParam(const std::string& name, i32 v, i32 min, i32 max, double step) :
+    TunableOption(const std::string& name, i32 v, i32 min, i32 max, double step) :
         Name(name),
         DefaultValue(v),
         CurrentValue(v),
@@ -30,7 +30,7 @@ struct TunableParam {
 
     operator i32() const { return CurrentValue; }
 
-    TunableParam& operator=(i32 newV) {
+    TunableOption& operator=(i32 newV) {
         if (newV < MinValue || newV > MaxValue) {
             throw std::out_of_range("Tunable assignment out of range");
         }
@@ -42,54 +42,69 @@ struct TunableParam {
 };
 
 
-inline std::vector<TunableParam>& tunableParams() {
-    static auto params = []
-    {
-        std::vector<TunableParam> params{};
-        params.reserve(128);
-        return params;
-    }();
+inline std::ostream& operator<<(std::ostream& os, const TunableOption& opt) {
+    os << "option name " << opt.Name << " type ";
 
-    return params;
+    if (opt.Name.rfind("UCI_", 0) == 0) {
+        os << "check default " << (opt.DefaultValue ? "true" : "false");
+    }
+    else {
+        os << "spin default " << opt.DefaultValue << " min " << opt.MinValue << " max " << opt.MaxValue;
+    }
+
+    return os;
 }
 
-inline TunableParam* lookupTunableParam(const std::string& name) {
-    for (auto& param : tunableParams()) {
-        auto lowerName = param.Name;
+
+inline std::vector<TunableOption>& GetUCIOptions() {
+    static auto opts = []
+    {
+        std::vector<TunableOption> opts{};
+        opts.reserve(128);
+        return opts;
+    }();
+
+    return opts;
+}
+
+inline TunableOption* FindUCIOption(const std::string& name) {
+    auto& opts = GetUCIOptions(); 
+    for (auto& opt : opts) {
+        auto lowerName = opt.Name;
         std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](auto c) { return std::tolower(c); });
         if (lowerName == name)
-            return &param;
+            return &opt;
     }
 
     return nullptr;
 }
 
-inline TunableParam& addTunableParam(const std::string& name, i32 v, i32 min, i32 max, double step) {
-    auto& params = tunableParams();
+inline TunableOption& AddUCIOption(const std::string& name, i32 v, i32 min, i32 max, double step) {
+    auto& opts = GetUCIOptions();
     auto lowerName = name;
     std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](auto c) { return std::tolower(c); });
-    return params.emplace_back(TunableParam{ name, v, min, max, step });
+    return opts.emplace_back(TunableOption{ name, v, min, max, step });
 }
 
-inline TunableParam& addTunableParam(const std::string& name, i32 v, i32 min, i32 max) {
-    return addTunableParam(name, v, min, max, std::max(0.5, (max - min) / 20.0));
+inline TunableOption& AddUCIOption(const std::string& name, i32 v, i32 min, i32 max) {
+    return AddUCIOption(name, v, min, max, std::max(0.5, (max - min) / 20.0));
 }
 
-inline TunableParam& addTunableParam(const std::string& name, i32 v) {
+inline TunableOption& AddUCIOption(const std::string& name, i32 v) {
     auto min = static_cast<i32>(std::round(v * (1 - 0.45)));
     auto max = static_cast<i32>(std::round(v * (1 + 0.45)));
-    return addTunableParam(name, v, min, max);
+    return AddUCIOption(name, v, min, max);
 }
 
 
-#define TUNABLE_PARAM(Name, Default) \
-        inline TunableParam& Name = addTunableParam(#Name, Default);
+#define UCI_OPTION(Name, Default) \
+    inline TunableOption& Name = AddUCIOption(#Name, Default);
 
-#define TUNABLE_PARAM_SPECIAL(Name, Default, Min, Max) \
-		inline TunableParam& Name = addTunableParam(#Name, Default, Min, Max);
+#define UCI_OPTION_SPECIAL(Name, Default, Min, Max) \
+    inline TunableOption& Name = AddUCIOption(#Name, Default, Min, Max);
 
-#define TUNABLE_PARAM_CUSTOM(Name, Default, Min, Max) \
-		inline TunableParam& Name = addTunableParam(#Name, Default, Min, Max);
+#define UCI_OPTION_CUSTOM(Name, Default, Min, Max) \
+    inline TunableOption& Name = AddUCIOption(#Name, Default, Min, Max);
 
 
 #endif // !TUNABLE_H
