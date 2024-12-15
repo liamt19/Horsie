@@ -1201,7 +1201,7 @@ namespace Horsie {
                 i32 contIdx = MakePiece(pc, pt);
 
                 list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].Score +=     history.PawnHistory[pIdx][contIdx][moveTo];
+                list[i].Score += 2 * history.PawnHistory[pIdx][contIdx][moveTo];
                 list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
