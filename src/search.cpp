@@ -326,7 +326,7 @@ namespace Horsie {
         else if (ss->TTHit) {
             rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
 
             if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
                 eval = ttScore;
@@ -335,7 +335,7 @@ namespace Horsie {
         else {
             rawEval = NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
 
             tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
@@ -371,6 +371,7 @@ namespace Horsie {
         {
             const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, NMPEvalMin);
             ss->CurrentMove = Move::Null();
+            ss->MovedPiece = NONE;
             ss->ContinuationHistory = &history->Continuations[0][0][0][0];
 
             pos.MakeNullMove();
@@ -428,9 +429,11 @@ namespace Horsie {
                 prefetch(TT->GetCluster(pos.HashAfter(m)));
 
                 const auto [moveFrom, moveTo] = m.Unpack();
-                const auto histIdx = MakePiece(us, bb.GetPieceAtIndex(moveFrom));
+                const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
+                const auto histIdx = MakePiece(us, ourPiece);
 
                 ss->CurrentMove = m;
+                ss->MovedPiece = static_cast<u8>(ourPiece);
                 ss->ContinuationHistory = &history->Continuations[0][1][histIdx][moveTo];
                 Nodes++;
 
@@ -581,6 +584,7 @@ namespace Horsie {
 
             ss->DoubleExtensions = static_cast<i16>((ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0));
             ss->CurrentMove = m;
+            ss->MovedPiece = static_cast<u8>(ourPiece);
             ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCapture][histIdx][moveTo];
             Nodes++;
 
@@ -746,7 +750,7 @@ namespace Horsie {
                 && !(bound == TTNodeType::Beta && bestScore >= ss->StaticEval))
             {
                 auto diff = bestScore - ss->StaticEval;
-                UpdateCorrectionHistory(pos, diff, depth);
+                UpdateCorrectionHistory(pos, ss, diff, depth);
             }
         }
 
@@ -814,7 +818,7 @@ namespace Horsie {
             if (ss->TTHit) {
                 rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
 
                 if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
                     eval = ttScore;
@@ -823,7 +827,7 @@ namespace Horsie {
             else {
                 rawEval = ((ss - 1)->CurrentMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
             }
 
             if (eval >= beta) {
@@ -909,6 +913,7 @@ namespace Horsie {
             }
 
             ss->CurrentMove = m;
+            ss->MovedPiece = static_cast<u8>(ourPiece);
             ss->ContinuationHistory = &History.Continuations[ss->InCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
             Nodes++;
 
@@ -1020,33 +1025,49 @@ namespace Horsie {
     }
 
 
-    i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
+    i16 SearchThread::AdjustEval(Position& pos, SearchStackEntry* ss, i32 us, i16 rawEval) const {
         rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
-        const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
-        const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
-        const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
+        const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384];
+        const auto nonPawn = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] 
+                           + History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384];
+
+        auto cont = 0;
+        if (ss->Ply >= 2 && (ss - 1)->MovedPiece != NONE && (ss - 2)->MovedPiece != NONE) {
+            cont = History.ContCorrection[us][(ss - 1)->MovedPiece][(ss - 1)->CurrentMove.To()]
+                                             [(ss - 2)->MovedPiece][(ss - 2)->CurrentMove.To()];
+        }
+
+        const auto corr = (pawn * 500 + nonPawn * 300 + cont * 300) / (1000 * CorrectionGrain);
 
         return static_cast<i16>(rawEval + corr);
     }
 
 
-    void SearchThread::UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth) {
+    void SearchThread::UpdateCorrectionHistory(Position& pos, SearchStackEntry* ss, i32 diff, i32 depth) {
 
         const auto scaledWeight = std::min((depth * depth) + 1, 128);
+        const auto oldBlend = (CorrectionScale - scaledWeight);
+        const auto newBlend = (diff * CorrectionGrain * scaledWeight);
 
         auto& pawnCh = History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384];
-        const auto pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+        const auto pawnBonus = (pawnCh * oldBlend + newBlend) / CorrectionScale;
         pawnCh = std::clamp(pawnBonus, -CorrectionMax, CorrectionMax);
 
         auto& nonPawnChW = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::WHITE) % 16384];
-        const auto nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+        const auto nonPawnBonusW = (nonPawnChW * oldBlend + newBlend) / CorrectionScale;
         nonPawnChW = std::clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
 
         auto& nonPawnChB = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384];
-        const auto nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+        const auto nonPawnBonusB = (nonPawnChB * oldBlend + newBlend) / CorrectionScale;
         nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
+
+        if (ss->Ply >= 2 && (ss - 1)->MovedPiece != NONE && (ss - 2)->MovedPiece != NONE) {
+            auto& cont = History.ContCorrection[pos.ToMove][(ss - 1)->MovedPiece][(ss - 1)->CurrentMove.To()]
+                                                           [(ss - 2)->MovedPiece][(ss - 2)->CurrentMove.To()];
+            const auto contBonus = (cont * oldBlend + newBlend) / CorrectionScale;
+            cont = std::clamp(contBonus, -CorrectionMax, CorrectionMax);
+        }
     }
 
 

@@ -85,6 +85,7 @@ namespace Horsie {
             Move KillerMove;
             Move CurrentMove;
             Move Skip;
+            u8 MovedPiece;
             bool InCheck;
             bool TTPV;
             bool TTHit;
@@ -94,6 +95,7 @@ namespace Horsie {
             void Clear() {
                 CurrentMove = Skip = KillerMove = Move::Null();
                 ContinuationHistory = nullptr;
+                MovedPiece = NONE;
 
                 Ply = 0;
                 DoubleExtensions = 0;
