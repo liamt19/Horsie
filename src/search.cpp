@@ -10,6 +10,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <fstream>
 
@@ -603,12 +604,12 @@ namespace Horsie {
 
                 i32 R = LogarithmicReductionTable[depth][legalMoves];
 
-                R += (!improving);
-                R += cutNode * 2;
+                R += (!improving * LMR_NotImp);
+                R += (cutNode * LMR_Cutnode);
 
-                R -= ss->TTPV;
-                R -= isPV;
-                R -= (m == ss->KillerMove);
+                R -= (ss->TTPV * 128);
+                R -= (isPV * 128);
+                R -= ((m == ss->KillerMove) * LMR_Killer);
 
                 i32 mHist = 2 * (isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()]);    
                 i32 histScore = mHist +
@@ -616,7 +617,10 @@ namespace Horsie {
                                     (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
                                     (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
 
-                R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
+                histScore = (histScore * 128) / (isCapture ? LMRCaptureDiv : LMRQuietDiv);
+                R -= histScore;
+
+                R /= 128;
 
                 R = std::max(1, std::min(R, newDepth));
                 i32 reducedDepth = (newDepth - R);

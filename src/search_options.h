@@ -86,6 +86,10 @@ namespace Horsie {
     UCI_OPTION(MHCoeff, 200)
     UCI_OPTION(Cont1Coeff, 200)
 
+    UCI_OPTION(LMR_NotImp, 128)
+    UCI_OPTION(LMR_Cutnode, 256)
+    UCI_OPTION(LMR_Killer, 128)
+
     UCI_OPTION(Dummy0, 1000)
     UCI_OPTION(Dummy1, 1000)
     UCI_OPTION(Dummy2, 1000)
