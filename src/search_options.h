@@ -10,7 +10,7 @@ namespace Horsie {
     UCI_OPTION_SPECIAL(Threads, 1, 1, 512)
     UCI_OPTION_SPECIAL(Hash, 32, 1, 1048576)
     UCI_OPTION_SPECIAL(MultiPV, 1, 1, 256)
-    UCI_OPTION(UCI_Chess960, false)
+    UCI_OPTION_SPIN(UCI_Chess960, false)
 
     const i32 MoveOverhead = 25;
     //static bool UCI_Chess960 = false;

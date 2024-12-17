@@ -28,7 +28,7 @@ using std::cout;
 using std::endl;
 
 i32 main(i32 argc, char* argv[]);
-void HandleSetPosition(Position& pos, std::istringstream& is);
+void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken = false);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleThreadsCommand(std::istringstream& is);
@@ -156,19 +156,29 @@ i32 main(i32 argc, char* argv[])
 
         else if (token == "activations")
             ScuffedChatGPTPrintActivations();
+        
+        else if (std::ranges::count(token, '/') == 7) {
+            //  Reset the stream so the beginning part of the fen isn't consumed before we call SetPosition
+            std::istringstream is(cmd);
+            HandleSetPosition(pos, is, true);
+        }
 
     } while (true);
 
-    std::cin.get();
     return 0;
 }
 
 
 
-void HandleSetPosition(Position& pos, std::istringstream& is) {
+void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
     std::string token, fen;
 
-    is >> token;
+    if (skipToken) {
+        token = "fen";
+    }
+    else {
+        is >> token;
+    }
 
     if (token == "startpos")
     {

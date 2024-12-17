@@ -755,8 +755,6 @@ namespace Horsie {
         State->CapturedPiece = Piece::NONE;
 
         NNUE::RefreshAccumulator(*this);
-
-        //std::cout << *this << std::endl;
     }
 
     std::string Position::GetFEN() const {

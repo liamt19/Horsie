@@ -97,6 +97,9 @@ inline TunableOption& AddUCIOption(const std::string& name, i32 v) {
 }
 
 
+#define UCI_OPTION_SPIN(Name, Default) \
+    inline TunableOption& Name = AddUCIOption(#Name, Default, false, true, 1);
+
 #define UCI_OPTION(Name, Default) \
     inline TunableOption& Name = AddUCIOption(#Name, Default);
 
