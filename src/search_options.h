@@ -81,6 +81,15 @@ namespace Horsie {
     UCI_OPTION(ValueRook, 1620)
     UCI_OPTION(ValueQueen, 2994)
 
+    UCI_OPTION(CorrectionPawn, 667)
+    UCI_OPTION(CorrectionNonPawn, 333)
+    UCI_OPTION(MHCoeff, 200)
+    UCI_OPTION(Cont1Coeff, 200)
+
+    UCI_OPTION(Dummy0, 1000)
+    UCI_OPTION(Dummy1, 1000)
+    UCI_OPTION(Dummy2, 1000)
+    UCI_OPTION(Dummy3, 1000)
 }
 
 

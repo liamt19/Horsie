@@ -1026,7 +1026,7 @@ namespace Horsie {
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
         const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
+        const auto corr = (pawn * CorrectionPawn + nonPawnW * CorrectionNonPawn + nonPawnB * CorrectionNonPawn) / 1000;
 
         return static_cast<i16>(rawEval + corr);
     }
@@ -1153,8 +1153,8 @@ namespace Horsie {
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score =  ((MHCoeff * history.MainHistory[pc][m.GetMoveMask()]) / 100);
+                list[i].Score += ((Cont1Coeff * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo]) / 100);
                 list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
@@ -1196,8 +1196,8 @@ namespace Horsie {
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].Score =  ((MHCoeff * history.MainHistory[pc][m.GetMoveMask()]) / 100);
+                list[i].Score += ((Cont1Coeff * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo]) / 100);
                 list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
