@@ -19,7 +19,7 @@ namespace Horsie {
     const bool UseSingularExtensions = true;
     const bool UseNMP = true;
     const bool UseRFP = true;
-    const bool UseProbCut = true;
+    const bool UseProbcut = true;
 
     const i32 CorrectionScale = 1024;
     const i32 CorrectionGrain = 256;
@@ -41,8 +41,8 @@ namespace Horsie {
     UCI_OPTION(RFPMaxDepth, 6)
     UCI_OPTION(RFPMargin, 47)
 
-    UCI_OPTION_CUSTOM(ProbCutMinDepth, 2, 1, 5)
-    UCI_OPTION(ProbCutBeta, 256)
+    UCI_OPTION_CUSTOM(ProbcutMinDepth, 2, 1, 5)
+    UCI_OPTION(ProbcutBeta, 256)
     UCI_OPTION(ProbcutBetaImp, 101)
 
     UCI_OPTION(ShallowSEEMargin, 216)

@@ -44,6 +44,7 @@ void HandleEvalCommand(Position& pos);
 void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
 void ScuffedChatGPTPrintActivations();
+void HandleTuneCommand();
 
 
 bool inUCI = false;
@@ -156,6 +157,9 @@ i32 main(i32 argc, char* argv[])
 
         else if (token == "activations")
             ScuffedChatGPTPrintActivations();
+
+        else if (token == "tune")
+            HandleTuneCommand();
         
         else if (std::ranges::count(token, '/') == 7) {
             //  Reset the stream so the beginning part of the fen isn't consumed before we call SetPosition
@@ -525,4 +529,21 @@ void ScuffedChatGPTPrintActivations() {
         std::cout << oss.str() << ",\n";
     }
 #endif
+}
+
+void HandleTuneCommand() {
+    auto& opts = GetUCIOptions();
+
+    for (auto& opt : opts) {
+        if (opt.HideTune) 
+            continue;
+
+        auto step = std::max(0.01, (opt.MaxValue - opt.MinValue) / 20.0);
+        auto lr = std::max(0.002, 0.002 * (0.50 / step));
+
+        auto dispStep = (static_cast<int>(step * 10) / 10.0);
+        auto dispLr = (static_cast<int>(lr * 10000) / 10000.0);
+        std::cout << opt.Name << ", int, " << opt.DefaultValue << ", " << opt.MinValue << ", " << opt.MaxValue << ", " << dispStep << ", " << dispLr << std::endl;
+
+    }
 }

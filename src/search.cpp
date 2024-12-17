@@ -406,11 +406,11 @@ namespace Horsie {
         }
 
 
-        probBeta = beta + (improving ? ProbcutBetaImp : ProbCutBeta);
-        if (UseProbCut
+        probBeta = beta + (improving ? ProbcutBetaImp : ProbcutBeta);
+        if (UseProbcut
             && !isPV
             && !doSkip
-            && depth >= ProbCutMinDepth
+            && depth >= ProbcutMinDepth
             && std::abs(beta) < ScoreTTWin
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta))
         {
