@@ -192,6 +192,13 @@ namespace Horsie {
                 if (GetSearchTime() >= SoftTimeLimit * multFactor) {
                     break;
                 }
+
+                if (RootDepth > 2 && GetSearchTime() < SoftTimeLimit - 60) {
+                    auto sleepFor = std::abs(200 - GoTo200) / 4;
+                    if (sleepFor > 0) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(sleepFor));
+                    }
+                }
             }
 
             if (Nodes >= info.SoftNodeLimit)

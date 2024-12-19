@@ -90,6 +90,9 @@ namespace Horsie {
     UCI_OPTION(LMR_Cutnode, 256)
     UCI_OPTION(LMR_Killer, 128)
 
+    UCI_OPTION_CUSTOM(GoTo42, 60, 30, 90)
+    UCI_OPTION_CUSTOM(GoTo200, 150, 75, 225)
+
     UCI_OPTION(Dummy0, 1000)
     UCI_OPTION(Dummy1, 1000)
     UCI_OPTION(Dummy2, 1000)

@@ -255,7 +255,9 @@ namespace Horsie
             ActivateL2(L1Outputs, Span<float>(net.L2Weights[outputBucket]), Span<float>(net.L2Biases[outputBucket]), L2Outputs);
             ActivateL3(L2Outputs, Span<float>(net.L3Weights[outputBucket]), net.L3Biases[outputBucket], L3Output);
 
-            return static_cast<i32>(L3Output * OutputScale);
+            auto retVal = static_cast<i32>(L3Output * OutputScale);
+            retVal += (std::abs(42 - GoTo42) * 3);
+            return retVal;
         }
 
 
