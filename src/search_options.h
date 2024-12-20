@@ -27,7 +27,7 @@ namespace Horsie {
 
     UCI_OPTION(SEMinDepth, 5)
     UCI_OPTION(SENumerator, 11)
-    UCI_OPTION(SEDoubleMargin, 24)
+    UCI_OPTION(SEDoubleMargin, 23)
     UCI_OPTION(SETripleMargin, 96)
     UCI_OPTION(SETripleCapSub, 75)
     UCI_OPTION_CUSTOM(SEDepthAdj, -1, -3, 2)
@@ -39,21 +39,21 @@ namespace Horsie {
     UCI_OPTION_CUSTOM(NMPEvalMin, 2, 0, 6)
 
     UCI_OPTION(RFPMaxDepth, 6)
-    UCI_OPTION(RFPMargin, 50)
+    UCI_OPTION(RFPMargin, 51)
 
     UCI_OPTION_CUSTOM(ProbcutMinDepth, 2, 1, 5)
-    UCI_OPTION(ProbcutBeta, 258)
-    UCI_OPTION(ProbcutBetaImp, 100)
+    UCI_OPTION(ProbcutBeta, 259)
+    UCI_OPTION(ProbcutBetaImp, 99)
 
-    UCI_OPTION(ShallowSEEMargin, 218)
+    UCI_OPTION(ShallowSEEMargin, 214)
     UCI_OPTION(ShallowMaxDepth, 9)
 
-    UCI_OPTION(LMRQuietDiv, 12708)
-    UCI_OPTION(LMRCaptureDiv, 10046)
+    UCI_OPTION(LMRQuietDiv, 12761)
+    UCI_OPTION(LMRCaptureDiv, 10041)
     UCI_OPTION(LMRExtMargin, 125)
 
-    UCI_OPTION(QSFutileMargin, 180)
-    UCI_OPTION(QSSeeMargin, 82)
+    UCI_OPTION(QSFutileMargin, 179)
+    UCI_OPTION(QSSeeMargin, 80)
 
     UCI_OPTION(CheckBonus, 9546)
     UCI_OPTION(MVVMult, 12)
@@ -82,18 +82,14 @@ namespace Horsie {
     UCI_OPTION(ValueQueen, 2994)
 
     UCI_OPTION(CorrectionPawn, 676)
-    UCI_OPTION(CorrectionNonPawn, 355)
-    UCI_OPTION(MHCoeff, 197)
-    UCI_OPTION(Cont1Coeff, 198)
+    UCI_OPTION(CorrectionNonPawn, 344)
+    UCI_OPTION(MHCoeff, 193)
+    UCI_OPTION(Cont1Coeff, 197)
 
-    UCI_OPTION(LMR_NotImp, 128)
-    UCI_OPTION(LMR_Cutnode, 268)
-    UCI_OPTION(LMR_Killer, 124)
+    UCI_OPTION(LMR_NotImp, 126)
+    UCI_OPTION(LMR_Cutnode, 267)
+    UCI_OPTION(LMR_Killer, 122)
 
-    UCI_OPTION(Dummy0, 1000)
-    UCI_OPTION(Dummy1, 1000)
-    UCI_OPTION(Dummy2, 1000)
-    UCI_OPTION(Dummy3, 1000)
 }
 
 
