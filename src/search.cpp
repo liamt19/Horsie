@@ -326,7 +326,7 @@ namespace Horsie {
         else if (ss->TTHit) {
             rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-            const bool ttNoisy = ttMove != Move::Null() && !pos.IsNoisy(ttMove);
+            const bool ttNoisy = ttMove != Move::Null() && pos.IsNoisy(ttMove);
             eval = ss->StaticEval = ttNoisy ? rawEval : AdjustEval(pos, us, rawEval);
 
             if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
@@ -815,7 +815,7 @@ namespace Horsie {
             if (ss->TTHit) {
                 rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-                const bool ttNoisy = ttMove != Move::Null() && !pos.IsNoisy(ttMove);
+                const bool ttNoisy = ttMove != Move::Null() && pos.IsNoisy(ttMove);
                 eval = ss->StaticEval = ttNoisy ? rawEval : AdjustEval(pos, us, rawEval);
 
                 if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
