@@ -177,7 +177,7 @@ namespace Horsie {
                 if (RootDepth > 7) {
                     const auto [bmFrom, bmTo] = RootMoves[0].move.Unpack();
 
-                    double nodeTM = (1.5 - NodeTable[bmFrom][bmTo] / (double)Nodes) * 1.75;
+                    double nodeTM = (1.5 - NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes)) * 1.75;
                     double bmStability = StabilityCoefficients[std::min(stability, StabilityMax)];
 
                     double scoreStability = searchScores[searchScores.size() - 4]
@@ -1076,7 +1076,7 @@ namespace Horsie {
 
         auto nodes = AssocPool->GetNodeCount();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
-        auto durCnt = std::max(1.0, (double)duration.count());
+        auto durCnt = std::max(1.0, static_cast<double>(duration.count()));
         i32 nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
 
         std::cout << "info depth " << depth;

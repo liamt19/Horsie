@@ -13,7 +13,6 @@ namespace Horsie {
     UCI_OPTION_SPIN(UCI_Chess960, false)
 
     const i32 MoveOverhead = 25;
-    //static bool UCI_Chess960 = false;
 
     const bool ShallowPruning = true;
     const bool UseSingularExtensions = true;

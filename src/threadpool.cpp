@@ -17,7 +17,7 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 
 namespace Horsie {
 
-	void SearchThreadPool::Resize(int newThreadCount) {
+	void SearchThreadPool::Resize(i32 newThreadCount) {
 
 		if (Threads.size() > 0) {
 			WaitForMain();
@@ -69,7 +69,7 @@ namespace Horsie {
 			td->RootMoves.clear();
 			td->RootMoves.shrink_to_fit();
 			td->RootMoves.reserve(size);
-			for (int j = 0; j < size; j++) {
+			for (i32 j = 0; j < size; j++) {
 				td->RootMoves.push_back(RootMove(rms[j].move));
 			}
 

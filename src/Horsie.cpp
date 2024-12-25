@@ -400,7 +400,7 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
     auto durSeconds = duration.count() / 1000;
     auto durMillis = duration.count() % 1000;
 
-    auto nps = (nodes / ((double)dur / 1000));
+    auto nps = (nodes / (static_cast<double>(dur) / 1000));
     cout << "\nTotal: " << nodes << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((u64)nps) << " nps)" << endl << endl;
 }
 
@@ -434,7 +434,7 @@ void HandleBenchPerftCommand(Position& pos) {
     auto durSeconds = duration.count() / 1000;
     auto durMillis = duration.count() % 1000;
 
-    auto nps = (total / ((double)dur / 1000));
+    auto nps = (total / (static_cast<double>(dur) / 1000));
     cout << "\nTotal: " << total << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((u64)nps) << " nps)" << endl << endl;
 
 }
@@ -541,8 +541,8 @@ void HandleTuneCommand() {
         auto step = std::max(0.01, (opt.MaxValue - opt.MinValue) / 20.0);
         auto lr = std::max(0.002, 0.002 * (0.50 / step));
 
-        auto dispStep = (static_cast<int>(step * 10) / 10.0);
-        auto dispLr = (static_cast<int>(lr * 10000) / 10000.0);
+        auto dispStep = (static_cast<i32>(step * 10) / 10.0);
+        auto dispLr = (static_cast<i32>(lr * 10000) / 10000.0);
         std::cout << opt.Name << ", int, " << opt.DefaultValue << ", " << opt.MinValue << ", " << opt.MaxValue << ", " << dispStep << ", " << dispLr << std::endl;
 
     }

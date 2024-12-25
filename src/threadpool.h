@@ -161,7 +161,7 @@ namespace Horsie {
 
         void SetStop() { StopThreads = true; }
 
-        void Resize(int newThreadCount);
+        void Resize(i32 newThreadCount);
         void StartSearch(Position& rootPosition, const SearchLimits& rootInfo);
         void StartSearch(Position& rootPosition, const SearchLimits& rootInfo, ThreadSetup& setup);
         void WaitForMain() const;

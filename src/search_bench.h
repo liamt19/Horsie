@@ -66,7 +66,7 @@ namespace Horsie {
         auto dur = duration.count();
         auto durSeconds = duration.count() / 1000;
         auto durMillis = duration.count() % 1000;
-        auto nps = (u64)(totalNodes / ((double)dur / 1000));
+        auto nps = static_cast<u64>((totalNodes / (static_cast<double>(dur) / 1000)));
 
         if (openBench) {
             std::cout << "info string " << durSeconds << "." << durMillis << " seconds" << std::endl;
