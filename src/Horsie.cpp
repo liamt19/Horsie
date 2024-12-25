@@ -28,7 +28,7 @@ using std::cout;
 using std::endl;
 
 i32 main(i32 argc, char* argv[]);
-void HandleSetPosition(Position& pos, std::istringstream& is);
+void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken = false);
 void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleThreadsCommand(std::istringstream& is);
@@ -44,6 +44,7 @@ void HandleEvalCommand(Position& pos);
 void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
 void ScuffedChatGPTPrintActivations();
+void HandleTuneCommand();
 
 
 bool inUCI = false;
@@ -157,18 +158,31 @@ i32 main(i32 argc, char* argv[])
         else if (token == "activations")
             ScuffedChatGPTPrintActivations();
 
+        else if (token == "tune")
+            HandleTuneCommand();
+        
+        else if (std::ranges::count(token, '/') == 7) {
+            //  Reset the stream so the beginning part of the fen isn't consumed before we call SetPosition
+            std::istringstream is(cmd);
+            HandleSetPosition(pos, is, true);
+        }
+
     } while (true);
 
-    std::cin.get();
     return 0;
 }
 
 
 
-void HandleSetPosition(Position& pos, std::istringstream& is) {
+void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
     std::string token, fen;
 
-    is >> token;
+    if (skipToken) {
+        token = "fen";
+    }
+    else {
+        is >> token;
+    }
 
     if (token == "startpos")
     {
@@ -210,37 +224,35 @@ void HandleSetPosition(Position& pos, std::istringstream& is) {
 
 
 void HandleSetOptionCommand(std::istringstream& is) {
-    std::string name{}, value{};
-    is >> name;
-    is >> name;
+    std::string rawName{}, value{};
+    is >> rawName;
+    is >> rawName;
 
     is >> value;
     is >> value;
 
+    std::string name = rawName;
     std::transform(name.begin(), name.end(), name.begin(), [](auto c) { return std::tolower(c); });
 
+    auto opt = FindUCIOption(name);
+
+    if (!opt) return;
+
+    i32 newVal = (value == "false") ? 0
+               : (value == "true")  ? 1
+               :                      std::stoi(value);
+
+    if (newVal < opt->MinValue || newVal > opt->MaxValue) return;
+
+    opt->CurrentValue = newVal;
+
     if (name == "hash") {
-        i32 hashVal = std::stoi(value);
-        if (hashVal >= 1 && hashVal <= TranspositionTable::MaxSize) {
-            Horsie::Hash = hashVal;
-            SearchPool->TTable.Initialize(Horsie::Hash);
-            std::cout << "info string set hash to " << Horsie::Hash << std::endl;
-        }
+        SearchPool->TTable.Initialize(Horsie::Hash);
+        std::cout << "info string set hash to " << Horsie::Hash << std::endl;
     }
-
-    if (name == "threads") {
-        i32 cnt = std::stoi(value);
-        if (cnt >= 1 && cnt <= SearchThreadPool::MaxThreads) {
-            Horsie::Threads = cnt;
-            SearchPool->Resize(Horsie::Threads);
-            std::cout << "info string set threads to " << Horsie::Threads << std::endl;
-        }
-    }
-
-    if (name == "uci_chess960") {
-        if (value == "true" || value == "false") {
-            Horsie::UCI_Chess960 = (value == "true");
-        }
+    else if (name == "threads") {
+        SearchPool->Resize(Horsie::Threads);
+        std::cout << "info string set threads to " << Horsie::Threads << std::endl;
     }
 }
 
@@ -347,12 +359,15 @@ void HandleStopCommand() {
 
 
 void HandleUCICommand() {
+    
     std::cout << "id name Horsie" << std::endl;
-    std::cout << "option name Hash type spin default " << TranspositionTable::DefaultTTSize << " min 1 max " << TranspositionTable::MaxSize << std::endl;
-    std::cout << "option name Threads type spin default 1 min 1 max " << SearchThreadPool::MaxThreads << std::endl;
-    std::cout << "option name UCI_Chess960 type check default false" << std::endl;
+    const auto& opts = GetUCIOptions();
+    for (auto& opt : opts) {
+        std::cout << opt << std::endl;
+    }
     std::cout << "uciok" << std::endl;
     inUCI = true;
+
 }
 
 
@@ -462,7 +477,7 @@ void HandleThreadsCommand(std::istringstream& is) {
     if (is && is.peek() != EOF)
         is >> cnt;
 
-    if (cnt >= 1 && cnt <= SearchThreadPool::MaxThreads) {
+    if (cnt >= Horsie::Threads.MinValue && cnt <= Horsie::Threads.MaxValue) {
         Horsie::Threads = cnt;
         SearchPool->Resize(Horsie::Threads);
         std::cout << "info string set threads to " << Horsie::Threads << std::endl;
@@ -514,4 +529,21 @@ void ScuffedChatGPTPrintActivations() {
         std::cout << oss.str() << ",\n";
     }
 #endif
+}
+
+void HandleTuneCommand() {
+    auto& opts = GetUCIOptions();
+
+    for (auto& opt : opts) {
+        if (opt.HideTune) 
+            continue;
+
+        auto step = std::max(0.01, (opt.MaxValue - opt.MinValue) / 20.0);
+        auto lr = std::max(0.002, 0.002 * (0.50 / step));
+
+        auto dispStep = (static_cast<int>(step * 10) / 10.0);
+        auto dispLr = (static_cast<int>(lr * 10000) / 10000.0);
+        std::cout << opt.Name << ", int, " << opt.DefaultValue << ", " << opt.MinValue << ", " << opt.MaxValue << ", " << dispStep << ", " << dispLr << std::endl;
+
+    }
 }

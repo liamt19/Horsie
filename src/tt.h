@@ -116,9 +116,6 @@ namespace Horsie {
         TTCluster* Clusters = nullptr;
         u8 Age = 0;
         u64 ClusterCount = 0;
-
-        static const i32 DefaultTTSize = 32;
-        static const i32 MaxSize = 1048576;
     };
 
 }

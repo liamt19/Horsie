@@ -3,82 +3,83 @@
 #ifndef SEARCH_OPTIONS_H
 #define SEARCH_OPTIONS_H
 
+#include "tunable.h"
+
 namespace Horsie {
 
-    static i32 Threads = 1;
+    UCI_OPTION_SPECIAL(Threads, 1, 1, 512)
+    UCI_OPTION_SPECIAL(Hash, 32, 1, 1048576)
+    UCI_OPTION_SPECIAL(MultiPV, 1, 1, 256)
+    UCI_OPTION_SPIN(UCI_Chess960, false)
 
-    static i32 MultiPV = 1;
-
-    static i32 Hash = 32;
-
-    static i32 MoveOverhead = 25;
-    static bool UCI_Chess960 = false;
+    const i32 MoveOverhead = 25;
+    //static bool UCI_Chess960 = false;
 
     const bool ShallowPruning = true;
     const bool UseSingularExtensions = true;
     const bool UseNMP = true;
     const bool UseRFP = true;
-    const bool UseProbCut = true;
+    const bool UseProbcut = true;
 
     const i32 CorrectionScale = 1024;
     const i32 CorrectionGrain = 256;
     const i32 CorrectionMax = CorrectionGrain * 64;
 
-    static i32 SEMinDepth = 5;
-    static i32 SENumerator = 11;
-    static i32 SEDoubleMargin = 24;
-    static i32 SETripleMargin = 96;
-    static i32 SETripleCapSub = 75;
-    static i32 SEDepthAdj = -1;
+    UCI_OPTION(SEMinDepth, 5)
+    UCI_OPTION(SENumerator, 11)
+    UCI_OPTION(SEDoubleMargin, 24)
+    UCI_OPTION(SETripleMargin, 96)
+    UCI_OPTION(SETripleCapSub, 75)
+    UCI_OPTION_CUSTOM(SEDepthAdj, -1, -3, 2)
 
-    static i32 NMPMinDepth = 6;
-    static i32 NMPBaseRed = 4;
-    static i32 NMPDepthDiv = 4;
-    static i32 NMPEvalDiv = 181;
-    static i32 NMPEvalMin = 2;
+    UCI_OPTION(NMPMinDepth, 6)
+    UCI_OPTION(NMPBaseRed, 4)
+    UCI_OPTION(NMPDepthDiv, 4)
+    UCI_OPTION(NMPEvalDiv, 181)
+    UCI_OPTION_CUSTOM(NMPEvalMin, 2, 0, 6)
 
-    static i32 RFPMaxDepth = 6;
-    static i32 RFPMargin = 47;
+    UCI_OPTION(RFPMaxDepth, 6)
+    UCI_OPTION(RFPMargin, 47)
 
-    static i32 ProbCutMinDepth = 2;
-    static i32 ProbCutBeta = 256;
-    static i32 ProbcutBetaImp = 101;
+    UCI_OPTION_CUSTOM(ProbcutMinDepth, 2, 1, 5)
+    UCI_OPTION(ProbcutBeta, 256)
+    UCI_OPTION(ProbcutBetaImp, 101)
 
-    static i32 ShallowSEEMargin = 216;
-    static i32 ShallowMaxDepth = 9;
+    UCI_OPTION(ShallowSEEMargin, 216)
+    UCI_OPTION(ShallowMaxDepth, 9)
 
-    static i32 LMRQuietDiv = 12288;
-    static i32 LMRCaptureDiv = 10288;
-    static i32 LMRExtMargin = 128;
+    UCI_OPTION(LMRQuietDiv, 12288)
+    UCI_OPTION(LMRCaptureDiv, 10288)
+    UCI_OPTION(LMRExtMargin, 128)
 
-    static i32 QSFutileMargin = 183;
-    static i32 QSSeeMargin = 81;
+    UCI_OPTION(QSFutileMargin, 183)
+    UCI_OPTION(QSSeeMargin, 81)
 
-    static i32 CheckBonus = 9546;
-    static i32 MVVMult = 12;
+    UCI_OPTION(CheckBonus, 9546)
+    UCI_OPTION(MVVMult, 12)
 
-    static i32 IIRMinDepth = 3;
-    static i32 AspWindow = 12;
+    UCI_OPTION_CUSTOM(IIRMinDepth, 3, 2, 6)
+    UCI_OPTION(AspWindow, 12)
 
-    static i32 StatBonusMult = 184;
-    static i32 StatBonusSub = 80;
-    static i32 StatBonusMax = 1667;
+    UCI_OPTION(StatBonusMult, 184)
+    UCI_OPTION(StatBonusSub, 80)
+    UCI_OPTION(StatBonusMax, 1667)
 
-    static i32 StatMalusMult = 611;
-    static i32 StatMalusSub = 111;
-    static i32 StatMalusMax = 1663;
+    UCI_OPTION(StatMalusMult, 611)
+    UCI_OPTION(StatMalusSub, 111)
+    UCI_OPTION(StatMalusMax, 1663)
 
-    static i32 SEEValue_Pawn = 105;
-    static i32 SEEValue_Horsie = 900;
-    static i32 SEEValue_Bishop = 1054;
-    static i32 SEEValue_Rook = 1332;
-    static i32 SEEValue_Queen = 2300;
+    UCI_OPTION(SEEValue_Pawn, 105)
+    UCI_OPTION(SEEValue_Horsie, 900)
+    UCI_OPTION(SEEValue_Bishop, 1054)
+    UCI_OPTION(SEEValue_Rook, 1332);
+    UCI_OPTION(SEEValue_Queen, 2300);
 
-    static i32 ValuePawn = 171;
-    static i32 ValueHorsie = 794;
-    static i32 ValueBishop = 943;
-    static i32 ValueRook = 1620;
-    static i32 ValueQueen = 2994;
+    UCI_OPTION(ValuePawn, 171)
+    UCI_OPTION(ValueHorsie, 794)
+    UCI_OPTION(ValueBishop, 943)
+    UCI_OPTION(ValueRook, 1620)
+    UCI_OPTION(ValueQueen, 2994)
 
 }
 

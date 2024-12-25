@@ -60,7 +60,7 @@ namespace Horsie {
 
         NodeTable = {};
 
-        i32 multiPV = std::min(MultiPV, i32(RootMoves.size()));
+        i32 multiPV = std::min(i32(MultiPV), i32(RootMoves.size()));
 
         std::vector<i32> searchScores(MaxPly);
 
@@ -369,7 +369,7 @@ namespace Horsie {
             && (ss - 1)->CurrentMove != Move::Null()
             && pos.HasNonPawnMaterial(us)) 
         {
-            const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, NMPEvalMin);
+            const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, static_cast<i32>(NMPEvalMin));
             ss->CurrentMove = Move::Null();
             ss->ContinuationHistory = &history->Continuations[0][0][0][0];
 
@@ -406,11 +406,11 @@ namespace Horsie {
         }
 
 
-        probBeta = beta + (improving ? ProbcutBetaImp : ProbCutBeta);
-        if (UseProbCut
+        probBeta = beta + (improving ? ProbcutBetaImp : ProbcutBeta);
+        if (UseProbcut
             && !isPV
             && !doSkip
-            && depth >= ProbCutMinDepth
+            && depth >= ProbcutMinDepth
             && std::abs(beta) < ScoreTTWin
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta))
         {
