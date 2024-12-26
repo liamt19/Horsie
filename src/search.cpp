@@ -340,6 +340,16 @@ namespace Horsie {
             tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
 
+        // Use static evaluation difference to improve quiet move ordering (~9 Elo)
+        if ((ss - 1)->StaticEval != ScoreNone && pos.WasQuiet((ss - 1)->CurrentMove)) {
+            const i32 bonus = std::clamp(-10 * i32((ss - 1)->StaticEval + ss->StaticEval), -1831, 1428) + 623;
+            const auto move = (ss - 1)->CurrentMove;
+
+            auto& histEntry = history->MainHistory[Not(us)][move.GetMoveMask()];
+            const i32 scaledBonus = bonus - histEntry * std::abs(bonus) / HistoryClamp;
+            histEntry = histEntry + static_cast<i16>(scaledBonus);
+        }
+
         if (ss->Ply >= 2) {
             improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
