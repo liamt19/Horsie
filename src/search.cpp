@@ -516,7 +516,7 @@ namespace Horsie {
                     skipQuiets = legalMoves >= lmpMoves;
                 }
 
-                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+                bool givesCheck = pos.GivesCheck(m);
 
                 if (skipQuiets && depth <= ShallowMaxDepth && !(givesCheck || isCapture))
                 {
@@ -869,7 +869,7 @@ namespace Horsie {
             const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
 
             const bool isCapture = pos.IsCapture(m);
-            const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+            const bool givesCheck = pos.GivesCheck(m);
 
             if (bestScore > ScoreTTLoss) {
                 if (!(givesCheck || m.IsPromotion())
@@ -1159,7 +1159,7 @@ namespace Horsie {
                 list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
                 list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
 
-                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
+                if (pos.GivesCheck(m)) {
                     list[i].Score += CheckBonus;
                 }
             }
@@ -1207,7 +1207,7 @@ namespace Horsie {
                     list[i].Score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
                 }
 
-                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
+                if (pos.GivesCheck(m)) {
                     list[i].Score += CheckBonus;
                 }
             }

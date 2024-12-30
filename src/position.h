@@ -64,6 +64,7 @@ namespace Horsie {
         
         constexpr bool IsCapture(Move m) const { return bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle(); }
         constexpr bool IsNoisy(Move m) const { return IsCapture(m) || m.IsEnPassant(); }
+        bool GivesCheck(Move m) const;
 
         void RemoveCastling(CastlingStatus cr) const;
         void UpdateHash(i32 pc, i32 pt, i32 sq) const;

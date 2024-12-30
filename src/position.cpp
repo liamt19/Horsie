@@ -599,6 +599,31 @@ namespace Horsie {
         return State->HalfmoveClock >= 100;
     }
 
+    bool Position::GivesCheck(Move m) const {
+        const auto [moveFrom, moveTo] = m.Unpack();
+        const auto thisPiece = bb.GetPieceAtIndex(moveFrom); 
+        const auto theirKing = State->KingSquares[Not(ToMove)];
+
+        if ((State->CheckSquares[thisPiece] & SquareBB(moveTo)) != 0) {
+            return true;
+        }
+
+        if ((State->BlockingPieces[Not(ToMove)] & SquareBB(moveFrom)) != 0
+            && ((RayBB[theirKing][moveFrom] & SquareBB(moveTo)) == 0 || m.IsCastle())) {
+            return true;
+        }
+
+        if (m.IsPromotion()) {
+            return (attacks_bb(m.PromotionTo(), moveTo, bb.Occupancy ^ SquareBB(moveFrom)) & SquareBB(theirKing)) != 0;
+        }
+        else if (m.IsCastle()) {
+            return (State->CheckSquares[ROOK] & SquareBB(m.CastlingRookSquare())) != 0;
+        }
+
+        //  EP is just gonna be false idk
+        return false;
+    }
+
 
     void Position::RemoveCastling(CastlingStatus cr) const {
         Zobrist::Castle(State->Hash, State->CastleStatus, cr);
