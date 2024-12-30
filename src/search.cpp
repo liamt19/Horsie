@@ -523,18 +523,18 @@ namespace Horsie {
                     continue;
                 }
 
+                i32 margin = -ShallowSEEMargin * depth;
+
                 if (givesCheck || isCapture)
                 {
-                    i32 margin = ((3 * -ShallowSEEMargin) / 4) * depth;
-
                     const auto capth = history->CaptureHistory[us][ourPiece][moveTo][theirPiece];
-                    margin -= std::clamp(capth / 32, -100 * depth, 100 * depth);
+                    margin -= std::clamp(capth / 64, -100 * depth, 100 * depth);
 
                     if (!pos.SEE_GE(m, margin))
                         continue;
                 }
                 else if (skipQuiets) {
-                    if (!pos.SEE_GE(m, -ShallowSEEMargin * depth))
+                    if (!pos.SEE_GE(m, margin))
                         continue;
                 }
             }
