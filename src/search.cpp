@@ -1165,7 +1165,7 @@ namespace Horsie {
             }
 
             if (pt == HORSIE) {
-                list[i].Score += 200;
+                list[i].Score += 400;
             }
         }
     }
@@ -1213,7 +1213,7 @@ namespace Horsie {
             }
 
             if (pt == HORSIE) {
-                list[i].Score += 200;
+                list[i].Score += 400;
             }
         }
     }
