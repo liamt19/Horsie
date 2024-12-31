@@ -1163,10 +1163,6 @@ namespace Horsie {
                     list[i].Score += CheckBonus;
                 }
             }
-
-            if (pt == HORSIE) {
-                list[i].Score += 200;
-            }
         }
     }
 
@@ -1210,10 +1206,6 @@ namespace Horsie {
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
                     list[i].Score += CheckBonus;
                 }
-            }
-
-            if (pt == HORSIE) {
-                list[i].Score += 200;
             }
         }
     }
