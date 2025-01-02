@@ -11,7 +11,7 @@ constexpr auto L2_SIZE = 16;
 constexpr auto L3_SIZE = 32;
 constexpr auto OUTPUT_BUCKETS = 8;
 
-constexpr auto FT_QUANT = 255;
+constexpr auto FT_QUANT = 245;
 constexpr auto FT_SHIFT = 10;
 constexpr auto L1_QUANT = 132;
 constexpr auto OutputScale = 400;
