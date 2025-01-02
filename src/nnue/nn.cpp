@@ -232,6 +232,28 @@ namespace Horsie
             accumulator.Computed[perspective] = true;
         }
 
+        void EmplaceFeatures(Position& pos, std::vector<i32>& white, std::vector<i32>& black) {
+            Bitboard& bb = pos.bb;
+
+            i32 wksq = pos.State->KingSquares[WHITE];
+            i32 bksq = pos.State->KingSquares[BLACK];
+            u64 occ = bb.Occupancy;
+            while (occ != 0) {
+                i32 pieceIdx = poplsb(occ);
+
+                i32 pt = bb.GetPieceAtIndex(pieceIdx);
+                i32 pc = bb.GetColorAtIndex(pieceIdx);
+
+                auto w = FeatureIndexSingle(pc, pt, pieceIdx, wksq, WHITE);
+                auto b = FeatureIndexSingle(pc, pt, pieceIdx, bksq, BLACK);
+                white.push_back(w);
+                black.push_back(b);
+
+                std::string realPiece = PieceToString(static_cast<Piece>(pt));
+                std::cout << (pc == WHITE ? "white " : "black ") << realPiece << " on " << pieceIdx << " ==\t" << (w / L1_SIZE) << "/" << (b / L1_SIZE) << std::endl;
+            }
+
+        }
 
         i32 GetEvaluation(Position& pos) {
             const auto occ = popcount(pos.bb.Occupancy);
@@ -565,50 +587,24 @@ namespace Horsie
 
         std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk)
         {
-            const i32 ColorStride = 64 * 6;
-            const i32 PieceStride = 64;
-
-            i32 wSq = sq;
-            i32 bSq = sq ^ 56;
-
-            if (wk % 8 > 3)
-            {
-                wk ^= 7;
-                wSq ^= 7;
-            }
-
-            bk ^= 56;
-            if (bk % 8 > 3)
-            {
-                bk ^= 7;
-                bSq ^= 7;
-            }
-
-            i32 whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + wSq;
-            i32 blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
-
-            return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
+            return { FeatureIndexSingle(pc, pt, sq, wk, WHITE), FeatureIndexSingle(pc, pt, sq, bk, BLACK) };
         }
-
 
         i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective)
         {
             const i32 ColorStride = 64 * 6;
             const i32 PieceStride = 64;
 
-            if (perspective == BLACK)
-            {
-                sq ^= 56;
-                kingSq ^= 56;
-            }
+            auto color = [&]() { 
+                if (pt == KING)
+                    return perspective;
+                return pc == perspective ? 0 : 1;
+            }();
 
-            if (kingSq % 8 > 3)
-            {
-                sq ^= 7;
-                kingSq ^= 7;
-            }
+            i32 orientedKsq = Orient(kingSq, kingSq, perspective);
+            i32 orientedSq = Orient(sq, kingSq, perspective);
 
-            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * L1_SIZE;
+            return ((INPUT_SIZE * KingBuckets[orientedKsq]) + ((color * ColorStride) + (pt * PieceStride)) + orientedSq) * L1_SIZE;
         }
 
 

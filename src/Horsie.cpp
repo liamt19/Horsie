@@ -52,9 +52,10 @@ std::unique_ptr<SearchThreadPool> SearchPool;
 std::barrier is_sync_barrier(2);
 ThreadSetup setup;
 
-#if defined(_MSC_VER) && !defined(EVALFILE)
+#if defined(_MSC_VER) && defined(EVALFILE)
 
-#define EVALFILE "meow.bin"
+#undef EVALFILE
+#define EVALFILE "net-016-hka-hm-490-z.bin"
 
 #endif
 

@@ -7,7 +7,7 @@
 #undef PERM_COUNT
 
 #define NO_PERM 1
-#undef NO_PERM
+//#undef NO_PERM
 
 #include "../position.h"
 #include "../nnue/arch.h"
@@ -90,18 +90,22 @@ namespace Horsie
 
 
         constexpr i32 KingBuckets[] = {
-             0,  1,  2,  3, 17, 16, 15, 14,
-             4,  5,  6,  7, 21, 20, 19, 18,
-             8,  9, 10, 11, 25, 24, 23, 22,
-             8,  9, 10, 11, 25, 24, 23, 22,
-            12, 12, 13, 13, 27, 27, 26, 26,
-            12, 12, 13, 13, 27, 27, 26, 26,
-            12, 12, 13, 13, 27, 27, 26, 26,
-            12, 12, 13, 13, 27, 27, 26, 26,
+             0,  1,  2,  3, 35, 34, 33, 32,
+             4,  5,  6,  7, 39, 38, 37, 36,
+             8,  9, 10, 11, 43, 42, 41, 40,
+            12, 13, 14, 15, 47, 46, 45, 44,
+            16, 17, 18, 19, 51, 50, 49, 48,
+            20, 21, 22, 23, 55, 54, 53, 52,
+            24, 25, 26, 27, 59, 58, 57, 56,
+            28, 29, 30, 31, 63, 62, 61, 60
         };
 
         constexpr i32 BucketForPerspective(i32 ksq, i32 perspective) {
             return (KingBuckets[(ksq ^ (56 * perspective))]);
+        }
+
+        constexpr i32 Orient(i32 sq, i32 kingSq, i32 perspective) {
+            return (sq ^ (56 * perspective) ^ (kingSq % 8 > 3 ? 7 : 0));
         }
 
 
