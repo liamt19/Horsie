@@ -597,7 +597,7 @@ namespace Horsie
 
             auto color = [&]() { 
                 if (pt == KING)
-                    return perspective;
+                    return 0;
                 return pc == perspective ? 0 : 1;
             }();
 
