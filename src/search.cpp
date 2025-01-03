@@ -247,6 +247,9 @@ namespace Horsie {
         i16 rawEval = ScoreNone;
         i16 eval = ss->StaticEval;
 
+        i32 pseudoCaps = -1;
+        i32 legalCaps = 0;
+
         const bool doSkip = ss->Skip != Move::Null();
         bool improving = false;
         TTEntry _tte{};
@@ -415,13 +418,19 @@ namespace Horsie {
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta))
         {
             ScoredMove captures[MoveListSize];
-            i32 numCaps = GenerateQS(pos, captures, 0);
-            AssignProbCutScores(pos, captures, numCaps);
+            pseudoCaps = GenerateQS(pos, captures, 0);
+            AssignProbCutScores(pos, captures, pseudoCaps);
 
-            for (i32 i = 0; i < numCaps; i++) {
-                Move m = OrderNextMove(captures, numCaps, i);
-                if (!pos.IsLegal(m) || !pos.SEE_GE(m, std::max(1, probBeta - ss->StaticEval))) {
-                    //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
+            for (i32 i = 0; i < pseudoCaps; i++) {
+                Move m = OrderNextMove(captures, pseudoCaps, i);
+                if (!pos.IsLegal(m)) {
+                    //  Skip illegal moves
+                    continue;
+                }
+
+                legalCaps++;
+                if (!pos.SEE_GE(m, std::max(1, probBeta - ss->StaticEval))) {
+                    //  Skip captures/promotions that don't result in a positive material trade
                     continue;
                 }
 
@@ -605,6 +614,7 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
+                R += (isCapture && legalCaps > 2 && legalMoves >= (legalCaps / 3));
 
                 R -= ss->TTPV;
                 R -= isPV;
