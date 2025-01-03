@@ -55,7 +55,7 @@ ThreadSetup setup;
 #if defined(_MSC_VER) && defined(EVALFILE)
 
 #undef EVALFILE
-#define EVALFILE "net-016-hka-hm-490-z.bin"
+#define EVALFILE "net-016-hka-hm-z.bin"
 
 #endif
 
