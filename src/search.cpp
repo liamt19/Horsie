@@ -614,7 +614,7 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
-                R += (isCapture && legalCaps > 2 && legalMoves >= (legalCaps / 3));
+                R += (isCapture && legalCaps > 2 && legalMoves >= 4);
 
                 R -= ss->TTPV;
                 R -= isPV;
