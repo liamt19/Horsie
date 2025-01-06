@@ -13,7 +13,7 @@ constexpr auto OUTPUT_BUCKETS = 8;
 
 constexpr auto FT_QUANT = 255;
 constexpr auto FT_SHIFT = 10;
-constexpr auto L1_QUANT = 132;
+constexpr auto L1_QUANT = 64;
 constexpr auto OutputScale = 400;
 
 constexpr auto U8_CHUNK_SIZE = sizeof(vec_i8) / sizeof(u8);
