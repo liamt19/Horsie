@@ -75,7 +75,7 @@ i32 main(i32 argc, char* argv[])
 
     Position pos = Position(InitialFEN);
 
-    std::cout << "Horsie 0.0" << std::endl << std::endl;
+    std::cout << "Horsie " << HorsieVersion << std::endl << std::endl;
 
     if (argc > 1) {
         std::string arg1 = std::string(argv[1]);
@@ -360,7 +360,8 @@ void HandleStopCommand() {
 
 void HandleUCICommand() {
     
-    std::cout << "id name Horsie" << std::endl;
+    std::cout << "id name Horsie " << HorsieVersion << std::endl;
+    std::cout << "id author Liam McGuire" << std::endl;
     const auto& opts = GetUCIOptions();
     for (auto& opt : opts) {
         std::cout << opt << std::endl;

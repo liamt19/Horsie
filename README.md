@@ -2,6 +2,10 @@
 Horsie - A C++ chess engine
 </h1>
 
+<h2 align="center">
+<img src="./Resources/logo.png" width="500">
+</h2>
+
 A (WIP) port of [Lizard](https://github.com/liamt19/Lizard/) from C# to C++. As of December 4th, its search is functionally identical to [this commit](https://github.com/liamt19/Lizard/commit/5cfcc4f7fb0540bda504460a0225a85a44bc2c74).
 
 ---
