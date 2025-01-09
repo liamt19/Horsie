@@ -9,8 +9,6 @@
 
 #include <iostream>
 
-//constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return l & r; }
-
 namespace Horsie {
 
 namespace {

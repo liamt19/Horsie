@@ -47,7 +47,7 @@ else
 endif
 
 ifeq ($(OS),Windows_NT) 
-	CXXFLAGS += -fuse-ld=lld
+	CXXFLAGS += -fuse-ld=lld -static
 	RM_FILE_CMD = del
 	LDFLAGS += $(STACK_SIZE)
 	SUFFIX := .exe

@@ -5,10 +5,11 @@
 
 #include "types.h"
 #include "util.h"
+#include "bitboard.h"
 
-#include <string>  
-#include <iostream> 
-#include <sstream>   
+#include <string>
+#include <iostream>
+#include <sstream>
 
 
 constexpr i32 FlagEnPassant = 0b0001 << 12;
@@ -23,6 +24,7 @@ constexpr i32 FlagPromoQueen    = 0b11 << 14 | FlagPromotion;
 namespace Horsie {
 
     class Move;
+    class Bitboard;
     struct ScoredMove;
 
     class Move {
@@ -73,6 +75,56 @@ namespace Horsie {
             }
 
             return (To() > From()) ? CastlingStatus::BK : CastlingStatus::BQ;
+        }
+
+        std::string ToString(const Bitboard& bb) const {
+            const auto [moveFrom, moveTo] = Unpack();
+            const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
+
+            if (IsCastle()) {
+                return moveTo > moveFrom ? "O-O" : "O-O-O";
+            }
+
+            std::stringstream ss;
+
+            const bool isCapture = bb.GetPieceAtIndex(moveTo) != NONE;
+            if (thisPiece == PAWN) {
+                if (isCapture || IsEnPassant())
+                    ss << GetFileChar(GetIndexFile(moveFrom));
+            }
+            else
+                ss << static_cast<char>(toupper(PieceToFEN(thisPiece)));
+
+            const auto multPieces = bb.AttackersTo(moveTo, bb.Occupancy) & bb.Colors[bb.GetColorAtIndex(moveFrom)] & bb.Pieces[thisPiece];
+
+            if (popcount(multPieces) > 1 && thisPiece != PAWN) {
+                if ((multPieces & FileBB(moveFrom)) == SquareBB(moveFrom)) {
+                    //  If this piece is alone on its file, we only specify the file.
+                    ss << (GetFileChar(GetIndexFile(moveFrom)));
+                }
+                else if ((multPieces & RankBB(moveFrom)) == SquareBB(moveFrom)) {
+                    //  If this piece wasn't alone on its file, but is alone on its rank, then include the rank.
+                    ss << std::to_string(GetIndexRank(moveFrom) + 1);
+                }
+                else {
+                    //  If neither the rank/file alone could differentiate this move, then we need both the file and rank
+                    ss << (GetFileChar(GetIndexFile(moveFrom)));
+                    ss << std::to_string(GetIndexRank(moveFrom) + 1);
+                }
+            }
+
+            if (isCapture || IsEnPassant()) {
+                ss << 'x';
+            }
+
+
+            ss << IndexToString(moveTo);
+
+            if (IsPromotion()) {
+                ss << '=' << static_cast<char>(toupper(PieceToFEN(PromotionTo())));
+            }
+
+            return ss.str();
         }
 
         constexpr std::string SmithNotation(bool is960) const {
