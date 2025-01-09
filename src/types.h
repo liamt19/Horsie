@@ -12,8 +12,6 @@
 #include "enums.h"
 
 
-#define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
-
 #if defined(_WIN64) && defined(_MSC_VER)  // No Makefile used
 #include <intrin.h>                   // Microsoft header for _BitScanForward64()
 #define IS_64BIT
@@ -36,6 +34,9 @@
 
 namespace Horsie {
 
+    constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    constexpr auto EngVersion = "1.0.1";
+
 constexpr u64 FileABB = 0x0101010101010101ULL;
 constexpr u64 FileBBB = FileABB << 1;
 constexpr u64 FileCBB = FileABB << 2;
@@ -53,13 +54,6 @@ constexpr u64 Rank5BB = Rank1BB << (8 * 4);
 constexpr u64 Rank6BB = Rank1BB << (8 * 5);
 constexpr u64 Rank7BB = Rank1BB << (8 * 6);
 constexpr u64 Rank8BB = Rank1BB << (8 * 7);
-
-constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-constexpr auto KiwiFEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10";
-constexpr auto HorsieVersion = "1.0";
-
-#define N_TABS(n) \
-        for (i32 _n_ = 0; _n_ < n; _n_++) std::cout << "\t";
 
 #define ENABLE_INCR_OPERATORS_ON(T) \
         inline T& operator++(T& d) { return d = T(i32(d) + 1); } \
@@ -88,12 +82,6 @@ inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 constexpr Color operator~(Color c) { return Color(c ^ 1); }
 constexpr i32 Not(i32 c) { return c ^ 1; }
 constexpr Color Not(Color c) { return Color(i32(c) ^ 1); }
-
-//constexpr CastlingStatus operator~(CastlingStatus l) { return ~l; }
-//constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
-//constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
-//constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l &= r; }
-//constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l |= r; }
 
 constexpr Square operator^(Square s1, Square s2) { return Square(i32(s1) ^ i32(s2)); }
 constexpr Square operator-(Square s1, Square s2) { return Square(i32(s1) - i32(s2)); }
