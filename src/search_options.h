@@ -40,7 +40,7 @@ namespace Horsie {
     UCI_OPTION(RFPMaxDepth, 6)
     UCI_OPTION(RFPMargin, 47)
 
-    UCI_OPTION_CUSTOM(ProbcutMinDepth, 1, 1, 5)
+    //UCI_OPTION_CUSTOM(ProbcutMinDepth, 1, 1, 5)
     UCI_OPTION(ProbcutBeta, 256)
     UCI_OPTION(ProbcutBetaImp, 101)
 
