@@ -410,7 +410,6 @@ namespace Horsie {
         if (UseProbcut
             && !isPV
             && !doSkip
-            && depth >= ProbcutMinDepth
             && std::abs(beta) < ScoreTTWin
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta))
         {
