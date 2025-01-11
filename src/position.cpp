@@ -75,15 +75,31 @@ namespace Horsie {
         {
             Move m = list[i].move;
 
-            std::string lhs = m.SmithNotation(IsChess960);
-            if (std::equal(lhs.begin(), lhs.end(), moveStr.begin(), moveStr.end(), eq_pred)) {
-
+            std::string smith = m.SmithNotation(IsChess960);
+            if (std::equal(smith.begin(), smith.end(), moveStr.begin(), moveStr.end(), eq_pred)) {
+                found = true;
+                return m;
+            }
+            
+            std::string san = m.ToString(bb);
+            if (std::equal(san.begin(), san.end(), moveStr.begin(), moveStr.end(), eq_pred)) {
                 found = true;
                 return m;
             }
         }
 
-        std::cout << "No move '" << moveStr << "' found";
+        std::cout << "No move '" << moveStr << "' found" << std::endl;
+        for (i32 i = 0; i < size; i++) {
+            Move m = list[i].move;
+            std::cout << m.SmithNotation(IsChess960) << ", ";
+        }
+        std::cout << std::endl;
+        for (i32 i = 0; i < size; i++) {
+            Move m = list[i].move;
+            std::cout << m.ToString(bb) << ", ";
+        }
+        std::cout << std::endl;
+
         return move;
     }
 
