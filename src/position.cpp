@@ -693,6 +693,10 @@ namespace Horsie {
 
 
 
+    void Position::SetupForDFRC(i32 wIdx, i32 bIdx) {
+        //  TODO
+    }
+
     void Position::LoadFromFEN(const std::string& fen) {
 
         //std::cout << "loading [" << fen << "]" << std::endl;

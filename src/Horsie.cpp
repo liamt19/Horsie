@@ -16,6 +16,7 @@
 #include "tt.h"
 #include "nnue/nn.h"
 #include "search_bench.h"
+#include "datagen/selfplay.h"
 
 
 
@@ -77,6 +78,8 @@ i32 main(i32 argc, char* argv[])
     Position pos = Position(InitialFEN);
 
     std::cout << "Horsie " << EngVersion << std::endl << std::endl;
+
+    Datagen::MonitorDG();
 
     if (argc > 1) {
         std::string arg1 = std::string(argv[1]);
