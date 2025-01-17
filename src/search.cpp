@@ -347,7 +347,7 @@ namespace Horsie {
 
 
         if (UseRFP
-            && !ss->TTPV
+            && !isPV
             && !doSkip
             && depth <= RFPMaxDepth
             && ttMove == Move::Null()
