@@ -16,7 +16,7 @@
 #include <fstream>
 
 
-#define USE_MP_NM 1
+//#define USE_MP_NM 1
 #define USE_MP_QS 1
 
 using namespace Horsie::Search;
