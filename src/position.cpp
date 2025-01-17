@@ -430,6 +430,10 @@ namespace Horsie {
             return false;
         }
 
+        if (move.IsCastle() && InCheck()) {
+            return false;
+        }
+
         if (pt == PAWN)
         {
             if (move.IsEnPassant())
