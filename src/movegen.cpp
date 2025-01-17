@@ -32,6 +32,7 @@ i32 MakePromotionChecks(ScoredMove* list, i32 from, i32 promotionSquare, bool is
 template <MoveGenType GenType>
 i32 GenPawns(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
     constexpr bool noisyMoves = GenType == GenNoisy;
+    constexpr bool quietMoves = GenType == GenQuiet;
     constexpr bool evasions = GenType == GenEvasions;
     constexpr bool nonEvasions = GenType == GenNonEvasions;
 
@@ -48,15 +49,15 @@ i32 GenPawns(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
 
     const u64 us   = bb.Colors[stm];
     const u64 them = bb.Colors[theirColor];
-    const u64 captureSquares = evasions ? pos.State->Checkers : them;
+    const u64 captureSquares = quietMoves ? 0
+                             : evasions   ? pos.State->Checkers 
+                             :              them;
 
     const u64 emptySquares = ~bb.Occupancy;
 
     const u64 ourPawns = us & bb.Pieces[Piece::PAWN];
     const u64 promotingPawns    = ourPawns & rank7;
     const u64 notPromotingPawns = ourPawns & ~rank7;
-
-    const i32 theirKing = pos.State->KingSquares[theirColor];
 
     if (!noisyMoves) {
         //  Include pawn pushes
@@ -158,6 +159,7 @@ i32 GenNormal(const Position& pos, ScoredMove* list, i32 pt, u64 targets, i32 si
 template <MoveGenType GenType>
 i32 GenAll(const Position& pos, ScoredMove* list, i32 size) {
     constexpr bool noisyMoves = GenType == GenNoisy;
+    constexpr bool quietMoves = GenType == GenQuiet;
     constexpr bool evasions = GenType == GenEvasions;
     constexpr bool nonEvasions = GenType == GenNonEvasions;
 
@@ -179,6 +181,7 @@ i32 GenAll(const Position& pos, ScoredMove* list, i32 size) {
         targets = evasions    ? LineBB[ourKing][lsb(pos.State->Checkers)]
                 : nonEvasions ? ~us
                 : noisyMoves  ?  them
+                : quietMoves  ? ~occ
                 :               ~occ;
 
         size = GenPawns<GenType>(pos, list, targets, size);
@@ -233,9 +236,18 @@ i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size) {
                                  GenAll<GenNoisy>   (pos, moveList, 0);
 }
 
+i32 GenerateQuiet(const Position& pos, ScoredMove* moveList, i32 size) {
+    return GenAll<GenQuiet>(pos, moveList, 0);
+}
+
+i32 GenerateNoisy(const Position& pos, ScoredMove* moveList, i32 size) {
+    return GenAll<GenNoisy>(pos, moveList, 0);
+}
+
 
 template i32 Generate<PseudoLegal>(const Position&, ScoredMove*, i32);
 template i32 Generate<GenNoisy>(const Position&, ScoredMove*, i32);
+template i32 Generate<GenQuiet>(const Position&, ScoredMove*, i32);
 template i32 Generate<GenEvasions>(const Position&, ScoredMove*, i32);
 template i32 Generate<GenNonEvasions>(const Position&, ScoredMove*, i32);
 

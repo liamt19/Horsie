@@ -7,12 +7,17 @@
 #include "precomputed.h"
 #include "search_options.h"
 #include "threadpool.h"
+#include "movepicker.h"
 #include "util/dbg_hit.h"
 
 #include <chrono>
 #include <iostream>
 #include <string>
 #include <fstream>
+
+
+#define USE_MP_NM 1
+#define USE_MP_QS 1
 
 using namespace Horsie::Search;
 
@@ -482,12 +487,18 @@ namespace Horsie {
 
         bool skipQuiets = false;
 
+#if defined(USE_MP_NM)
+        Move m;
+        MovePicker mp = MovePicker::negamax(pos, ss, History, ttMove);
+        while ((m = mp.Next()) != Move::Null()) {
+#else
         ScoredMove list[MoveListSize];
         i32 size = Generate<PseudoLegal>(pos, list, 0);
         AssignScores(pos, ss, *history, list, size, ttMove);
 
         for (i32 i = 0; i < size; i++) {
             Move m = OrderNextMove(list, size, i);
+#endif
 
             if (m == ss->Skip) {
                 didSkip = true;
@@ -849,13 +860,19 @@ namespace Horsie {
         i32 legalMoves = 0;
         i32 checkEvasions = 0;
 
+
+#if defined(USE_MP_QS)
+        Move m;
+        MovePicker mp = MovePicker::qsearch(pos, ss, History, ttMove);
+        while ((m = mp.Next()) != Move::Null()) {
+#else
         ScoredMove list[MoveListSize];
         i32 size = GenerateQS(pos, list, 0);
         AssignQuiescenceScores(pos, ss, *history, list, size, ttMove);
 
-        for (i32 i = 0; i < size; i++)
-        {
+        for (i32 i = 0; i < size; i++) {
             Move m = OrderNextMove(list, size, i);
+#endif
 
             if (!pos.IsLegal(m))
             {

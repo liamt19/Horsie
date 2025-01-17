@@ -14,16 +14,17 @@ namespace Horsie {
     enum MoveGenType {
         PseudoLegal,
         GenNoisy,
+        GenQuiet,
         GenEvasions,
         GenNonEvasions,
         GenLegal
     };
 
-
 template<MoveGenType>
 i32 Generate(const Position& pos, ScoredMove* moveList, i32 size);
 i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size);
-
+i32 GenerateQuiet(const Position& pos, ScoredMove* moveList, i32 size);
+i32 GenerateNoisy(const Position& pos, ScoredMove* moveList, i32 size);
 }
 
 

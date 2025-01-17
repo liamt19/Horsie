@@ -426,6 +426,10 @@ namespace Horsie {
             return false;
         }
 
+        if (move.IsCastle() && (move.RelevantCastlingRight() & State->CastleStatus) == CastlingStatus::None) {
+            return false;
+        }
+
         if (pt == PAWN)
         {
             if (move.IsEnPassant())
