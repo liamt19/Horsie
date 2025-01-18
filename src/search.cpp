@@ -533,7 +533,7 @@ namespace Horsie {
                 i32 lmrDepth = std::max(0, depth - lmrRed);
 
                 i32 lmrMargin = 200 + (lmrDepth * 80) + (moveHist / 150);
-                if (isQuiet && !ss->InCheck && eval + lmrMargin < alpha) {
+                if (isQuiet && lmrDepth <= 8 && !ss->InCheck && ss->StaticEval + lmrMargin < alpha) {
                     skipQuiets = true;
                     continue;
                 }
