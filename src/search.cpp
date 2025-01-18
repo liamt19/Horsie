@@ -7,6 +7,7 @@
 #include "precomputed.h"
 #include "search_options.h"
 #include "threadpool.h"
+#include "util/dbg_hit.h"
 
 #include <chrono>
 #include <iostream>

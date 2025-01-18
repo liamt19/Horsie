@@ -16,6 +16,7 @@
 #include "position.h"
 #include "util.h"
 #include "search.h"
+#include "util/dbg_hit.h"
 
 using namespace Horsie::Search;
 
@@ -74,6 +75,7 @@ namespace Horsie {
         }
         else {
             std::cout << std::endl << "Nodes searched: " << totalNodes << " in " << durSeconds << "." << durMillis << " s (" << FormatWithCommas(nps) << " nps)" << std::endl;
+            dbg_print();
         }
 
         thread->OnDepthFinish = odf;
