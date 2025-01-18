@@ -505,6 +505,9 @@ namespace Horsie {
             
             legalMoves++;
             i32 extend = 0;
+            i32 R = LogarithmicReductionTable[depth][legalMoves];
+
+            i32 moveHist = isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()];
 
             if (ShallowPruning
                 && !isRoot
@@ -512,20 +515,33 @@ namespace Horsie {
                 && pos.HasNonPawnMaterial(us))
             {
                 if (skipQuiets == false)
-                {
                     skipQuiets = legalMoves >= lmpMoves;
-                }
 
-                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+                const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+                const bool isQuiet = !(givesCheck || isCapture);
 
-                if (skipQuiets && depth <= ShallowMaxDepth && !(givesCheck || isCapture))
-                {
+                if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
+                    continue;
+
+                i32 lmrRed = R * 1024;
+
+                lmrRed += !isPV * 1024;
+                lmrRed += !improving * 1024;
+                lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * 1024;
+
+                lmrRed = (lmrRed + 512) / 1024;
+                i32 lmrDepth = std::max(0, depth - lmrRed);
+
+                i32 lmrMargin = 200 + (lmrDepth * 80) + (moveHist / 150);
+                if (isQuiet && !ss->InCheck && eval + lmrMargin < alpha) {
+                    skipQuiets = true;
                     continue;
                 }
 
-                if (givesCheck || isCapture || skipQuiets)
+                if (!isQuiet || skipQuiets)
                 {
-                    if (!pos.SEE_GE(m, -ShallowSEEMargin * depth))
+                    const auto seeMargin = -ShallowSEEMargin * depth;
+                    if (!pos.SEE_GE(m, seeMargin))
                     {
                         continue;
                     }
@@ -601,8 +617,6 @@ namespace Horsie {
                 && !(isPV && isCapture))
             {
 
-                i32 R = LogarithmicReductionTable[depth][legalMoves];
-
                 R += (!improving);
                 R += cutNode * 2;
 
@@ -610,8 +624,7 @@ namespace Horsie {
                 R -= isPV;
                 R -= (m == ss->KillerMove);
 
-                i32 mHist = 2 * (isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()]);    
-                i32 histScore = mHist +
+                i32 histScore = 2 * moveHist +
                                 2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
                                     (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
                                     (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
