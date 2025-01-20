@@ -86,11 +86,11 @@ namespace Horsie {
 
     constexpr i32 GetSEEValue(i32 pt) {
         switch (pt) {
-        case PAWN  : return SEEValue_Pawn;
-        case HORSIE: return SEEValue_Horsie;
-        case BISHOP: return SEEValue_Bishop;
-        case ROOK  : return SEEValue_Rook;
-        case QUEEN : return SEEValue_Queen;
+        case PAWN  : return SEEValuePawn;
+        case HORSIE: return SEEValueHorsie;
+        case BISHOP: return SEEValueBishop;
+        case ROOK  : return SEEValueRook;
+        case QUEEN : return SEEValueQueen;
         default:     return 0;
         }
     }
