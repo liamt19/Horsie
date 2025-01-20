@@ -44,6 +44,13 @@ namespace Horsie {
     UCI_OPTION(ProbcutBeta, 256)
     UCI_OPTION(ProbcutBetaImp, 101)
 
+    UCI_OPTION(NMFutileBase, 512)
+    UCI_OPTION(NMFutilePVCoeff, 1024)
+    UCI_OPTION(NMFutileImpCoeff, 1024)
+    UCI_OPTION(NMFutileHistCoeff, 1024)
+    UCI_OPTION(NMFutMarginB, 200)
+    UCI_OPTION(NMFutMarginM, 80)
+    UCI_OPTION(NMFutMarginDiv, 150)
     UCI_OPTION(ShallowSEEMargin, 216)
     UCI_OPTION(ShallowMaxDepth, 9)
 
@@ -68,11 +75,11 @@ namespace Horsie {
     UCI_OPTION(StatMalusSub, 111)
     UCI_OPTION(StatMalusMax, 1663)
 
-    UCI_OPTION(SEEValue_Pawn, 105)
-    UCI_OPTION(SEEValue_Horsie, 900)
-    UCI_OPTION(SEEValue_Bishop, 1054)
-    UCI_OPTION(SEEValue_Rook, 1332);
-    UCI_OPTION(SEEValue_Queen, 2300);
+    UCI_OPTION(SEEValuePawn, 105)
+    UCI_OPTION(SEEValueHorsie, 900)
+    UCI_OPTION(SEEValueBishop, 1054)
+    UCI_OPTION(SEEValueRook, 1332);
+    UCI_OPTION(SEEValueQueen, 2300);
 
     UCI_OPTION(ValuePawn, 171)
     UCI_OPTION(ValueHorsie, 794)

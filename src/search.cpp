@@ -512,8 +512,8 @@ namespace Horsie {
             if (ShallowPruning
                 && !isRoot
                 && bestScore > ScoreMatedMax
-                && pos.HasNonPawnMaterial(us))
-            {
+                && pos.HasNonPawnMaterial(us)) {
+                
                 if (skipQuiets == false)
                     skipQuiets = legalMoves >= lmpMoves;
 
@@ -523,28 +523,26 @@ namespace Horsie {
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
                     continue;
 
-                i32 lmrRed = R * 1024;
+                i32 lmrRed = (R * 1024) + NMFutileBase;
 
-                lmrRed += !isPV * 1024;
-                lmrRed += !improving * 1024;
-                lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * 1024;
+                lmrRed += !isPV * NMFutilePVCoeff;
+                lmrRed += !improving * NMFutileImpCoeff;
+                lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
 
-                lmrRed = (lmrRed + 512) / 1024;
+                lmrRed /= 1024;
                 i32 lmrDepth = std::max(0, depth - lmrRed);
 
-                i32 lmrMargin = 200 + (lmrDepth * 80) + (moveHist / 150);
-                if (isQuiet && lmrDepth <= 8 && !ss->InCheck && ss->StaticEval + lmrMargin < alpha) {
+                i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
+                if (isQuiet 
+                    && !ss->InCheck
+                    && lmrDepth <= 8 
+                    && ss->StaticEval + futilityMargin < alpha) {
                     skipQuiets = true;
                     continue;
                 }
 
-                if (!isQuiet || skipQuiets)
-                {
-                    const auto seeMargin = -ShallowSEEMargin * depth;
-                    if (!pos.SEE_GE(m, seeMargin))
-                    {
-                        continue;
-                    }
+                if ((!isQuiet || skipQuiets) && !pos.SEE_GE(m, -ShallowSEEMargin * depth)) {
+                    continue;
                 }
             }
 
