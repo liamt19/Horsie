@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef ARCH_H
+#define ARCH_H
+
 #include <immintrin.h>
 #include "../defs.h"
 #include "simd.h"
@@ -44,3 +47,6 @@ constexpr auto N_L2W = OUTPUT_BUCKETS * L2_SIZE * L3_SIZE;
 constexpr auto N_L2B = OUTPUT_BUCKETS * L3_SIZE;
 constexpr auto N_L3W = OUTPUT_BUCKETS * L3_SIZE;
 constexpr auto N_L3B = OUTPUT_BUCKETS;
+
+
+#endif // !ARCH_H

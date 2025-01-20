@@ -1,13 +1,14 @@
 
 #include "../nnue/nn.h"
+
 #include "../nnue/simd.h"
+#include "../3rdparty/incbin/incbin.h"
+#include "../3rdparty/zstd/zstd.h"
 
 #include <immintrin.h>
 #include <fstream>
 #include <cstring>
 
-#include "../3rdparty/incbin/incbin.h"
-#include "../3rdparty/zstd/zstd.h"
 
 #if !defined(_MSC_VER)
 #include <sstream>
@@ -62,8 +63,8 @@ namespace Horsie
             PermuteFT(Span<i16>(net.FTWeights), Span<i16>(net.FTBiases));
             PermuteL1(tempL1);
 
-            for (i32 bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
-            {
+            for (i32 bucket = 0; bucket < OUTPUT_BUCKETS; bucket++) {
+
                 for (i32 i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
                     for (i32 j = 0; j < L2_SIZE; ++j)
                         for (i32 k = 0; k < L1_CHUNK_PER_32; ++k)
@@ -102,8 +103,7 @@ namespace Horsie
 #endif
             __m128i regi[numRegi] = {};
 
-            for (i32 i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS / numChunks; i += numRegi)
-            {
+            for (i32 i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS / numChunks; i += numRegi) {
                 for (i32 j = 0; j < numRegi; j++)
                     regi[j] = ws[i + j];
 
@@ -111,8 +111,7 @@ namespace Horsie
                     ws[i + j] = regi[order[j]];
             }
 
-            for (i32 i = 0; i < L1_SIZE / numChunks; i += numRegi)
-            {
+            for (i32 i = 0; i < L1_SIZE / numChunks; i += numRegi) {
                 for (i32 j = 0; j < numRegi; j++)
                     regi[j] = bs[i + j];
 
@@ -123,16 +122,13 @@ namespace Horsie
             g_network = &net;
         }
 
-        static void SetupNNZ() 
-        {
-            for (u32 i = 0; i < 256; i++) 
-            {
+        static void SetupNNZ() {
+            for (u32 i = 0; i < 256; i++) {
                 u16* ptr = reinterpret_cast<u16*>(&nnzTable.Entries[i]);
 
                 u32 j = i;
                 u32 k = 0;
-                while (j != 0) 
-                {
+                while (j != 0) {
                     u32 lsbIndex = std::countr_zero(j);
                     j &= j - 1;
                     ptr[k++] = static_cast<u16>(lsbIndex);
@@ -141,15 +137,13 @@ namespace Horsie
         }
 
 
-        void RefreshAccumulator(Position& pos)
-        {
+        void RefreshAccumulator(Position& pos) {
             RefreshAccumulatorPerspectiveFull(pos, WHITE);
             RefreshAccumulatorPerspectiveFull(pos, BLACK);
         }
 
 
-        void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective)
-        {
+        void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective) {
             Accumulator& accumulator = *pos.State->accumulator;
             Bitboard& bb = pos.bb;
 
@@ -159,8 +153,7 @@ namespace Horsie
 
             i32 ourKing = pos.State->KingSquares[perspective];
             u64 occ = bb.Occupancy;
-            while (occ != 0)
-            {
+            while (occ != 0) {
                 i32 pieceIdx = poplsb(occ);
 
                 i32 pt = bb.GetPieceAtIndex(pieceIdx);
@@ -168,7 +161,7 @@ namespace Horsie
 
                 i32 idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
 
-                const auto accum   = reinterpret_cast<i16*>(&accumulator.Sides[perspective]);
+                const auto accum = reinterpret_cast<i16*>(&accumulator.Sides[perspective]);
                 const auto weights = &g_network->FTWeights[idx];
                 Add(accum, accum, weights);
             }
@@ -182,8 +175,7 @@ namespace Horsie
         }
 
 
-        void RefreshAccumulatorPerspective(Position& pos, i32 perspective)
-        {
+        void RefreshAccumulatorPerspective(Position& pos, i32 perspective) {
             Accumulator& accumulator = *pos.State->accumulator;
             Bitboard& bb = pos.bb;
 
@@ -196,18 +188,15 @@ namespace Horsie
             auto ourAccumulation = reinterpret_cast<i16*>(&entryAcc.Sides[perspective]);
             accumulator.NeedsRefresh[perspective] = false;
 
-            for (i32 pc = 0; pc < COLOR_NB; pc++)
-            {
-                for (i32 pt = 0; pt < PIECE_NB; pt++)
-                {
+            for (i32 pc = 0; pc < COLOR_NB; pc++) {
+                for (i32 pt = 0; pt < PIECE_NB; pt++) {
                     u64 prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
                     u64 curr =      bb.Pieces[pt] &      bb.Colors[pc];
 
                     u64 added   = curr & ~prev;
                     u64 removed = prev & ~curr;
 
-                    while (added != 0)
-                    {
+                    while (added != 0) {
                         i32 sq = poplsb(added);
                         i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
@@ -215,8 +204,7 @@ namespace Horsie
                         Add(ourAccumulation, ourAccumulation, weights);
                     }
 
-                    while (removed != 0)
-                    {
+                    while (removed != 0) {
                         i32 sq = poplsb(removed);
                         i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
@@ -259,7 +247,6 @@ namespace Horsie
         }
 
 
-
         static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output) {
             const auto ft_zero = vec_setzero_epi16();
             const auto ft_one = vec_set1_epi16(FT_QUANT);
@@ -273,7 +260,6 @@ namespace Horsie
             const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
             vec_128i baseVec = _mm_setzero_si128();
 
-            
             for (const auto acc : { us, them }) {
                 for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
                     const auto input0a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
@@ -409,8 +395,7 @@ namespace Horsie
             wUpdate.Clear();
             bUpdate.Clear();
 
-            if (ourPiece == KING && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
-            {
+            if (ourPiece == KING && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)])) {
                 //  We will need to fully refresh our perspective, but we can still do theirs.
                 dst->NeedsRefresh[us] = true;
 
@@ -420,14 +405,12 @@ namespace Horsie
                 i32 from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
                 i32 to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
 
-                if (theirPiece != NONE && !m.IsCastle())
-                {
+                if (theirPiece != NONE && !m.IsCastle()) {
                     i32 cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
 
                     theirUpdate.PushSubSubAdd(from, cap, to);
                 }
-                else if (m.IsCastle())
-                {
+                else if (m.IsCastle()) {
                     i32 rookFromSq = moveTo;
                     i32 rookToSq = m.CastlingRookSquare();
 
@@ -438,13 +421,11 @@ namespace Horsie
 
                     theirUpdate.PushSubSubAddAdd(from, rookFrom, to, rookTo);
                 }
-                else
-                {
+                else {
                     theirUpdate.PushSubAdd(from, to);
                 }
             }
-            else
-            {
+            else {
                 i32 wKing = pos.State->KingSquares[WHITE];
                 i32 bKing = pos.State->KingSquares[BLACK];
 
@@ -454,15 +435,13 @@ namespace Horsie
                 wUpdate.PushSubAdd(wFrom, wTo);
                 bUpdate.PushSubAdd(bFrom, bTo);
 
-                if (theirPiece != NONE)
-                {
+                if (theirPiece != NONE) {
                     const auto [wCap, bCap] = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
 
                     wUpdate.PushSub(wCap);
                     bUpdate.PushSub(bCap);
                 }
-                else if (m.IsEnPassant())
-                {
+                else if (m.IsEnPassant()) {
                     i32 idxPawn = moveTo - ShiftUpDir(us);
 
                     const auto [wCap, bCap] = FeatureIndex(them, PAWN, idxPawn, wKing, bKing);
@@ -489,32 +468,30 @@ namespace Horsie
 
         void ProcessUpdates(Position& pos) {
             StateInfo* st = pos.State;
-            for (i32 perspective = 0; perspective < 2; perspective++)
-            {
+            for (i32 perspective = 0; perspective < 2; perspective++) {
                 //  If the current state is correct for our perspective, no work is needed
                 if (st->accumulator->Computed[perspective])
                     continue;
+
                 //  If the current state needs a refresh, don't bother with previous states
-                if (st->accumulator->NeedsRefresh[perspective])
-                {
+                if (st->accumulator->NeedsRefresh[perspective]) {
                     RefreshAccumulatorPerspective(pos, perspective);
                     continue;
                 }
+
                 //  Find the most recent computed or refresh-needed accumulator
                 StateInfo* curr = st - 1;
                 while (!curr->accumulator->Computed[perspective] && !curr->accumulator->NeedsRefresh[perspective])
                     curr--;
-                if (curr->accumulator->NeedsRefresh[perspective])
-                {
+
+                if (curr->accumulator->NeedsRefresh[perspective]) {
                     //  The most recent accumulator would need to be refreshed,
                     //  so don't bother and refresh the current one instead
                     RefreshAccumulatorPerspective(pos, perspective);
                 }
-                else
-                {
+                else {
                     //  Update incrementally till the current accumulator is correct
-                    while (curr != st)
-                    {
+                    while (curr != st) {
                         StateInfo* prev = curr;
                         curr++;
                         UpdateSingle(prev->accumulator, curr->accumulator, perspective);
@@ -524,13 +501,11 @@ namespace Horsie
         }
 
 
-        void UpdateSingle(Accumulator* prev, Accumulator* curr, i32 perspective)
-        {
+        void UpdateSingle(Accumulator* prev, Accumulator* curr, i32 perspective) {
             auto FeatureWeights = reinterpret_cast<const i16*>(&g_network->FTWeights[0]);
             const auto& updates = curr->Update[perspective];
 
-            if (updates.AddCnt == 0 && updates.SubCnt == 0)
-            {
+            if (updates.AddCnt == 0 && updates.SubCnt == 0) {
                 //  For null moves, we still need to carry forward the correct accumulator state
                 prev->CopyTo(curr, perspective);
                 return;
@@ -538,48 +513,42 @@ namespace Horsie
 
             auto src = reinterpret_cast<i16*>(&prev->Sides[perspective]);
             auto dst = reinterpret_cast<i16*>(&curr->Sides[perspective]);
-            if (updates.AddCnt == 1 && updates.SubCnt == 1)
-            {
+            if (updates.AddCnt == 1 && updates.SubCnt == 1) {
                 SubAdd(src, dst,
-                    (FeatureWeights + updates.Subs[0]),
-                    (FeatureWeights + updates.Adds[0]));
+                       &FeatureWeights[updates.Subs[0]],
+                       &FeatureWeights[updates.Adds[0]]);
             }
-            else if (updates.AddCnt == 1 && updates.SubCnt == 2)
-            {
+            else if (updates.AddCnt == 1 && updates.SubCnt == 2) {
                 SubSubAdd(src, dst,
-                    (FeatureWeights + updates.Subs[0]),
-                    (FeatureWeights + updates.Subs[1]),
-                    (FeatureWeights + updates.Adds[0]));
+                          &FeatureWeights[updates.Subs[0]],
+                          &FeatureWeights[updates.Subs[1]],
+                          &FeatureWeights[updates.Adds[0]]);
             }
-            else if (updates.AddCnt == 2 && updates.SubCnt == 2)
-            {
+            else if (updates.AddCnt == 2 && updates.SubCnt == 2) {
                 SubSubAddAdd(src, dst,
-                    (FeatureWeights + updates.Subs[0]),
-                    (FeatureWeights + updates.Subs[1]),
-                    (FeatureWeights + updates.Adds[0]),
-                    (FeatureWeights + updates.Adds[1]));
+                             &FeatureWeights[updates.Subs[0]],
+                             &FeatureWeights[updates.Subs[1]],
+                             &FeatureWeights[updates.Adds[0]],
+                             &FeatureWeights[updates.Adds[1]]);
             }
             curr->Computed[perspective] = true;
         }
 
 
-        std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk)
-        {
+        std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk) {
             const i32 ColorStride = 64 * 6;
             const i32 PieceStride = 64;
 
             i32 wSq = sq;
             i32 bSq = sq ^ 56;
 
-            if (wk % 8 > 3)
-            {
+            if (wk % 8 > 3) {
                 wk ^= 7;
                 wSq ^= 7;
             }
 
             bk ^= 56;
-            if (bk % 8 > 3)
-            {
+            if (bk % 8 > 3) {
                 bk ^= 7;
                 bSq ^= 7;
             }
@@ -591,19 +560,16 @@ namespace Horsie
         }
 
 
-        i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective)
-        {
+        i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective) {
             const i32 ColorStride = 64 * 6;
             const i32 PieceStride = 64;
 
-            if (perspective == BLACK)
-            {
+            if (perspective == BLACK) {
                 sq ^= 56;
                 kingSq ^= 56;
             }
 
-            if (kingSq % 8 > 3)
-            {
+            if (kingSq % 8 > 3) {
                 sq ^= 7;
                 kingSq ^= 7;
             }
@@ -619,11 +585,10 @@ namespace Horsie
                 bucket.Boards[BLACK].Reset();
             }
         }
-        
-        
+
+
         //  See https://github.com/Ciekce/Stormphrax/pull/176 for the non-scuffed impl of this.
         void LoadZSTD(std::istream& m_stream, std::byte* dst) {
-
             size_t m_pos = 0;
             size_t m_end = 0;
             size_t m_result = 0;
@@ -698,22 +663,18 @@ namespace Horsie
         }
 
 
-        static void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases)
-        {
+        static void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases) {
             const i32 OneBucket = (INPUT_SIZE * L1_SIZE);
             std::vector<i16> temp(OneBucket, 0);
 
-            for (i32 bucket = 0; bucket < INPUT_BUCKETS; bucket++)
-            {
+            for (i32 bucket = 0; bucket < INPUT_BUCKETS; bucket++) {
                 Span<i16> ftBucket = Span<i16>(&ftWeights[(bucket * OneBucket)], OneBucket);
 
                 for (size_t i = 0; i < OneBucket; i++)
                     temp[i] = ftBucket[i];
 
-                for (i32 i = 0; i < INPUT_SIZE; i++)
-                {
-                    for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++)
-                    {
+                for (i32 i = 0; i < INPUT_SIZE; i++) {
+                    for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++) {
                         i32 src = PermuteIndices[dst];
                         auto f = i * L1_SIZE;
 
@@ -727,8 +688,7 @@ namespace Horsie
             for (i32 i = 0; i < L1_SIZE; i++)
                 temp2[i] = ftBiases[i];
 
-            for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++)
-            {
+            for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++) {
                 i32 src = PermuteIndices[dst];
 
                 ftBiases[dst] = temp2[src];
@@ -737,19 +697,15 @@ namespace Horsie
         }
 
 
-        static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE])
-        {
+        static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]) {
             auto temp = new i8[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
             std::memcpy(temp, l1Weights, N_L1W);
 
-            for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++)
-            {
+            for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++) {
                 i32 src = PermuteIndices[dst];
 
-                for (i32 b = 0; b < OUTPUT_BUCKETS; b++)
-                {
-                    for (i32 l2 = 0; l2 < L2_SIZE; l2++)
-                    {
+                for (i32 b = 0; b < OUTPUT_BUCKETS; b++) {
+                    for (i32 l2 = 0; l2 < L2_SIZE; l2++) {
                         l1Weights[dst][b][l2] = temp[src][b][l2];
                         l1Weights[dst + L1_PAIR_COUNT][b][l2] = temp[src + L1_PAIR_COUNT][b][l2];
                     }
@@ -767,8 +723,7 @@ namespace Horsie
             const vec_i16* sub2 = reinterpret_cast<const vec_i16*>(_sub2);
             const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
             const vec_i16* add2 = reinterpret_cast<const vec_i16*>(_add2);
-            for (i32 i = 0; i < SIMD_CHUNKS; i++)
-            {
+            for (i32 i = 0; i < SIMD_CHUNKS; i++) {
                 dst[i] = vec_sub_epi16(vec_sub_epi16(vec_add_epi16(vec_add_epi16(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
             }
         }
@@ -779,8 +734,7 @@ namespace Horsie
             const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
             const vec_i16* sub2 = reinterpret_cast<const vec_i16*>(_sub2);
             const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
-            for (i32 i = 0; i < SIMD_CHUNKS; i++)
-            {
+            for (i32 i = 0; i < SIMD_CHUNKS; i++) {
                 dst[i] = vec_sub_epi16(vec_sub_epi16(vec_add_epi16(src[i], add1[i]), sub1[i]), sub2[i]);
             }
         }
@@ -790,8 +744,7 @@ namespace Horsie
                   vec_i16* dst  = reinterpret_cast<      vec_i16*>(_dst);
             const vec_i16* sub1 = reinterpret_cast<const vec_i16*>(_sub1);
             const vec_i16* add1 = reinterpret_cast<const vec_i16*>(_add1);
-            for (i32 i = 0; i < SIMD_CHUNKS; i++)
-            {
+            for (i32 i = 0; i < SIMD_CHUNKS; i++) {
                 dst[i] = vec_sub_epi16(vec_add_epi16(src[i], add1[i]), sub1[i]);
             }
         }

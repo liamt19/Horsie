@@ -3,14 +3,9 @@
 #ifndef SEARCH_BENCH_H
 #define SEARCH_BENCH_H
 
-
 #include <chrono>
 #include <sstream>
 #include <iostream>
-#include <filesystem>
-#include <list>
-#include <thread>
-#include <barrier>
 
 #include "threadpool.h"
 #include "position.h"
@@ -22,9 +17,8 @@ using namespace Horsie::Search;
 
 
 namespace Horsie {
-    
-    void DoBench(SearchThreadPool& SearchPool, i32 depth = 12, bool openBench = false) {
 
+    void DoBench(SearchThreadPool& SearchPool, i32 depth = 12, bool openBench = false) {
         Position pos = Position(InitialFEN);
         SearchThread* thread = SearchPool.MainThread();
 
@@ -43,8 +37,7 @@ namespace Horsie {
         SearchPool.Clear();
 
         auto before = std::chrono::system_clock::now();
-        for (std::string fen : BenchFENs)
-        {
+        for (std::string fen : BenchFENs) {
             pos.LoadFromFEN(fen);
 
             SearchPool.StartSearch(pos, limits);
@@ -85,4 +78,4 @@ namespace Horsie {
 }
 
 
-#endif
+#endif // !SEARCH_BENCH_H

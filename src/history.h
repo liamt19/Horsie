@@ -8,7 +8,6 @@
 
 #include "util/NDArray.h"
 
-
 namespace Horsie {
 
     constexpr i32 HistoryClamp = 16384;
@@ -20,17 +19,17 @@ namespace Horsie {
     class StatsEntry {
         T entry;
 
-        public:
-            void operator=(const T& v) { entry = v; }
-            T* operator&() { return &entry; }
-            T* operator->() { return &entry; }
-            operator const T& () const { return entry; }
+    public:
+        void operator=(const T& v) { entry = v; }
+        T* operator&() { return &entry; }
+        T* operator->() { return &entry; }
+        operator const T& () const { return entry; }
 
-            void operator<<(i32 bonus) {
-                static_assert(ClampVal <= std::numeric_limits<T>::max(), "D overflows T");
-                entry += (bonus - (entry * std::abs(bonus) / ClampVal));
-                assert(std::abs(entry) <= ClampVal);
-            }
+        void operator<<(i32 bonus) {
+            static_assert(ClampVal <= std::numeric_limits<T>::max(), "D overflows T");
+            entry += (bonus - (entry * std::abs(bonus) / ClampVal));
+            assert(std::abs(entry) <= ClampVal);
+        }
     };
 
     template<typename T, i32 D, i32 Size, i32... Sizes>
@@ -38,7 +37,6 @@ namespace Horsie {
         using stats = Stats<T, D, Size, Sizes...>;
 
         void fill(const T& v) {
-
             // For standard-layout 'this' points to the first struct member
             assert(std::is_standard_layout_v<stats>);
 
@@ -74,19 +72,17 @@ namespace Horsie {
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
             std::memset(&NonPawnCorrection, 0, sizeof(NonPawnCorrection));
 
-            for (size_t i = 0; i < 2; i++)
-            {
-                for (size_t j = 0; j < 2; j++)
-                {
+            for (size_t i = 0; i < 2; i++) {
+                for (size_t j = 0; j < 2; j++) {
                     for (auto& to : Continuations[i][j])
                         for (auto& h : to)
                             h->fill(-50);
                 }
             }
-		}
+        }
     };
 
 }
 
 
-#endif
+#endif // !HISTORY_H

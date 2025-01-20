@@ -37,20 +37,17 @@ namespace {
 
 namespace Horsie {
     void dbg_hit_on(bool cond, int slot) {
-
         ++hit.at(slot)[0];
         if (cond)
             ++hit.at(slot)[1];
     }
 
     void dbg_mean_of(int64_t value, int slot) {
-
         ++mean.at(slot)[0];
         mean.at(slot)[1] += value;
     }
 
     void dbg_stdev_of(int64_t value, int slot) {
-
         ++stdev.at(slot)[0];
         stdev.at(slot)[1] += value;
         stdev.at(slot)[2] += value * value;
@@ -69,7 +66,6 @@ namespace Horsie {
     }
 
     void dbg_correl_of(int64_t value1, int64_t value2, int slot) {
-
         ++correl.at(slot)[0];
         correl.at(slot)[1] += value1;
         correl.at(slot)[2] += value1 * value1;
@@ -79,7 +75,6 @@ namespace Horsie {
     }
 
     void dbg_print() {
-
         int64_t n;
         auto    E = [&n](int64_t x) { return double(x) / n; };
         auto    sqr = [](double x) { return x * x; };

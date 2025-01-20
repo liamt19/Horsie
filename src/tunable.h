@@ -27,8 +27,8 @@ struct TunableOption {
         MinValue(min),
         MaxValue(max),
         Step(step),
-        HideTune(hideTune)
-    { }
+        HideTune(hideTune) {
+    }
 
     operator i32() const { return CurrentValue; }
 
@@ -70,7 +70,7 @@ inline std::vector<TunableOption>& GetUCIOptions() {
 }
 
 inline TunableOption* FindUCIOption(const std::string& name) {
-    auto& opts = GetUCIOptions(); 
+    auto& opts = GetUCIOptions();
     for (auto& opt : opts) {
         auto lowerName = opt.Name;
         std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](auto c) { return std::tolower(c); });

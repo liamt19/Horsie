@@ -90,4 +90,4 @@ namespace Horsie {
 }
 
 
-#endif
+#endif // !SEARCH_OPTIONS_H

@@ -37,32 +37,32 @@ namespace Horsie {
     constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     constexpr auto EngVersion = "1.0.5";
 
-constexpr u64 FileABB = 0x0101010101010101ULL;
-constexpr u64 FileBBB = FileABB << 1;
-constexpr u64 FileCBB = FileABB << 2;
-constexpr u64 FileDBB = FileABB << 3;
-constexpr u64 FileEBB = FileABB << 4;
-constexpr u64 FileFBB = FileABB << 5;
-constexpr u64 FileGBB = FileABB << 6;
-constexpr u64 FileHBB = FileABB << 7;
+    constexpr u64 FileABB = 0x0101010101010101ULL;
+    constexpr u64 FileBBB = FileABB << 1;
+    constexpr u64 FileCBB = FileABB << 2;
+    constexpr u64 FileDBB = FileABB << 3;
+    constexpr u64 FileEBB = FileABB << 4;
+    constexpr u64 FileFBB = FileABB << 5;
+    constexpr u64 FileGBB = FileABB << 6;
+    constexpr u64 FileHBB = FileABB << 7;
 
-constexpr u64 Rank1BB = 0xFF;
-constexpr u64 Rank2BB = Rank1BB << (8 * 1);
-constexpr u64 Rank3BB = Rank1BB << (8 * 2);
-constexpr u64 Rank4BB = Rank1BB << (8 * 3);
-constexpr u64 Rank5BB = Rank1BB << (8 * 4);
-constexpr u64 Rank6BB = Rank1BB << (8 * 5);
-constexpr u64 Rank7BB = Rank1BB << (8 * 6);
-constexpr u64 Rank8BB = Rank1BB << (8 * 7);
+    constexpr u64 Rank1BB = 0xFF;
+    constexpr u64 Rank2BB = Rank1BB << (8 * 1);
+    constexpr u64 Rank3BB = Rank1BB << (8 * 2);
+    constexpr u64 Rank4BB = Rank1BB << (8 * 3);
+    constexpr u64 Rank5BB = Rank1BB << (8 * 4);
+    constexpr u64 Rank6BB = Rank1BB << (8 * 5);
+    constexpr u64 Rank7BB = Rank1BB << (8 * 6);
+    constexpr u64 Rank8BB = Rank1BB << (8 * 7);
 
 #define ENABLE_INCR_OPERATORS_ON(T) \
         inline T& operator++(T& d) { return d = T(i32(d) + 1); } \
         inline T& operator--(T& d) { return d = T(i32(d) - 1); }
 
-ENABLE_INCR_OPERATORS_ON(Piece)
-ENABLE_INCR_OPERATORS_ON(Square)
-ENABLE_INCR_OPERATORS_ON(File)
-ENABLE_INCR_OPERATORS_ON(Rank)
+    ENABLE_INCR_OPERATORS_ON(Piece)
+        ENABLE_INCR_OPERATORS_ON(Square)
+        ENABLE_INCR_OPERATORS_ON(File)
+        ENABLE_INCR_OPERATORS_ON(Rank)
 
 #undef ENABLE_INCR_OPERATORS_ON
 
@@ -70,35 +70,22 @@ ENABLE_INCR_OPERATORS_ON(Rank)
 
 namespace {
 
-constexpr Direction operator+(Direction d1, Direction d2) { return Direction(i32(d1) + i32(d2)); }
-constexpr Direction operator*(i32 i, Direction d) { return Direction(i * i32(d)); }
+    constexpr Direction operator+(Direction d1, Direction d2) { return Direction(i32(d1) + i32(d2)); }
 
-// Additional operators to add a Direction to a Square
-constexpr Square operator+(Square s, Direction d) { return Square(i32(s) + i32(d)); }
-constexpr Square operator-(Square s, Direction d) { return Square(i32(s) - i32(d)); }
-inline Square& operator+=(Square& s, Direction d) { return s = s + d; }
-inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
-// Toggle color
-constexpr Color operator~(Color c) { return Color(c ^ 1); }
-constexpr i32 Not(i32 c) { return c ^ 1; }
-constexpr Color Not(Color c) { return Color(i32(c) ^ 1); }
+    // Additional operators to add a Direction to a Square
+    constexpr Square operator+(Square s, Direction d) { return Square(i32(s) + i32(d)); }
+    constexpr Square operator-(Square s, Direction d) { return Square(i32(s) - i32(d)); }
+    inline Square& operator+=(Square& s, Direction d) { return s = s + d; }
+    inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 
-constexpr Square operator^(Square s1, Square s2) { return Square(i32(s1) ^ i32(s2)); }
-constexpr Square operator-(Square s1, Square s2) { return Square(i32(s1) - i32(s2)); }
-constexpr Square operator+(Square s1, Square s2) { return Square(i32(s1) + i32(s2)); }
-
-constexpr Square operator^(Square s1, i32 s2) { return Square(i32(s1) ^ s2); }
-constexpr Square operator-(Square s1, i32 s2) { return Square(i32(s1) - s2); }
-constexpr Square operator+(Square s1, i32 s2) { return Square(i32(s1) + s2); }
-constexpr Square operator<<(Square s1, i32 s2) { return Square(i32(s1) << s2); }
-constexpr Square operator%(Square s1, i32 s2) { return Square(i32(s1) % s2); }
-constexpr Square operator/(Square s1, i32 s2) { return Square(i32(s1) / s2); }
+    constexpr i32 Not(i32 c) { return c ^ 1; }
+    constexpr Color Not(Color c) { return Color(i32(c) ^ 1); }
 
 
 #ifdef USE_PEXT
-constexpr bool HasPext = true;
+    constexpr bool HasPext = true;
 #else
-constexpr bool HasPext = false;
+    constexpr bool HasPext = false;
 #endif
 
     inline void prefetch(void* b) {
@@ -114,45 +101,40 @@ constexpr bool HasPext = false;
         return std::popcount(b);
     }
 
-    // Returns the least significant bit in a non-zero bitboard.
+
     inline i32 lsb(u64 b) {
         assert(b);
 
-#if defined(__GNUC__)  // GCC, Clang, ICX
+#if defined(__GNUC__)
         return i32(__builtin_ctzll(b));
 #else
         unsigned long idx;
         _BitScanForward64(&idx, b);
-        return i32(idx);
+        return static_cast<i32>(idx);
 #endif
     }
 
-    // Returns the most significant bit in a non-zero bitboard.
     inline i32 msb(u64 b) {
         assert(b);
 
-#if defined(__GNUC__)  // GCC, Clang, ICX
+#if defined(__GNUC__)
         return i32(63 ^ __builtin_clzll(b));
 #else
         unsigned long idx;
         _BitScanReverse64(&idx, b);
-        return i32(idx);
+        return static_cast<i32>(idx);
 #endif
     }
 
-    // Finds and clears the least significant bit in a non-zero bitboard.
     inline i32 poplsb(u64& b) {
         assert(b);
         i32 s = lsb(b);
         b &= b - 1;
-        return i32(s);
+        return static_cast<i32>(s);
     }
 }
 
 namespace Horsie {
-
-#define MemClear memset
-#define CopyBlock memcpy
 
     constexpr size_t AllocAlignment = 64;
 
@@ -221,10 +203,8 @@ namespace Horsie {
     inline u64 operator|(Square s1, Square s2) { return SquareBB(s1) | s2; }
 
 
-    constexpr bool DirectionOK(Square sq, Direction dir)
-    {
-        if (sq + dir < Square::A1 || sq + dir > Square::H8)
-        {
+    constexpr bool DirectionOK(Square sq, Direction dir) {
+        if (sq + dir < Square::A1 || sq + dir > Square::H8) {
             //  Make sure we aren't going off the board.
             return false;
         }
@@ -245,11 +225,11 @@ namespace Horsie {
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
-    
-    inline const std::string IndexToString(i32 sq) { 
+
+    inline const std::string IndexToString(i32 sq) {
         i32 x, y;
         IndexToCoord(sq, x, y);
-        return std::string { char('a' + x), char('1' + y) }; 
+        return std::string{ char('a' + x), char('1' + y) };
     }
 
     inline const std::string PieceToString(Piece n) {

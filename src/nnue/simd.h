@@ -1,7 +1,11 @@
 #pragma once
 
+#ifndef SIMD_H
+#define SIMD_H
+
 #include <immintrin.h>
 #include "../defs.h"
+
 
 #if defined(AVX512)
 
@@ -157,3 +161,6 @@ inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_
 }
 
 #endif
+
+
+#endif // !SIMD_H

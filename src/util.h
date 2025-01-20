@@ -14,8 +14,6 @@
 #include "enums.h"
 #include "search_options.h"
 
-using u64 = uint64_t;
-
 
 namespace Horsie {
 
@@ -44,11 +42,9 @@ namespace Horsie {
 
 
 
-    inline i32 FenToPiece(char fenChar)
-    {
+    inline i32 FenToPiece(char fenChar) {
         fenChar = char(tolower(fenChar));
-        switch (fenChar)
-        {
+        switch (fenChar) {
         case 'p': return PAWN;
         case 'n': return HORSIE;
         case 'b': return BISHOP;
@@ -59,38 +55,36 @@ namespace Horsie {
         };
     }
 
-    inline char PieceToFEN(i32 pt)
-    {
-        switch (pt)
-        {
-        case PAWN  : return 'p';
+    inline char PieceToFEN(i32 pt) {
+        switch (pt) {
+        case PAWN: return 'p';
         case HORSIE: return 'n';
         case BISHOP: return 'b';
-        case ROOK  : return 'r';
-        case QUEEN : return 'q';
-        case KING  : return 'k';
+        case ROOK: return 'r';
+        case QUEEN: return 'q';
+        case KING: return 'k';
         default:     return ' ';
         };
     }
 
     constexpr i32 GetPieceValue(i32 pt) {
         switch (pt) {
-        case PAWN  : return ValuePawn;
+        case PAWN: return ValuePawn;
         case HORSIE: return ValueHorsie;
         case BISHOP: return ValueBishop;
-        case ROOK  : return ValueRook;
-        case QUEEN : return ValueQueen;
+        case ROOK: return ValueRook;
+        case QUEEN: return ValueQueen;
         default:     return 0;
         }
     }
 
     constexpr i32 GetSEEValue(i32 pt) {
         switch (pt) {
-        case PAWN  : return SEEValuePawn;
+        case PAWN: return SEEValuePawn;
         case HORSIE: return SEEValueHorsie;
         case BISHOP: return SEEValueBishop;
-        case ROOK  : return SEEValueRook;
-        case QUEEN : return SEEValueQueen;
+        case ROOK: return SEEValueRook;
+        case QUEEN: return SEEValueQueen;
         default:     return 0;
         }
     }
@@ -103,8 +97,7 @@ namespace Horsie {
         return -ScoreMate + ply;
     }
 
-    constexpr i16 MakeTTScore(i16 score, i32 ply)
-    {
+    constexpr i16 MakeTTScore(i16 score, i32 ply) {
         if (score == ScoreNone)
             return score;
 
@@ -117,8 +110,7 @@ namespace Horsie {
         return score;
     }
 
-    constexpr i16 MakeNormalScore(i16 ttScore, i32 ply)
-    {
+    constexpr i16 MakeNormalScore(i16 ttScore, i32 ply) {
         if (ttScore == ScoreNone)
             return ttScore;
 
@@ -131,10 +123,7 @@ namespace Horsie {
         return ttScore;
     }
 
-
-
-    constexpr bool IsScoreMate(i32 score)
-    {
+    constexpr bool IsScoreMate(i32 score) {
 #if defined(_MSC_VER)
         auto v = (score < 0 ? -score : score) - ScoreMate;
         return (v < 0 ? -v : v) < MaxDepth;
@@ -143,36 +132,29 @@ namespace Horsie {
 #endif
     }
 
-    inline std::string FormatMoveScore(i32 score)
-    {
-        if (IsScoreMate(score))
-        {
+    inline std::string FormatMoveScore(i32 score) {
+        if (IsScoreMate(score)) {
             //  "mateIn" is returned in plies, but we want it in actual moves
-            if (score > 0)
-            {
+            if (score > 0) {
                 return "mate " + std::to_string((ScoreMate - score + 1) / 2);
             }
-            else
-            {
+            else {
                 return "mate " + std::to_string((-ScoreMate - score) / 2);
             }
         }
-        else
-        {
+        else {
             const double NormalizeEvalFactor = 252;
             return "cp " + std::to_string(static_cast<i32>((score * 100) / NormalizeEvalFactor));
         }
     }
 
     template<class T>
-    inline std::string FormatWithCommas(T value)
-    {
+    inline std::string FormatWithCommas(T value) {
         std::stringstream ss;
         ss.imbue(std::locale(""));
         ss << std::fixed << value;
         return ss.str();
     }
-
 
 
     const std::string EtherealFENs_D5[] = {
@@ -359,5 +341,6 @@ namespace Horsie {
     };
 
 }
+
 
 #endif // !UTIL_H

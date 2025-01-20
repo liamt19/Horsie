@@ -3,16 +3,11 @@
 #ifndef BITBOARD_H
 #define BITBOARD_H
 
-#include <string>
-#include <cassert>
-
 #include "nnue/accumulator.h"
-#include "util.h"
 
 namespace Horsie {
 
-    class Bitboard
-    {
+    class Bitboard {
     public:
         u64 Pieces[6];
         u64 Colors[2];
@@ -45,7 +40,6 @@ namespace Horsie {
         Accumulator accumulator;
     };
 }
-
 
 
 #endif // !BITBOARD_H
