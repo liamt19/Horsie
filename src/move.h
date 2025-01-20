@@ -43,6 +43,7 @@ namespace Horsie {
         constexpr bool IsEnPassant() const { return ((data & SpecialFlagsMask) == FlagEnPassant); }
         constexpr bool IsCastle() const {    return ((data & SpecialFlagsMask) == FlagCastle); }
         constexpr bool IsPromotion() const { return ((data & SpecialFlagsMask) == FlagPromotion); }
+        constexpr bool IsNoisyPromotion() const { return IsPromotion() && (PromotionTo() == HORSIE || PromotionTo() == QUEEN); }
 
         constexpr Piece PromotionTo() const { return Piece(((data >> 14) & 0x3) + 1); }
 

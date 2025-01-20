@@ -517,8 +517,7 @@ namespace Horsie {
                 if (skipQuiets == false)
                     skipQuiets = legalMoves >= lmpMoves;
 
-                const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
-                const bool isQuiet = !(givesCheck || isCapture);
+                const bool isQuiet = !(isCapture || m.IsNoisyPromotion());
 
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
                     continue;
