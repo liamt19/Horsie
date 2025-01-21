@@ -341,8 +341,7 @@ namespace Horsie
                 const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
                 const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
                 const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], clipped);
             }
         }
 
@@ -364,8 +363,7 @@ namespace Horsie
             const auto one = vec_set1_ps(1.0f);
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
                 const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], clipped);
             }
         }
 
