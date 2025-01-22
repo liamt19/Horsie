@@ -75,17 +75,17 @@ namespace Horsie {
     UCI_OPTION(StatMalusSub, 111)
     UCI_OPTION(StatMalusMax, 1663)
 
-    UCI_OPTION(SEEValuePawn, 105)
-    UCI_OPTION(SEEValueHorsie, 900)
-    UCI_OPTION(SEEValueBishop, 1054)
-    UCI_OPTION(SEEValueRook, 1332);
-    UCI_OPTION(SEEValueQueen, 2300);
+    UCI_OPTION(SEEValuePawn, 253)
+    UCI_OPTION(SEEValueHorsie, 818)
+    UCI_OPTION(SEEValueBishop, 917)
+    UCI_OPTION(SEEValueRook, 1182);
+    UCI_OPTION(SEEValueQueen, 1532);
 
-    UCI_OPTION(ValuePawn, 171)
-    UCI_OPTION(ValueHorsie, 794)
-    UCI_OPTION(ValueBishop, 943)
-    UCI_OPTION(ValueRook, 1620)
-    UCI_OPTION(ValueQueen, 2994)
+    UCI_OPTION(ValuePawn, 253)
+    UCI_OPTION(ValueHorsie, 818)
+    UCI_OPTION(ValueBishop, 917)
+    UCI_OPTION(ValueRook, 1182)
+    UCI_OPTION(ValueQueen, 1532)
 
 }
 
