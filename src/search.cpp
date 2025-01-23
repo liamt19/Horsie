@@ -1034,30 +1034,27 @@ namespace Horsie {
     i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
         rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
-        const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
-        const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
-        const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
+        const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384];
+        const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384];
+        const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384];
+        const auto corr = (pawn * 50 + nonPawnW * 50 + nonPawnB * 50) / 512;
 
         return static_cast<i16>(rawEval + corr);
     }
 
 
+    static void AddToCorrHist(i16& corr, i32 bonus) {
+        corr = static_cast<i16>(corr + bonus - corr * std::abs(bonus) / 1024);
+    }
+
+
     void SearchThread::UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth) {
 
-        const auto scaledWeight = std::min((depth * depth) + 1, 128);
+        const auto scaledBonus = std::clamp((diff * depth) / 8, -256, 256);
 
-        auto& pawnCh = History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384];
-        const auto pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        pawnCh = std::clamp(pawnBonus, -CorrectionMax, CorrectionMax);
-
-        auto& nonPawnChW = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::WHITE) % 16384];
-        const auto nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        nonPawnChW = std::clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
-
-        auto& nonPawnChB = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384];
-        const auto nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
+        AddToCorrHist(History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384], scaledBonus);
+        AddToCorrHist(History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::WHITE) % 16384], scaledBonus);
+        AddToCorrHist(History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384], scaledBonus);
     }
 
 
