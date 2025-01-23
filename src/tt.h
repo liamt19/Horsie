@@ -104,10 +104,8 @@ namespace Horsie {
             Age += TT_AGE_INC;
         }
 
-        void Clear() const {
-            std::memset(Clusters, 0, sizeof(TTCluster) * ClusterCount);
-        }
-
+        void Clear();
+        
         TTCluster* GetCluster(u64 hash) const
         {
             return Clusters + static_cast<u64>((static_cast<uint128_t>(hash) * static_cast<uint128_t>(ClusterCount)) >> 64);
