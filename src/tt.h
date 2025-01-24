@@ -3,8 +3,8 @@
 #ifndef TT_H
 #define TT_H
 
-#include "types.h"
 #include "move.h"
+#include "types.h"
 
 #include <cstring>
 

@@ -14,6 +14,14 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 
 */
 
+#include "history.h"
+#include "move.h"
+#include "position.h"
+#include "search.h"
+#include "search_options.h"
+#include "tt.h"
+#include "util/alloc.h"
+
 #include <algorithm>
 #include <array>
 #include <barrier>
@@ -23,14 +31,6 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include <mutex>
 #include <thread>
 #include <vector>
-
-#include "tt.h"
-#include "move.h"
-#include "history.h"
-#include "search.h"
-#include "position.h"
-#include "util/alloc.h"
-#include "search_options.h"
 
 using namespace Horsie::Util::ThingsIStoleFromStormphrax;
 using namespace Horsie::Search;

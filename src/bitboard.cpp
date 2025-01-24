@@ -1,8 +1,8 @@
 
 #include "bitboard.h"
 
-#include "types.h"
 #include "precomputed.h"
+#include "types.h"
 
 #include <cstring>
 

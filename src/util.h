@@ -3,17 +3,16 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include "enums.h"
+#include "search_options.h"
+#include "types.h"
+
 #include <cstdint>
-#include <string>
 #include <sstream>
+#include <string>
 
 #include <iomanip>
 #include <locale>
-
-#include "types.h"
-#include "enums.h"
-#include "search_options.h"
-
 
 namespace Horsie {
 

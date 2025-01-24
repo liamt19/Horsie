@@ -4,6 +4,7 @@
 #define NDARRAY_H
 
 #include "../types.h"
+
 #include <array>
 
 namespace Horsie::Util

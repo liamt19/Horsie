@@ -3,9 +3,9 @@
 #ifndef ZOBRIST_H
 #define ZOBRIST_H
 
+#include "bitboard.h"
 #include "position.h"
 #include "types.h"
-#include "bitboard.h"
 #include <random>
 
 

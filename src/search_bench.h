@@ -3,15 +3,15 @@
 #ifndef SEARCH_BENCH_H
 #define SEARCH_BENCH_H
 
-#include <chrono>
-#include <sstream>
-#include <iostream>
-
-#include "threadpool.h"
 #include "position.h"
-#include "util.h"
 #include "search.h"
+#include "threadpool.h"
+#include "util.h"
 #include "util/dbg_hit.h"
+
+#include <chrono>
+#include <iostream>
+#include <sstream>
 
 using namespace Horsie::Search;
 

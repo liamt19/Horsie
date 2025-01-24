@@ -3,13 +3,13 @@
 #ifndef MOVE_H
 #define MOVE_H
 
+#include "bitboard.h"
 #include "types.h"
 #include "util.h"
-#include "bitboard.h"
 
-#include <string>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 constexpr i32 FlagEnPassant    = 0b0001 << 12;
 constexpr i32 FlagCastle	   = 0b0010 << 12;

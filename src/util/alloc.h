@@ -5,7 +5,6 @@
 
 #include "../types.h"
 
-
 namespace Horsie
 {
     template <typename T>

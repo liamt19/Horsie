@@ -3,9 +3,9 @@
 #ifndef MOVEGEN_H
 #define MOVEGEN_H
 
+#include "move.h"
 #include "position.h"
 #include "types.h"
-#include "move.h"
 
 namespace Horsie {
 

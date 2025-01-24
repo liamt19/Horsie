@@ -3,10 +3,11 @@
 #ifndef CUCKOO_H
 #define CUCKOO_H
 
+#include "move.h"
+#include "types.h"
+
 #include <array>
 
-#include "types.h"
-#include "move.h"
 using Horsie::Move;
 
 namespace Horsie::Cuckoo {

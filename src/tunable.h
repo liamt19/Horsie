@@ -5,11 +5,11 @@
 
 #include "defs.h"
 
-#include <string>
-#include <cmath>
-#include <vector>
 #include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <string>
+#include <vector>
 
 struct TunableOption {
     std::string Name;

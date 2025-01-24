@@ -3,14 +3,13 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <bit> 
-#include <stdint.h>
-#include <cassert>
-#include <stdlib.h>
-
 #include "util.h"
 #include "enums.h"
 
+#include <bit>
+#include <cassert>
+#include <stdint.h>
+#include <stdlib.h>
 
 #if defined(_WIN64) && defined(_MSC_VER)  // No Makefile used
 #include <intrin.h>                   // Microsoft header for _BitScanForward64()
@@ -60,9 +59,9 @@ namespace Horsie {
         inline T& operator--(T& d) { return d = T(i32(d) - 1); }
 
     ENABLE_INCR_OPERATORS_ON(Piece)
-        ENABLE_INCR_OPERATORS_ON(Square)
-        ENABLE_INCR_OPERATORS_ON(File)
-        ENABLE_INCR_OPERATORS_ON(Rank)
+    ENABLE_INCR_OPERATORS_ON(Square)
+    ENABLE_INCR_OPERATORS_ON(File)
+    ENABLE_INCR_OPERATORS_ON(Rank)
 
 #undef ENABLE_INCR_OPERATORS_ON
 

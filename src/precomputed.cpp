@@ -1,9 +1,9 @@
 
 #include "precomputed.h"
 
+#include "enums.h"
 #include "misc.h"
 #include "util.h"
-#include "enums.h"
 
 #include <cmath>
 

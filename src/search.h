@@ -3,17 +3,16 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
-#include <array>
-#include <vector>
-#include <chrono>
-#include <algorithm>
-#include <functional>
-
-#include "move.h"
 #include "history.h"
+#include "move.h"
+#include "search_options.h"
 #include "util/alloc.h"
 
-#include "search_options.h"
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <functional>
+#include <vector>
 
 namespace Horsie {
 

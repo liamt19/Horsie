@@ -1,19 +1,19 @@
 
 #include "search.h"
 
-#include "position.h"
-#include "nnue/nn.h"
-#include "tt.h"
 #include "movegen.h"
+#include "nnue/nn.h"
+#include "position.h"
 #include "precomputed.h"
 #include "search_options.h"
 #include "threadpool.h"
+#include "tt.h"
 #include "util/dbg_hit.h"
 
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <string>
-#include <fstream>
 
 using namespace Horsie::Search;
 

@@ -3,10 +3,10 @@
 #ifndef HISTORY_H
 #define HISTORY_H
 
+#include "util/NDArray.h"
+
 #include <algorithm>
 #include <cstring>
-
-#include "util/NDArray.h"
 
 namespace Horsie {
 
