@@ -1,9 +1,12 @@
 
 #include "bitboard.h"
 
+#include "defs.h"
+#include "enums.h"
 #include "precomputed.h"
 #include "types.h"
 
+#include <cassert>
 #include <cstring>
 
 namespace Horsie {

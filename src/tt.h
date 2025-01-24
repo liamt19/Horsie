@@ -3,8 +3,8 @@
 #ifndef TT_H
 #define TT_H
 
+#include "defs.h"
 #include "move.h"
-#include "types.h"
 
 #include <cstring>
 
@@ -14,6 +14,7 @@ using uint128_t = std::_Unsigned128;
 #else
 using uint128_t = unsigned __int128;
 #endif
+
 
 constexpr i32 TT_BOUND_MASK = 0x3;
 constexpr i32 TT_PV_MASK = 0x4;
@@ -82,7 +83,6 @@ namespace Horsie {
     };
 
     static_assert(sizeof(TTCluster) == 32, "Unexpected Cluster size");
-
 
 
     class TranspositionTable {

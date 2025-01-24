@@ -3,33 +3,25 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include "util.h"
+#include "defs.h"
 #include "enums.h"
 
 #include <bit>
-#include <cassert>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cmath>
+#include <string>
+#include <utility>
 
-#if defined(_WIN64) && defined(_MSC_VER)  // No Makefile used
-#include <intrin.h>                   // Microsoft header for _BitScanForward64()
-#define IS_64BIT
-#endif
-
-#if defined(USE_POPCNT) && defined(_MSC_VER)
-#include <nmmintrin.h>  // Microsoft header for _mm_popcnt_u64()
-#endif
-
-#if !defined(NO_PREFETCH) && defined(_MSC_VER)
-#include <xmmintrin.h>  // Microsoft header for _mm_prefetch()
+#if defined(_MSC_VER)
+#include <xmmintrin.h>
 #endif
 
 #if defined(USE_PEXT)
-#include <immintrin.h>  // Header for _pext_u64() intrinsic
+#include <immintrin.h>
 #define pext(b, m) _pext_u64(b, m)
 #else
 #define pext(b, m) 0
 #endif
+
 
 namespace Horsie {
 
@@ -95,41 +87,18 @@ namespace {
 #endif
     }
 
-
     constexpr inline i32 popcount(u64 b) {
         return std::popcount(b);
     }
 
-
-    inline i32 lsb(u64 b) {
-        assert(b);
-
-#if defined(__GNUC__)
-        return i32(__builtin_ctzll(b));
-#else
-        unsigned long idx;
-        _BitScanForward64(&idx, b);
-        return static_cast<i32>(idx);
-#endif
+    constexpr inline i32 lsb(u64 b) {
+        return std::countr_zero(b);
     }
 
-    inline i32 msb(u64 b) {
-        assert(b);
-
-#if defined(__GNUC__)
-        return i32(63 ^ __builtin_clzll(b));
-#else
-        unsigned long idx;
-        _BitScanReverse64(&idx, b);
-        return static_cast<i32>(idx);
-#endif
-    }
-
-    inline i32 poplsb(u64& b) {
-        assert(b);
-        i32 s = lsb(b);
+    constexpr inline i32 poplsb(u64& b) {
+        const auto s = lsb(b);
         b &= b - 1;
-        return static_cast<i32>(s);
+        return s;
     }
 }
 

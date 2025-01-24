@@ -3,17 +3,13 @@
 #ifndef POSITION_H
 #define POSITION_H
 
-#include <stdlib.h>
-
-#include "types.h"
+#include "bitboard.h"
+#include "defs.h"
+#include "enums.h"
 #include "move.h"
 #include "nnue/accumulator.h"
-#include "bitboard.h"
-#include "search.h"
-#include "zobrist.h"
-
-#include "nnue/nn.h"
 #include "nnue/arch.h"
+#include "types.h"
 
 constexpr i32 StateStackSize = 1024;
 

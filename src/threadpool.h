@@ -14,19 +14,16 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 
 */
 
+#include "defs.h"
 #include "history.h"
 #include "move.h"
 #include "position.h"
 #include "search.h"
 #include "search_options.h"
 #include "tt.h"
-#include "util/alloc.h"
+#include "util/NDArray.h"
 
-#include <algorithm>
-#include <array>
-#include <barrier>
 #include <chrono>
-#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <thread>

@@ -3,7 +3,7 @@
 #ifndef ACCUMULATOR_H
 #define ACCUMULATOR_H
 
-#include "../types.h"
+#include "../defs.h"
 #include "arch.h"
 #include "network_update.h"
 

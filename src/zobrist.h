@@ -3,11 +3,9 @@
 #ifndef ZOBRIST_H
 #define ZOBRIST_H
 
-#include "bitboard.h"
+#include "defs.h"
+#include "enums.h"
 #include "position.h"
-#include "types.h"
-#include <random>
-
 
 namespace Zobrist {
 

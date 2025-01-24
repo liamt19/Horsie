@@ -1,22 +1,18 @@
 
+#include "cuckoo.h"
+#include "movegen.h"
+#include "nnue/nn.h"
+#include "position.h"
+#include "precomputed.h"
+#include "search_bench.h"
+#include "threadpool.h"
+#include "tt.h"
+#include "zobrist.h"
+
 #include <chrono>
-#include <sstream>
 #include <iostream>
-#include <filesystem>
 #include <list>
 #include <thread>
-#include <barrier>
-
-#include "threadpool.h"
-#include "zobrist.h"
-#include "precomputed.h"
-#include "cuckoo.h"
-#include "position.h"
-#include "movegen.h"
-#include "tt.h"
-#include "nnue/nn.h"
-#include "search_bench.h"
-
 
 using namespace Horsie;
 using namespace Horsie::Search;
@@ -49,7 +45,6 @@ void HandleTuneCommand();
 
 bool inUCI = false;
 std::unique_ptr<SearchThreadPool> SearchPool;
-std::barrier is_sync_barrier(2);
 ThreadSetup setup;
 
 #if defined(_MSC_VER) && !defined(EVALFILE)

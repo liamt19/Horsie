@@ -3,7 +3,6 @@
 #ifndef ARCH_H
 #define ARCH_H
 
-#include <immintrin.h>
 #include "../defs.h"
 #include "simd.h"
 

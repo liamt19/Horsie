@@ -32,7 +32,6 @@ class PRNG {
 public:
     PRNG(uint64_t seed) :
         s(seed) {
-        assert(seed);
     }
 
     template<typename T>

@@ -3,6 +3,7 @@
 #ifndef ALLOC_H
 #define ALLOC_H
 
+#include "../defs.h"
 #include "../types.h"
 
 namespace Horsie

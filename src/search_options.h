@@ -3,6 +3,7 @@
 #ifndef SEARCH_OPTIONS_H
 #define SEARCH_OPTIONS_H
 
+#include "defs.h"
 #include "tunable.h"
 
 namespace Horsie {

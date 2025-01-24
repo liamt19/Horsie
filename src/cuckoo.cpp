@@ -1,10 +1,16 @@
 
 #include "cuckoo.h"
 
-#include "zobrist.h"
+#include "defs.h"
+#include "enums.h"
+#include "move.h"
 #include "precomputed.h"
+#include "types.h"
+#include "zobrist.h"
 
-#include <algorithm>
+#include <array>
+#include <cassert>
+#include <utility>
 
 using namespace Horsie;
 

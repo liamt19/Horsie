@@ -1,7 +1,16 @@
 
 #include "threadpool.h"
 
+#include "move.h"
 #include "movegen.h"
+#include "types.h"
+#include "util.h"
+
+#include "defs.h"
+#include <chrono>
+#include <iostream>
+#include <mutex>
+#include <thread>
 
 /*
 
@@ -120,7 +129,6 @@ namespace Horsie {
     }
 
     Thread::~Thread() {
-        assert(!searching);
         Quit = true;
         WakeUp();
         _SysThread.join();

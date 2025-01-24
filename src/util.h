@@ -3,27 +3,21 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include "defs.h"
 #include "enums.h"
 #include "search_options.h"
-#include "types.h"
 
-#include <cstdint>
-#include <sstream>
+#include <cctype>
 #include <string>
 
-#include <iomanip>
-#include <locale>
 
 namespace Horsie {
 
     constexpr i32 NormalListCapacity = 128;
-    constexpr const i32 MoveListSize = 256;
+    constexpr i32 MoveListSize = 256;
 
-    constexpr const i32 MaxDepth = 64;
-    constexpr const i32 MaxPly = 256;
-
-    constexpr std::string_view PieceToChar("pnbrqk ");
-
+    constexpr i32 MaxDepth = 64;
+    constexpr i32 MaxPly = 256;
 
     constexpr i16 ScoreNone = 32760;
     constexpr i32 ScoreInfinite = 31200;
@@ -39,6 +33,7 @@ namespace Horsie {
     constexpr i32 AlphaStart = -ScoreMate;
     constexpr i32 BetaStart = ScoreMate;
 
+    constexpr std::string_view PieceToChar("pnbrqk ");
 
 
     inline i32 FenToPiece(char fenChar) {
@@ -149,10 +144,16 @@ namespace Horsie {
 
     template<class T>
     inline std::string FormatWithCommas(T value) {
-        std::stringstream ss;
-        ss.imbue(std::locale(""));
-        ss << std::fixed << value;
-        return ss.str();
+        std::string str = std::to_string(value);
+        auto n = static_cast<i32>(str.length()) - 3;
+        auto end = value >= T{} ? 0 : 1;
+
+        while (n > end) {
+            str.insert(n, ",");
+            n -= 3;
+        }
+
+        return str;
     }
 
 

@@ -17,7 +17,7 @@ https://github.com/liamt19/Lizard/blob/d77783b19dcbae0f267d8b30c38258251014780b/
 
 namespace Horsie {
 
-    uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+    u8 SquareDistance[SQUARE_NB][SQUARE_NB];
 
     u64 BetweenBB[SQUARE_NB][SQUARE_NB];
     u64 LineBB[SQUARE_NB][SQUARE_NB];

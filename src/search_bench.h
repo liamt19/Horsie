@@ -3,6 +3,7 @@
 #ifndef SEARCH_BENCH_H
 #define SEARCH_BENCH_H
 
+#include "defs.h"
 #include "position.h"
 #include "search.h"
 #include "threadpool.h"
@@ -11,10 +12,8 @@
 
 #include <chrono>
 #include <iostream>
-#include <sstream>
 
 using namespace Horsie::Search;
-
 
 namespace Horsie {
 

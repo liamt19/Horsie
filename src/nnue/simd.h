@@ -3,9 +3,8 @@
 #ifndef SIMD_H
 #define SIMD_H
 
-#include <immintrin.h>
 #include "../defs.h"
-
+#include <immintrin.h>
 
 #if defined(AVX512)
 

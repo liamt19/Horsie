@@ -3,8 +3,8 @@
 #ifndef CUCKOO_H
 #define CUCKOO_H
 
+#include "defs.h"
 #include "move.h"
-#include "types.h"
 
 #include <array>
 

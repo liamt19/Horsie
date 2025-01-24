@@ -1,25 +1,20 @@
 
 #include "position.h"
 
-#include "types.h"
-#include "move.h"
-#include "nnue/accumulator.h"
-#include "precomputed.h"
-#include "movegen.h"
-#include "zobrist.h"
 #include "cuckoo.h"
-#include "search.h"
+#include "movegen.h"
 #include "nnue/nn.h"
+#include "precomputed.h"
+#include "util.h"
 #include "util/alloc.h"
+#include "zobrist.h"
 
+#include <cassert>
 #include <cctype>
-#include <algorithm>
-#include <string_view>
-#include <string>
-#include <sstream>
 #include <cstring>
-#include <stdlib.h>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 
 using namespace Horsie::Cuckoo;
@@ -761,7 +756,6 @@ namespace Horsie {
                     continue;
                 }
                 else {
-                    assert((bb.Occupancy & SquareBB(index)) == 0);
                     i++;
                 }
 

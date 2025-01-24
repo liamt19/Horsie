@@ -9,12 +9,13 @@
 #define NO_PERM 1
 #undef NO_PERM
 
-#include "../position.h"
+#include "../defs.h"
 #include "../nnue/arch.h"
+#include "../position.h"
+#include "accumulator.h"
 
 #include <array>
 #include <span>
-#include <immintrin.h>
 
 template<typename T>
 using Span = std::span<T>;

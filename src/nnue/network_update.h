@@ -3,6 +3,8 @@
 #ifndef NETWORK_UPDATE_H
 #define NETWORK_UPDATE_H
 
+#include "../defs.h"
+
 namespace Horsie {
 
     struct PerspectiveUpdate {

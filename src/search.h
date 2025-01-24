@@ -3,15 +3,13 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
+#include "defs.h"
 #include "history.h"
 #include "move.h"
-#include "search_options.h"
+#include "util.h"
 #include "util/alloc.h"
 
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <functional>
+#include <cstdint>
 #include <vector>
 
 namespace Horsie {
@@ -61,16 +59,6 @@ namespace Horsie {
 
                 return softLimit;
             }
-
-            void PrintLimits() const {
-				std::cout << "MaxDepth:      " << MaxDepth << std::endl;
-				std::cout << "MaxNodes:      " << MaxNodes << std::endl;
-				std::cout << "MaxSearchTime: " << MaxSearchTime << std::endl;
-				std::cout << "Increment:     " << Increment << std::endl;
-				std::cout << "MovesToGo:     " << MovesToGo << std::endl;
-				std::cout << "MoveTime:      " << MoveTime << std::endl;
-				std::cout << "PlayerTime:    " << PlayerTime << std::endl;
-			}
         };
 
         struct SearchStackEntry {

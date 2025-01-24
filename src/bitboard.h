@@ -3,7 +3,10 @@
 #ifndef BITBOARD_H
 #define BITBOARD_H
 
+#include "defs.h"
+#include "enums.h"
 #include "nnue/accumulator.h"
+#include "types.h"
 
 namespace Horsie {
 

@@ -1,13 +1,12 @@
 
 #include "movegen.h"
 
+#include "bitboard.h"
 #include "enums.h"
-#include "types.h"
 #include "position.h"
 #include "precomputed.h"
-#include "search.h"
+#include "types.h"
 
-#include <iostream>
 
 namespace Horsie {
 

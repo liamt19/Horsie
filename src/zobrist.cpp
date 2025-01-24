@@ -1,8 +1,14 @@
 
 #include "zobrist.h"
 
+#include "bitboard.h"
+#include "types.h"
+
 #define LIZARD_HASHES 1
-//#undef LIZARD_HASHES
+
+#if !defined(LIZARD_HASHES)
+#include <random>
+#endif
 
 namespace Zobrist {
 
@@ -27,7 +33,7 @@ namespace Zobrist {
         BlackHash = LizardBH;
 #else
         std::mt19937_64 rng(DefaultSeed);
-        std::uniform_int_distribution<uint64_t> dis;
+        std::uniform_int_distribution<u64> dis;
 
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)

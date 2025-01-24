@@ -1,19 +1,18 @@
 
 #include "../nnue/nn.h"
 
-#include "../nnue/simd.h"
-#include "../3rdparty/incbin/incbin.h"
 #include "../3rdparty/zstd/zstd.h"
+#include "../nnue/simd.h"
 
-#include <immintrin.h>
-#include <fstream>
 #include <cstring>
-
+#include <memory>
 
 #if !defined(_MSC_VER)
+#include "../3rdparty/incbin/incbin.h"
 #include <sstream>
 INCBIN(EVAL, EVALFILE);
 #else
+#include <fstream>
 const unsigned char gEVALData[1] = {};
 const unsigned char* const gEVALEnd = &gEVALData[1];
 const unsigned int gEVALSize = 1;

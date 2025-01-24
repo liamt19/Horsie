@@ -4,6 +4,8 @@
 #define MOVE_H
 
 #include "bitboard.h"
+#include "defs.h"
+#include "enums.h"
 #include "types.h"
 #include "util.h"
 
