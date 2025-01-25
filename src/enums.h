@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef ENUMS_H
-#define ENUMS_H
-
 #include "defs.h"
 
 enum Piece : i32 {
@@ -126,6 +123,3 @@ constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) {
 }
 
 constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
-
-
-#endif // !ENUMS_H

@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef HISTORY_H
-#define HISTORY_H
-
 #include "defs.h"
 #include "util/NDArray.h"
 
@@ -80,6 +77,3 @@ namespace Horsie {
     };
 
 }
-
-
-#endif // !HISTORY_H

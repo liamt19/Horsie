@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef BITBOARD_H
-#define BITBOARD_H
-
 #include "defs.h"
 #include "enums.h"
 #include "nnue/accumulator.h"
@@ -43,6 +40,3 @@ namespace Horsie {
         Accumulator accumulator;
     };
 }
-
-
-#endif // !BITBOARD_H

@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef UTIL_H
-#define UTIL_H
-
 #include "defs.h"
 #include "enums.h"
 #include "search_options.h"
@@ -341,6 +338,3 @@ namespace Horsie {
     };
 
 }
-
-
-#endif // !UTIL_H

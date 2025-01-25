@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef MISC_H
-#define MISC_H
-
 #include "util.h"
 
 // xorshift64star Pseudo-Random Number Generator
@@ -46,6 +43,3 @@ public:
         return T(rand64() & rand64() & rand64());
     }
 };
-
-
-#endif // !MISC_H

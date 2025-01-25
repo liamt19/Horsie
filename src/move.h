@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef MOVE_H
-#define MOVE_H
-
 #include "bitboard.h"
 #include "defs.h"
 #include "enums.h"
@@ -164,6 +161,3 @@ namespace Horsie {
     };
 
 }
-
-
-#endif // !MOVE_H

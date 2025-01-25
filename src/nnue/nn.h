@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef NN_H
-#define NN_H
-
 #define PERM_COUNT 1
 #undef PERM_COUNT
 
@@ -209,6 +206,3 @@ namespace Horsie
     }
 
 }
-
-
-#endif // !NN_H

@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef TYPES_H
-#define TYPES_H
-
 #include "defs.h"
 #include "enums.h"
 
@@ -250,6 +247,3 @@ namespace Horsie {
 
     constexpr static i32 StateCopySize = sizeof(StateInfo) - sizeof(u64);
 }
-
-
-#endif // !TYPES_H

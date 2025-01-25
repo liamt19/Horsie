@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef NETWORK_UPDATE_H
-#define NETWORK_UPDATE_H
-
 #include "../defs.h"
 
 namespace Horsie {
@@ -47,6 +44,3 @@ namespace Horsie {
     };
 
 }
-
-
-#endif // !NETWORK_UPDATE_H

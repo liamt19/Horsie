@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef PRECOMPUTED_H
-#define PRECOMPUTED_H
-
 #include "defs.h"
 #include "enums.h"
 #include "types.h"
@@ -133,6 +130,3 @@ namespace Horsie {
         }
     }
 }
-
-
-#endif // !PRECOMPUTED_H

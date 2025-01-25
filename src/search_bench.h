@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef SEARCH_BENCH_H
-#define SEARCH_BENCH_H
-
 #include "defs.h"
 #include "position.h"
 #include "search.h"
@@ -75,6 +72,3 @@ namespace Horsie {
     }
 
 }
-
-
-#endif // !SEARCH_BENCH_H

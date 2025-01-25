@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef ACCUMULATOR_H
-#define ACCUMULATOR_H
-
 #include "../defs.h"
 #include "arch.h"
 #include "network_update.h"
@@ -34,6 +31,3 @@ namespace Horsie {
     };
 
 }
-
-
-#endif // !ACCUMULATOR_H

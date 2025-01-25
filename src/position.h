@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef POSITION_H
-#define POSITION_H
-
 #include "bitboard.h"
 #include "defs.h"
 #include "enums.h"
@@ -118,6 +115,3 @@ namespace Horsie {
     std::ostream& operator<<(std::ostream& os, const Position& pos);
 
 }
-
-
-#endif // !POSITION_H

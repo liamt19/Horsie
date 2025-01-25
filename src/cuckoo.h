@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef CUCKOO_H
-#define CUCKOO_H
-
 #include "defs.h"
 #include "move.h"
 
@@ -20,6 +17,3 @@ namespace Horsie::Cuckoo {
 
     void init();
 }
-
-
-#endif // !CUCKOO_H

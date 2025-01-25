@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef ZOBRIST_H
-#define ZOBRIST_H
-
 #include "defs.h"
 #include "enums.h"
 #include "position.h"
@@ -133,6 +130,3 @@ namespace Zobrist {
 
     constexpr u64 LizardBH = 0x5B20DB1EDD23011F;
 }
-
-
-#endif // !ZOBRIST_H

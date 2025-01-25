@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef TT_H
-#define TT_H
-
 #include "defs.h"
 #include "move.h"
 
@@ -108,6 +105,3 @@ namespace Horsie {
     };
 
 }
-
-
-#endif // !TT_H

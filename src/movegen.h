@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef MOVEGEN_H
-#define MOVEGEN_H
-
 #include "defs.h"
 #include "move.h"
 
@@ -22,6 +19,3 @@ namespace Horsie {
     i32 Generate(const Position& pos, ScoredMove* moveList, i32 size);
     i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size);
 }
-
-
-#endif // !MOVEGEN_H

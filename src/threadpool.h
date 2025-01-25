@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef THREADPOOL_H
-#define THREADPOOL_H
-
 /*
 
 Copied from https://github.com/liamt19/Lizard/blob/main/Logic/Threads/SearchThreadPool.cs:
@@ -175,6 +172,3 @@ namespace Horsie {
     };
 
 }
-
-
-#endif // !THREADPOOL_H

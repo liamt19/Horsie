@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef SEARCH_H
-#define SEARCH_H
-
 #include "defs.h"
 #include "history.h"
 #include "move.h"
@@ -134,5 +131,3 @@ namespace Horsie {
     }
 
 }
-
-#endif // !SEARCH_H
