@@ -204,5 +204,4 @@ namespace Horsie
         extern u64 ActivationCount;
         extern u64 EvalCalls;
     }
-
 }

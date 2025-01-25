@@ -94,20 +94,13 @@ namespace Horsie {
     template<>
     inline i32 distance<i32>(i32 x, i32 y) { return SquareDistance[(i32)x][(i32)y]; }
 
-
     inline i32 edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 
-    // Returns the pseudo attacks of the given piece type
-    // assuming an empty board.
     template<Piece Pt>
     inline u64 attacks_bb(i32 s) {
         return PseudoAttacks[Pt][(i32)s];
     }
 
-
-    // Returns the attacks by the given piece
-    // assuming the board is occupied according to the passed Bitboard.
-    // Sliding piece attacks do not continue passed an occupied square.
     template<Piece Pt>
     inline u64 attacks_bb(i32 s, u64 occupied) {
         switch (Pt) {
@@ -118,9 +111,6 @@ namespace Horsie {
         }
     }
 
-    // Returns the attacks by the given piece
-    // assuming the board is occupied according to the passed Bitboard.
-    // Sliding piece attacks do not continue passed an occupied square.
     inline u64 attacks_bb(i32 pt, i32 s, u64 occupied) {
         switch (pt) {
         case BISHOP: return attacks_bb<BISHOP>(s, occupied);

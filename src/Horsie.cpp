@@ -42,16 +42,9 @@ void HandleNewGameCommand(Position& pos);
 void ScuffedChatGPTPrintActivations();
 void HandleTuneCommand();
 
-
 bool inUCI = false;
 std::unique_ptr<SearchThreadPool> SearchPool;
 ThreadSetup setup;
-
-#if defined(_MSC_VER) && !defined(EVALFILE)
-
-#define EVALFILE "meow.bin"
-
-#endif
 
 i32 main(i32 argc, char* argv[]) {
 #ifdef EVALFILE
@@ -168,7 +161,6 @@ i32 main(i32 argc, char* argv[]) {
     return 0;
 }
 
-
 void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
     std::string token, fen;
 
@@ -207,9 +199,7 @@ void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
             setup.SetupMoves.push_back(m);
         }
     }
-
 }
-
 
 void HandleSetOptionCommand(std::istringstream& is) {
     std::string rawName{}, value{};
@@ -244,7 +234,6 @@ void HandleSetOptionCommand(std::istringstream& is) {
     }
 }
 
-
 void HandleMoveCommand(Position& pos, std::istringstream& is) {
     std::string moveStr;
     if (is && is.peek() != EOF)
@@ -255,7 +244,6 @@ void HandleMoveCommand(Position& pos, std::istringstream& is) {
         pos.MakeMove<true>(m);
     }
 }
-
 
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
     SearchLimits limits = SearchLimits();
@@ -289,7 +277,6 @@ SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
     return limits;
 }
 
-
 void HandleGoCommand(Position& pos, std::istringstream& is) {
     auto thread = SearchPool->MainThread();
     if (!inUCI) {
@@ -303,7 +290,6 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
 
     SearchPool->StartSearch(pos, limits);
 }
-
 
 void HandleEvalCommand(Position& pos) {
     cout << "Evaluation: " << NNUE::GetEvaluation(pos) << endl << endl;
@@ -328,11 +314,9 @@ void HandleEvalCommand(Position& pos) {
     }
 }
 
-
 void HandleStopCommand() {
     SearchPool->SetStop();
 }
-
 
 void HandleUCICommand() {
     std::cout << "id name Horsie " << EngVersion << std::endl;
@@ -346,18 +330,15 @@ void HandleUCICommand() {
 
 }
 
-
 void HandleNewGameCommand(Position& pos) {
     pos.LoadFromFEN(InitialFEN);
     SearchPool->Clear();
     SearchPool->TTable.Clear();
 }
 
-
 void HandleDisplayPosition(Position& pos) {
     cout << pos << endl;
 }
-
 
 void HandlePerftCommand(Position& pos, std::istringstream& is) {
     i32 depth = 5;
@@ -378,7 +359,6 @@ void HandlePerftCommand(Position& pos, std::istringstream& is) {
     auto nps = (nodes / (static_cast<double>(dur) / 1000));
     cout << "\nTotal: " << nodes << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas((u64)nps) << " nps)" << endl << endl;
 }
-
 
 void HandleBenchPerftCommand(Position& pos) {
     auto timeStart = std::chrono::high_resolution_clock::now();
@@ -413,7 +393,6 @@ void HandleBenchPerftCommand(Position& pos) {
 
 }
 
-
 void HandleBenchCommand(std::istringstream& is) {
     i32 depth = 12;
     if (is && is.peek() != EOF)
@@ -421,7 +400,6 @@ void HandleBenchCommand(std::istringstream& is) {
 
     Horsie::DoBench(*SearchPool, depth);
 }
-
 
 void HandleListMovesCommand(Position& pos) {
     ScoredMove pseudos[MoveListSize] = {};
@@ -441,7 +419,6 @@ void HandleListMovesCommand(Position& pos) {
     }
     cout << endl;
 }
-
 
 void HandleThreadsCommand(std::istringstream& is) {
     i32 cnt = 1;
@@ -466,7 +443,6 @@ void HandleHashCommand(std::istringstream& is) {
         std::cout << "info string set hash to " << Horsie::Hash.CurrentValue << std::endl;
     }
 }
-
 
 #if defined(PERM_COUNT)
 #include <fstream>
@@ -513,7 +489,6 @@ void ScuffedChatGPTPrintActivations() {
     }
 #endif
 }
-
 
 void HandleTuneCommand() {
     auto& opts = GetUCIOptions();

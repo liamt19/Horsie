@@ -135,12 +135,10 @@ namespace Horsie
             }
         }
 
-
         void RefreshAccumulator(Position& pos) {
             RefreshAccumulatorPerspectiveFull(pos, WHITE);
             RefreshAccumulatorPerspectiveFull(pos, BLACK);
         }
-
 
         void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective) {
             Accumulator& accumulator = *pos.State->accumulator;
@@ -172,7 +170,6 @@ namespace Horsie
             accumulator.CopyTo(&entryAcc, perspective);
             bb.CopyTo(entryBB);
         }
-
 
         void RefreshAccumulatorPerspective(Position& pos, i32 perspective) {
             Accumulator& accumulator = *pos.State->accumulator;
@@ -219,7 +216,6 @@ namespace Horsie
             accumulator.Computed[perspective] = true;
         }
 
-
         i32 GetEvaluation(Position& pos) {
             const auto occ = popcount(pos.bb.Occupancy);
             const auto outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
@@ -244,7 +240,6 @@ namespace Horsie
 
             return static_cast<i32>(L3Output * OutputScale);
         }
-
 
         static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output) {
             const auto ft_zero = vec_setzero_epi16();
@@ -305,7 +300,6 @@ namespace Horsie
             ActivateL1Sparse(Span<i8>(ft_outputs), weights, biases, output, Span<u16>(nnzIndices), nnzCount);
         }
 
-
         static void ActivateL1Sparse(Span<i8> inputs, Span<i8> weights, Span<float> biases, Span<float> output, Span<u16> nnzIndices, const i32 nnzCount) {
             vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
 
@@ -331,7 +325,6 @@ namespace Horsie
             }
         }
 
-
         static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output) {
             vec_ps sumVecs[L3_SIZE / F32_CHUNK_SIZE];
 
@@ -354,7 +347,6 @@ namespace Horsie
             }
         }
 
-
         static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output) {
             constexpr auto SUM_COUNT = 64 / sizeof(vec_ps);
             vec_ps sumVecs[SUM_COUNT]{};
@@ -367,7 +359,6 @@ namespace Horsie
 
             output = bias + vec_hsum_ps(sumVecs);
         }
-
 
         void MakeMoveNN(Position& pos, Move m) {
             Bitboard& bb = pos.bb;
@@ -451,7 +442,6 @@ namespace Horsie
             }
         }
 
-
         void MakeNullMove(Position& pos) {
             Accumulator* currAcc = pos.State->accumulator;
             Accumulator* nextAcc = pos.NextState()->accumulator;
@@ -463,7 +453,6 @@ namespace Horsie
             nextAcc->Update[WHITE].Clear();
             nextAcc->Update[BLACK].Clear();
         }
-
 
         void ProcessUpdates(Position& pos) {
             StateInfo* st = pos.State;
@@ -499,7 +488,6 @@ namespace Horsie
             }
         }
 
-
         void UpdateSingle(Accumulator* prev, Accumulator* curr, i32 perspective) {
             auto FeatureWeights = reinterpret_cast<const i16*>(&g_network->FTWeights[0]);
             const auto& updates = curr->Update[perspective];
@@ -533,7 +521,6 @@ namespace Horsie
             curr->Computed[perspective] = true;
         }
 
-
         std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk) {
             const i32 ColorStride = 64 * 6;
             const i32 PieceStride = 64;
@@ -558,7 +545,6 @@ namespace Horsie
             return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
         }
 
-
         i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective) {
             const i32 ColorStride = 64 * 6;
             const i32 PieceStride = 64;
@@ -576,7 +562,6 @@ namespace Horsie
             return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * L1_SIZE;
         }
 
-
         void ResetCaches(Position& pos) {
             for (auto& bucket : pos.CachedBuckets) {
                 bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = g_network->FTBiases;
@@ -584,7 +569,6 @@ namespace Horsie
                 bucket.Boards[BLACK].Reset();
             }
         }
-
 
         //  See https://github.com/Ciekce/Stormphrax/pull/176 for the non-scuffed impl of this.
         void LoadZSTD(std::istream& m_stream, std::byte* dst) {
@@ -661,7 +645,6 @@ namespace Horsie
             return (headerMaybe == ZSTD_HEADER);
         }
 
-
         static void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases) {
             const i32 OneBucket = (INPUT_SIZE * L1_SIZE);
             std::vector<i16> temp(OneBucket, 0);
@@ -695,7 +678,6 @@ namespace Horsie
             }
         }
 
-
         static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]) {
             auto temp = new i8[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
             std::memcpy(temp, l1Weights, N_L1W);
@@ -713,7 +695,6 @@ namespace Horsie
 
             delete[] temp;
         }
-
 
         static void SubSubAddAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _sub2, const i16* _add1, const i16* _add2) {
             const vec_i16* src  = reinterpret_cast<const vec_i16*>(_src);
@@ -764,5 +745,4 @@ namespace Horsie
                 dst[i] = vec_sub_epi16(src[i], sub1[i]);
         }
     }
-
 }

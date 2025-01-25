@@ -70,5 +70,4 @@ namespace Horsie {
         thread->OnDepthFinish = odf;
         thread->OnSearchFinish = osf;
     }
-
 }

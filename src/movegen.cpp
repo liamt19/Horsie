@@ -130,7 +130,6 @@ namespace Horsie {
             return size;
         }
 
-
         i32 GenNormal(const Position& pos, ScoredMove* list, i32 pt, u64 targets, i32 size) {
             const Color stm = pos.ToMove;
             const Bitboard& bb = pos.bb;
@@ -216,12 +215,10 @@ namespace Horsie {
                                      GenAll<GenNonEvasions>(pos, moveList, 0);
     }
 
-
     i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size) {
         return pos.State->Checkers ? GenAll<GenEvasions>(pos, moveList, 0) :
                                      GenAll<GenNoisy>(pos, moveList, 0);
     }
-
 
     template i32 Generate<PseudoLegal>(const Position&, ScoredMove*, i32);
     template i32 Generate<GenNoisy>(const Position&, ScoredMove*, i32);
@@ -252,6 +249,5 @@ namespace Horsie {
 
         return numMoves;
     }
-
 }
 

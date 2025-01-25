@@ -928,14 +928,12 @@ namespace Horsie {
         return bestScore;
     }
 
-
     void SearchThread::UpdatePV(Move* pv, Move move, Move* childPV) const {
         for (*pv++ = move; childPV != nullptr && *childPV != Move::Null();) {
             *pv++ = *childPV++;
         }
         *pv = Move::Null();
     }
-
 
     void SearchThread::UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, 
                                    Move* quietMoves, i32 quietCount, Move* captureMoves, i32 captureCount) {
@@ -997,7 +995,6 @@ namespace Horsie {
 
     }
 
-
     i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
         rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
@@ -1008,7 +1005,6 @@ namespace Horsie {
 
         return static_cast<i16>(rawEval + corr);
     }
-
 
     void SearchThread::UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth) {
         const auto scaledWeight = std::min((depth * depth) + 1, 128);
@@ -1026,7 +1022,6 @@ namespace Horsie {
         nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
     }
 
-
     void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) const {
         const auto piece = MakePiece(pc, pt);
 
@@ -1040,7 +1035,6 @@ namespace Horsie {
             }
         }
     }
-
 
     void SearchThread::PrintSearchInfo() const {
         const RootMove& rm = RootMoves[0];
@@ -1072,7 +1066,6 @@ namespace Horsie {
         std::cout << std::endl;
     }
 
-
     Move SearchThread::OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const {
         i32 max = INT32_MIN;
         i32 maxIndex = listIndex;
@@ -1089,7 +1082,6 @@ namespace Horsie {
         return moves[listIndex].move;
     }
 
-
     void SearchThread::AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const {
         Bitboard& bb = pos.bb;
         for (i32 i = 0; i < size; i++) {
@@ -1101,7 +1093,6 @@ namespace Horsie {
             }
         }
     }
-
 
     void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
         Bitboard& bb = pos.bb;
@@ -1139,7 +1130,6 @@ namespace Horsie {
             }
         }
     }
-
 
     void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
         Bitboard& bb = pos.bb;
@@ -1195,5 +1185,4 @@ namespace Horsie {
 
         return moves;
     }
-
 }

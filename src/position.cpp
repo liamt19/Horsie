@@ -580,7 +580,6 @@ namespace Horsie {
         return State->HalfmoveClock >= 100;
     }
 
-
     void Position::RemoveCastling(CastlingStatus cr) const {
         Zobrist::Castle(State->Hash, State->CastleStatus, cr);
         State->CastleStatus &= ~cr;
@@ -635,7 +634,6 @@ namespace Horsie {
         return n;
     }
 
-
     u64 Position::SplitPerft(i32 depth) {
         ScoredMove movelist[MoveListSize];
         ScoredMove* list = &movelist[0];
@@ -655,7 +653,6 @@ namespace Horsie {
 
         return total;
     }
-
 
     void Position::LoadFromFEN(const std::string& fen) {
         bb.Reset();
@@ -800,7 +797,6 @@ namespace Horsie {
         return fen.str();
     }
 
-
     std::ostream& operator<<(std::ostream& os, const Position& pos) {
         os << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -827,7 +823,6 @@ namespace Horsie {
 
         return os;
     }
-
 
     bool Position::SEE_GE(Move move, i32 threshold) const {
         if (move.IsCastle() || move.IsEnPassant() || move.IsPromotion()) {
@@ -950,5 +945,4 @@ namespace Horsie {
 
         return false;
     }
-
 }

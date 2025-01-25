@@ -57,7 +57,6 @@ namespace Zobrist {
         }
     }
 
-
     void Move(u64& hash, i32 from, i32 to, i32 color, i32 pt) {
         hash ^= ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to];
     }
@@ -130,5 +129,4 @@ namespace Zobrist {
 
         return hash;
     }
-
 }

@@ -48,5 +48,4 @@ namespace Horsie::Cuckoo {
 
         assert(count == 3668);
     }
-
 }

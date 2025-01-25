@@ -33,7 +33,6 @@ namespace Horsie {
         Occupancy = 0;
     }
 
-
     void Bitboard::AddPiece(i32 idx, i32 pc, i32 pt) {
         PieceTypes[idx] = pt;
 
@@ -63,12 +62,10 @@ namespace Horsie {
         AddPiece(to, pieceColor, pieceType);
     }
 
-
     i32 Bitboard::KingIndex(i32 pc) const {
         assert(lsb(KingMask(pc)) != SQUARE_NB);
         return lsb(KingMask(pc));
     }
-
 
     u64 Bitboard::BlockingPieces(i32 pc, u64* pinners) const {
         u64 blockers = 0UL;
@@ -125,5 +122,4 @@ namespace Horsie {
             return 0;
         };
     }
-
 }

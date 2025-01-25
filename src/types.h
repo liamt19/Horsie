@@ -23,7 +23,7 @@
 namespace Horsie {
 
     constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    constexpr auto EngVersion = "1.0.5";
+    constexpr auto EngVersion = "1.0.6";
 
     constexpr u64 FileABB = 0x0101010101010101ULL;
     constexpr u64 FileBBB = FileABB << 1;
@@ -166,7 +166,6 @@ namespace Horsie {
     inline u64 operator^(Square s, u64 b) { return b ^ s; }
 
     inline u64 operator|(Square s1, Square s2) { return SquareBB(s1) | s2; }
-
 
     constexpr bool DirectionOK(Square sq, Direction dir) {
         if (sq + dir < Square::A1 || sq + dir > Square::H8) {

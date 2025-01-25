@@ -122,7 +122,6 @@ namespace Horsie {
         MainThread()->CheckupCount = 0;
     }
 
-
     Thread::Thread(i32 n) {
         worker = std::make_unique<SearchThread>();
         _SysThread = std::thread(&Thread::IdleLoop, this);
@@ -133,7 +132,6 @@ namespace Horsie {
         WakeUp();
         _SysThread.join();
     }
-
 
     void Thread::WakeUp() {
         _Mutex.lock();

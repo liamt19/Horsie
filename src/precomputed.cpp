@@ -105,7 +105,6 @@ namespace Horsie {
             }
         }
 
-
         for (i32 depth = 0; depth < MaxPly; depth++) {
             for (i32 moveIndex = 0; moveIndex < MoveListSize; moveIndex++) {
                 if (depth == 0 || moveIndex == 0) {
@@ -126,7 +125,6 @@ namespace Horsie {
             LMPTable[1][depth] = 3 + (depth * depth);
         }
     }
-
 
     namespace {
         u64 sliding_attack(Piece pt, Square sq, u64 occupied) {
@@ -212,6 +210,4 @@ namespace Horsie {
             }
         }
     }
-
-
 }
