@@ -1,8 +1,14 @@
 
 #include "zobrist.h"
 
+#include "bitboard.h"
+#include "types.h"
+
 #define LIZARD_HASHES 1
-//#undef LIZARD_HASHES
+
+#if !defined(LIZARD_HASHES)
+#include <random>
+#endif
 
 namespace Zobrist {
 
@@ -27,7 +33,7 @@ namespace Zobrist {
         BlackHash = LizardBH;
 #else
         std::mt19937_64 rng(DefaultSeed);
-        std::uniform_int_distribution<uint64_t> dis;
+        std::uniform_int_distribution<u64> dis;
 
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
@@ -46,8 +52,7 @@ namespace Zobrist {
 
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove) {
         u64 change = static_cast<u64>(prev & toRemove);
-        while (change != 0)
-        {
+        while (change != 0) {
             hash ^= CastlingRightsHashes[poplsb(change)];
         }
     }
@@ -76,8 +81,7 @@ namespace Zobrist {
         u64 white = bb.Colors[Color::WHITE];
         u64 black = bb.Colors[Color::BLACK];
 
-        while (white != 0)
-        {
+        while (white != 0) {
             i32 idx = poplsb(white);
             i32 pt = bb.GetPieceAtIndex(idx);
             hash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
@@ -90,8 +94,7 @@ namespace Zobrist {
             }
         }
 
-        while (black != 0)
-        {
+        while (black != 0) {
             i32 idx = poplsb(black);
             i32 pt = bb.GetPieceAtIndex(idx);
             hash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
@@ -104,30 +107,24 @@ namespace Zobrist {
             }
         }
 
-        if ((position.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None)
-        {
+        if ((position.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[0];
         }
-        if ((position.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None)
-        {
+        if ((position.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[1];
         }
-        if ((position.State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None)
-        {
+        if ((position.State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[2];
         }
-        if ((position.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None)
-        {
+        if ((position.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[3];
         }
 
-        if (position.State->EPSquare != static_cast<i32>(Square::EP_NONE))
-        {
+        if (position.State->EPSquare != static_cast<i32>(Square::EP_NONE)) {
             hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.State->EPSquare)];
         }
 
-        if (position.ToMove == Color::BLACK)
-        {
+        if (position.ToMove == Color::BLACK) {
             hash ^= BlackHash;
         }
 

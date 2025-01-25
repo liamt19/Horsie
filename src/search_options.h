@@ -1,8 +1,6 @@
 #pragma once
 
-#ifndef SEARCH_OPTIONS_H
-#define SEARCH_OPTIONS_H
-
+#include "defs.h"
 #include "tunable.h"
 
 namespace Horsie {
@@ -88,6 +86,3 @@ namespace Horsie {
     UCI_OPTION(ValueQueen, 2994)
 
 }
-
-
-#endif

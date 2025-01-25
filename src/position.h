@@ -1,26 +1,18 @@
 #pragma once
 
-#ifndef POSITION_H
-#define POSITION_H
-
-#include <stdlib.h>
-
-#include "types.h"
+#include "bitboard.h"
+#include "defs.h"
+#include "enums.h"
 #include "move.h"
 #include "nnue/accumulator.h"
-#include "bitboard.h"
-#include "search.h"
-#include "zobrist.h"
-
-#include "nnue/nn.h"
 #include "nnue/arch.h"
+#include "types.h"
 
 constexpr i32 StateStackSize = 1024;
 
 namespace Horsie {
 
-    class Position
-    {
+    class Position {
     public:
         Position(const std::string& fen = InitialFEN);
         ~Position();
@@ -52,7 +44,7 @@ namespace Horsie {
         constexpr u64 Hash() const { return State->Hash; }
         constexpr u64 PawnHash() const { return State->PawnHash; }
         constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
-        
+
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
@@ -61,7 +53,7 @@ namespace Horsie {
         constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[static_cast<i32>(cr)]); }
         constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[static_cast<i32>(cr)]) & ourOcc); }
         constexpr bool HasNonPawnMaterial(i32 pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
-        
+
         constexpr bool IsCapture(Move m) const { return bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle(); }
         constexpr bool IsNoisy(Move m) const { return IsCapture(m) || m.IsEnPassant(); }
 
@@ -96,7 +88,6 @@ namespace Horsie {
         bool IsFiftyMoveDraw() const;
 
         u64 Perft(i32 depth);
-        u64 DebugPerft(i32 depth);
         u64 SplitPerft(i32 depth);
 
         std::string GetFEN() const;
@@ -113,7 +104,7 @@ namespace Horsie {
         }
 
     private:
-        
+
         Accumulator* _accumulatorBlock;
         StateInfo* _stateBlock;
 
@@ -124,6 +115,3 @@ namespace Horsie {
     std::ostream& operator<<(std::ostream& os, const Position& pos);
 
 }
-
-
-#endif

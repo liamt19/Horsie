@@ -1,10 +1,13 @@
 
 #include "bitboard.h"
-#include "types.h"
+
+#include "defs.h"
+#include "enums.h"
 #include "precomputed.h"
+#include "types.h"
 
+#include <cassert>
 #include <cstring>
-
 
 namespace Horsie {
 
@@ -13,12 +16,11 @@ namespace Horsie {
     }
 
     void Bitboard::CopyTo(Bitboard& other) const {
-        CopyBlock(other.Pieces, Pieces, sizeof(u64) * PIECE_NB);
-        CopyBlock(other.Colors, Colors, sizeof(u64) * COLOR_NB);
+        std::memcpy(other.Pieces, Pieces, sizeof(u64) * PIECE_NB);
+        std::memcpy(other.Colors, Colors, sizeof(u64) * COLOR_NB);
     }
 
-    void Bitboard::Reset()
-    {
+    void Bitboard::Reset() {
         for (i32 i = 0; i < 6; i++)
             Pieces[i] = 0;
 
@@ -32,8 +34,7 @@ namespace Horsie {
     }
 
 
-    void Bitboard::AddPiece(i32 idx, i32 pc, i32 pt)
-    {
+    void Bitboard::AddPiece(i32 idx, i32 pc, i32 pt) {
         PieceTypes[idx] = pt;
 
         assert((Colors[pc] & SquareBB(idx)) == 0);
@@ -45,8 +46,7 @@ namespace Horsie {
         Occupancy |= SquareBB(idx);
     }
 
-    void Bitboard::RemovePiece(i32 idx, i32 pc, i32 pt)
-    {
+    void Bitboard::RemovePiece(i32 idx, i32 pc, i32 pt) {
         PieceTypes[idx] = Piece::NONE;
 
         assert((Colors[pc] & SquareBB(idx)) != 0);
@@ -58,24 +58,19 @@ namespace Horsie {
         Occupancy ^= SquareBB(idx);
     }
 
-    void Bitboard::MoveSimple(i32 from, i32 to, i32 pieceColor, i32 pieceType)
-    {
+    void Bitboard::MoveSimple(i32 from, i32 to, i32 pieceColor, i32 pieceType) {
         RemovePiece(from, pieceColor, pieceType);
         AddPiece(to, pieceColor, pieceType);
     }
 
 
-
-    i32 Bitboard::KingIndex(i32 pc) const
-    {
+    i32 Bitboard::KingIndex(i32 pc) const {
         assert(lsb(KingMask(pc)) != SQUARE_NB);
-
         return lsb(KingMask(pc));
     }
 
 
-    u64 Bitboard::BlockingPieces(i32 pc, u64* pinners) const
-    {
+    u64 Bitboard::BlockingPieces(i32 pc, u64* pinners) const {
         u64 blockers = 0UL;
         *pinners = 0;
 
@@ -87,7 +82,7 @@ namespace Horsie {
 
         //  Candidates are their pieces that are on the same rank/file/diagonal as our king.
         u64 candidates = ((RookRays[ourKing] & (Pieces[Piece::QUEEN] | Pieces[Piece::ROOK]))
-            | (BishopRays[ourKing] & (Pieces[Piece::QUEEN] | Pieces[Piece::BISHOP]))) & them;
+                          | (BishopRays[ourKing] & (Pieces[Piece::QUEEN] | Pieces[Piece::BISHOP]))) & them;
 
         const u64 occ = us | them;
 
@@ -110,8 +105,7 @@ namespace Horsie {
         return blockers;
     }
 
-    u64 Bitboard::AttackersTo(i32 idx, u64 occupied) const
-    {
+    u64 Bitboard::AttackersTo(i32 idx, u64 occupied) const {
         return (attacks_bb<BISHOP>(idx, occupied) & (Pieces[BISHOP] | Pieces[QUEEN]))
             | (attacks_bb<ROOK>(idx, occupied) & (Pieces[ROOK] | Pieces[QUEEN]))
             | (PseudoAttacks[HORSIE][idx] & Pieces[HORSIE])
@@ -119,10 +113,8 @@ namespace Horsie {
             | (PawnAttackMasks[BLACK][idx] & Colors[WHITE] & Pieces[PAWN]);
     }
 
-    u64 Bitboard::AttackMask(i32 idx, i32 pc, i32 pt, u64 occupied) const
-    {
-        switch (pt)
-        {
+    u64 Bitboard::AttackMask(i32 idx, i32 pc, i32 pt, u64 occupied) const {
+        switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];
         case HORSIE: return PseudoAttacks[HORSIE][idx];
         case BISHOP: return attacks_bb<BISHOP>(idx, occupied);

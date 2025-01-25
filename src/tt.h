@@ -1,14 +1,9 @@
 #pragma once
 
-#ifndef TT_H
-#define TT_H
-
-#include "types.h"
+#include "defs.h"
 #include "move.h"
 
 #include <cstring>
-
-
 
 #ifdef _MSC_VER
 #include <__msvc_int128.hpp>
@@ -28,14 +23,9 @@ constexpr i32 MinTTClusters = 1000;
 
 constexpr i32 EntriesPerCluster = 3;
 
-
-
-
-
 namespace Horsie {
 
-    enum class TTNodeType
-    {
+    enum class TTNodeType {
         Invalid,
         /// Upper Bound
         Beta,
@@ -44,7 +34,6 @@ namespace Horsie {
         Exact = Beta | Alpha
     };
 
-
     struct TTEntry {
         i16 _Score;     //  16 bits
         i16 _StatEval;  //  16 bits
@@ -52,7 +41,6 @@ namespace Horsie {
         u16 Key;        //  16 bits
         u8 _AgePVType;  //  5 + 2 + 1 bits
         u8 _depth;      //  8 bits
-
 
         constexpr i16 Score() const { return _Score; }
         constexpr void SetScore(i16 n) { _Score = n; }
@@ -94,7 +82,6 @@ namespace Horsie {
     static_assert(sizeof(TTCluster) == 32, "Unexpected Cluster size");
 
 
-
     class TranspositionTable {
     public:
         void Initialize(i32 mb);
@@ -108,8 +95,7 @@ namespace Horsie {
             std::memset(Clusters, 0, sizeof(TTCluster) * ClusterCount);
         }
 
-        TTCluster* GetCluster(u64 hash) const
-        {
+        TTCluster* GetCluster(u64 hash) const {
             return Clusters + static_cast<u64>((static_cast<uint128_t>(hash) * static_cast<uint128_t>(ClusterCount)) >> 64);
         }
 
@@ -119,6 +105,3 @@ namespace Horsie {
     };
 
 }
-
-#endif
-

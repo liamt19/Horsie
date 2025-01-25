@@ -1,10 +1,5 @@
 #pragma once
 
-#ifndef THREADPOOL_H
-#define THREADPOOL_H
-
-#include <condition_variable>
-
 /*
 
 Copied from https://github.com/liamt19/Lizard/blob/main/Logic/Threads/SearchThreadPool.cs:
@@ -16,24 +11,20 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 
 */
 
+#include "defs.h"
+#include "history.h"
+#include "move.h"
+#include "position.h"
+#include "search.h"
+#include "search_options.h"
+#include "tt.h"
+#include "util/NDArray.h"
 
-#include <thread>
-#include <barrier>
-
-#include <array>
-#include <vector>
 #include <chrono>
-#include <algorithm>
 #include <functional>
 #include <mutex>
-
-#include "tt.h"
-#include "move.h"
-#include "history.h"
-#include "search.h"
-#include "position.h"
-#include "util/alloc.h"
-#include "search_options.h"
+#include <thread>
+#include <vector>
 
 using namespace Horsie::Util::ThingsIStoleFromStormphrax;
 using namespace Horsie::Search;
@@ -106,7 +97,7 @@ namespace Horsie {
         void UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth);
         i16 AdjustEval(Position& pos, i32 us, i16 rawEval) const;
 
-        void AssignProbCutScores(Position& pos, ScoredMove* list, i32 size) const;
+        void AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const;
         void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
         void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
         Move OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const;
@@ -144,10 +135,10 @@ namespace Horsie {
     };
 
 
-	class SearchThreadPool {
-	public:
+    class SearchThreadPool {
+    public:
         SearchLimits SharedInfo;
-		std::vector<Thread*> Threads;
+        std::vector<Thread*> Threads;
         TranspositionTable TTable;
         std::atomic_bool StopThreads{};
 
@@ -178,8 +169,6 @@ namespace Horsie {
             }
             return sum;
         }
-	};
+    };
 
 }
-
-#endif // !THREADPOOL_H

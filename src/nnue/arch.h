@@ -1,6 +1,5 @@
 #pragma once
 
-#include <immintrin.h>
 #include "../defs.h"
 #include "simd.h"
 

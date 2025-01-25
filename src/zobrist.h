@@ -1,13 +1,8 @@
 #pragma once
 
-#ifndef ZOBRIST_H
-#define ZOBRIST_H
-
+#include "defs.h"
+#include "enums.h"
 #include "position.h"
-#include "types.h"
-#include "bitboard.h"
-#include <random>
-
 
 namespace Zobrist {
 
@@ -129,11 +124,9 @@ namespace Zobrist {
     };
 
     constexpr u64 LizardEP[8] = {
-        0xCD4C63014AF5EA6D, 0x605F3716E6BE67A, 0x1070D69EBE69E025, 0x6AC7C073E845127F, 
+        0xCD4C63014AF5EA6D, 0x605F3716E6BE67A, 0x1070D69EBE69E025, 0x6AC7C073E845127F,
         0xB6A7CAE629D5944A, 0x510D2C8F0D646A9C, 0x97F36408EEAF9DB2, 0xBA5A631DEECBE479,
     };
 
     constexpr u64 LizardBH = 0x5B20DB1EDD23011F;
 }
-
-#endif

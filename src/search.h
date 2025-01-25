@@ -1,20 +1,13 @@
 #pragma once
 
-
-#ifndef SEARCH_H
-#define SEARCH_H
-
-#include <array>
-#include <vector>
-#include <chrono>
-#include <algorithm>
-#include <functional>
-
-#include "move.h"
+#include "defs.h"
 #include "history.h"
+#include "move.h"
+#include "util.h"
 #include "util/alloc.h"
 
-#include "search_options.h"
+#include <cstdint>
+#include <vector>
 
 namespace Horsie {
 
@@ -63,16 +56,6 @@ namespace Horsie {
 
                 return softLimit;
             }
-
-            void PrintLimits() const {
-				std::cout << "MaxDepth:      " << MaxDepth << std::endl;
-				std::cout << "MaxNodes:      " << MaxNodes << std::endl;
-				std::cout << "MaxSearchTime: " << MaxSearchTime << std::endl;
-				std::cout << "Increment:     " << Increment << std::endl;
-				std::cout << "MovesToGo:     " << MovesToGo << std::endl;
-				std::cout << "MoveTime:      " << MoveTime << std::endl;
-				std::cout << "PlayerTime:    " << PlayerTime << std::endl;
-			}
         };
 
         struct SearchStackEntry {
@@ -100,8 +83,7 @@ namespace Horsie {
                 StaticEval = ScoreNone;
 
                 PVLength = 0;
-                if (PV != nullptr)
-                {
+                if (PV != nullptr) {
                     AlignedFree(PV);
                     PV = nullptr;
                 }
@@ -146,59 +128,6 @@ namespace Horsie {
             }
         };
 
-
-        static void StableSort(std::vector<RootMove>& items, i32 offset = 0, i32 end = -1) {
-            
-            std::stable_sort(items.begin() + offset, items.end());
-            return;
-            
-            if (end == -1)
-            {
-                end = (i32)items.size();
-            }
-
-            for (i32 i = offset; i < end; i++)
-            {
-                i32 best = i;
-
-                for (i32 j = i + 1; j < end; j++)
-                {
-                    //if (items[j].CompareTo(items[best]) > 0)
-                    
-                    //  https://github.com/liamt19/Lizard/blob/37a61ce5a89fb9b0bb2697762a12b18c06f0f39b/Logic/Data/RootMove.cs#L28
-                    if (items[j].Score != items[best].Score) {
-                        if (items[j].Score > items[best].Score)
-                        {
-                            best = j;
-                        }
-                    }
-                    else if (items[j].PreviousScore > items[best].PreviousScore)
-                    {
-                        best = j;
-                    }
-                }
-
-                if (best != i)
-                {
-                    //(items[i], items[best]) = (items[best], items[i]);
-                    std::swap(items[i], items[best]);
-                }
-            }
-        }
-
-
-
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-#endif

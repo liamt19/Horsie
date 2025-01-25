@@ -1,23 +1,18 @@
 
+#include "cuckoo.h"
+#include "movegen.h"
+#include "nnue/nn.h"
+#include "position.h"
+#include "precomputed.h"
+#include "search_bench.h"
+#include "threadpool.h"
+#include "tt.h"
+#include "zobrist.h"
+
 #include <chrono>
-#include <sstream>
 #include <iostream>
-#include <filesystem>
 #include <list>
 #include <thread>
-#include <barrier>
-
-#include "threadpool.h"
-#include "zobrist.h"
-#include "precomputed.h"
-#include "cuckoo.h"
-#include "position.h"
-#include "movegen.h"
-#include "tt.h"
-#include "nnue/nn.h"
-#include "search_bench.h"
-
-
 
 using namespace Horsie;
 using namespace Horsie::Search;
@@ -50,7 +45,6 @@ void HandleTuneCommand();
 
 bool inUCI = false;
 std::unique_ptr<SearchThreadPool> SearchPool;
-std::barrier is_sync_barrier(2);
 ThreadSetup setup;
 
 #if defined(_MSC_VER) && !defined(EVALFILE)
@@ -59,8 +53,7 @@ ThreadSetup setup;
 
 #endif
 
-i32 main(i32 argc, char* argv[])
-{
+i32 main(i32 argc, char* argv[]) {
 #ifdef EVALFILE
     auto net = std::string(EVALFILE);
 #else
@@ -93,8 +86,7 @@ i32 main(i32 argc, char* argv[])
 
     std::string token, cmd;
 
-    do
-    {
+    do {
         if (!getline(std::cin, cmd))  // Wait for an input or an end-of-file (EOF) indication
             cmd = "quit";
 
@@ -164,7 +156,7 @@ i32 main(i32 argc, char* argv[])
 
         else if (token == "tune")
             HandleTuneCommand();
-        
+
         else if (std::ranges::count(token, '/') == 7) {
             //  Reset the stream so the beginning part of the fen isn't consumed before we call SetPosition
             std::istringstream is(cmd);
@@ -177,7 +169,6 @@ i32 main(i32 argc, char* argv[])
 }
 
 
-
 void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
     std::string token, fen;
 
@@ -188,8 +179,7 @@ void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
         is >> token;
     }
 
-    if (token == "startpos")
-    {
+    if (token == "startpos") {
         fen = InitialFEN;
         is >> token;  // Consume the "moves" token, if any
     }
@@ -209,8 +199,7 @@ void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
     setup.StartFEN = fen;
     setup.SetupMoves.clear();
 
-    while (is >> token)
-    {
+    while (is >> token) {
         bool found = false;
         Move m = pos.TryFindMove(token, found);
         if (found) {
@@ -220,8 +209,6 @@ void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
     }
 
 }
-
-
 
 
 void HandleSetOptionCommand(std::istringstream& is) {
@@ -240,7 +227,7 @@ void HandleSetOptionCommand(std::istringstream& is) {
     if (!opt) return;
 
     i32 newVal = (value == "false") ? 0
-               : (value == "true")  ? 1
+               : (value == "true")  ? 1 
                :                      std::stoi(value);
 
     if (newVal < opt->MinValue || newVal > opt->MaxValue) return;
@@ -259,7 +246,6 @@ void HandleSetOptionCommand(std::istringstream& is) {
 
 
 void HandleMoveCommand(Position& pos, std::istringstream& is) {
-    
     std::string moveStr;
     if (is && is.peek() != EOF)
         is >> moveStr;
@@ -269,8 +255,6 @@ void HandleMoveCommand(Position& pos, std::istringstream& is) {
         pos.MakeMove<true>(m);
     }
 }
-
-
 
 
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
@@ -307,7 +291,6 @@ SearchLimits ParseGoParameters(Position& pos, std::istringstream& is) {
 
 
 void HandleGoCommand(Position& pos, std::istringstream& is) {
-
     auto thread = SearchPool->MainThread();
     if (!inUCI) {
         thread->History.Clear();
@@ -322,7 +305,6 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
 }
 
 
-
 void HandleEvalCommand(Position& pos) {
     cout << "Evaluation: " << NNUE::GetEvaluation(pos) << endl << endl;
 
@@ -330,8 +312,7 @@ void HandleEvalCommand(Position& pos) {
     i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
     std::list<ScoredMove> moves;
 
-    for (size_t i = 0; i < legalsSize; i++)
-    {
+    for (size_t i = 0; i < legalsSize; i++) {
         Move m = legals[i].move;
         pos.MakeMove(m);
         i32 eval = NNUE::GetEvaluation(pos);
@@ -348,16 +329,12 @@ void HandleEvalCommand(Position& pos) {
 }
 
 
-
-
 void HandleStopCommand() {
     SearchPool->SetStop();
 }
 
 
-
 void HandleUCICommand() {
-    
     std::cout << "id name Horsie " << EngVersion << std::endl;
     std::cout << "id author Liam McGuire" << std::endl;
     const auto& opts = GetUCIOptions();
@@ -368,7 +345,6 @@ void HandleUCICommand() {
     inUCI = true;
 
 }
-
 
 
 void HandleNewGameCommand(Position& pos) {
@@ -408,8 +384,7 @@ void HandleBenchPerftCommand(Position& pos) {
     auto timeStart = std::chrono::high_resolution_clock::now();
 
     u64 total = 0;
-    for (std::string entry : EtherealFENs_D5)
-    {
+    for (std::string entry : EtherealFENs_D5) {
         std::string fen = entry.substr(0, entry.find(";"));
         std::string nodesStr = entry.substr(entry.find(";") + 1);
 
@@ -440,7 +415,6 @@ void HandleBenchPerftCommand(Position& pos) {
 
 
 void HandleBenchCommand(std::istringstream& is) {
-
     i32 depth = 12;
     if (is && is.peek() != EOF)
         is >> depth;
@@ -462,8 +436,7 @@ void HandleListMovesCommand(Position& pos) {
     i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
 
     cout << "Legal: ";
-    for (size_t i = 0; i < legalsSize; i++)
-    {
+    for (size_t i = 0; i < legalsSize; i++) {
         cout << Move::ToString(legals[i].move) << " ";
     }
     cout << endl;
@@ -510,7 +483,7 @@ void ScuffedChatGPTPrintActivations() {
     file.close();
 
     std::cout << ActivationCount << " / " << EvalCalls << " = " << ((double)ActivationCount / EvalCalls) << std::endl;
-    
+
     std::vector<std::pair<size_t, uint64_t>> indexedCounts;
 
     // Create the index-value pairs
@@ -541,14 +514,15 @@ void ScuffedChatGPTPrintActivations() {
 #endif
 }
 
+
 void HandleTuneCommand() {
     auto& opts = GetUCIOptions();
 
     for (auto& opt : opts) {
-        if (opt.HideTune) 
+        if (opt.HideTune)
             continue;
 
-        auto step = std::max(0.01, (opt.MaxValue - opt.MinValue) / 20.0);
+        auto step = std::max(0.01, (opt.MaxValue - opt.MinValue) / 10.0);
         auto lr = std::max(0.002, 0.002 * (0.50 / step));
 
         auto dispStep = (static_cast<i32>(step * 10) / 10.0);

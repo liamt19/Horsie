@@ -1,20 +1,18 @@
 #pragma once
 
-#ifndef NN_H
-#define NN_H
-
 #define PERM_COUNT 1
 #undef PERM_COUNT
 
 #define NO_PERM 1
 #undef NO_PERM
 
-#include "../position.h"
+#include "../defs.h"
 #include "../nnue/arch.h"
+#include "../position.h"
+#include "accumulator.h"
 
 #include <array>
 #include <span>
-#include <immintrin.h>
 
 template<typename T>
 using Span = std::span<T>;
@@ -37,8 +35,7 @@ namespace Horsie
         using QuantisedNetwork = QuantisedNetworkBase<i16, i8, float>;
 
         template <typename T, typename W, typename U>
-        struct alignas(64) NetworkBase
-        {
+        struct alignas(64) NetworkBase {
             std::array<T, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS>          FTWeights;
             std::array<T, L1_SIZE>                                       FTBiases;
             std::array<std::array<W, L1_SIZE * L2_SIZE>, OUTPUT_BUCKETS> L1Weights;
@@ -188,10 +185,10 @@ namespace Horsie
             207, 690, 403, 917, 866, 939, 278, 423, 674, 497, 298, 226, 18, 865, 995, 924,
         };
 
-        constexpr auto PermuteIndices = [] 
+        constexpr auto PermuteIndices = []
         {
             std::array<i32, L1_PAIR_COUNT> arr{};
-            
+
             for (i32 i = 0; i < L1_PAIR_COUNT; ++i) {
 #if defined(NO_PERM)
                 arr[i] = i;
@@ -209,5 +206,3 @@ namespace Horsie
     }
 
 }
-
-#endif

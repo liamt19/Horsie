@@ -1,15 +1,12 @@
 #pragma once
 
-#ifndef TUNABLE_H
-#define TUNABLE_H
-
 #include "defs.h"
 
-#include <string>
-#include <cmath>
-#include <vector>
 #include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <string>
+#include <vector>
 
 struct TunableOption {
     std::string Name;
@@ -27,8 +24,8 @@ struct TunableOption {
         MinValue(min),
         MaxValue(max),
         Step(step),
-        HideTune(hideTune)
-    { }
+        HideTune(hideTune) {
+    }
 
     operator i32() const { return CurrentValue; }
 
@@ -70,7 +67,7 @@ inline std::vector<TunableOption>& GetUCIOptions() {
 }
 
 inline TunableOption* FindUCIOption(const std::string& name) {
-    auto& opts = GetUCIOptions(); 
+    auto& opts = GetUCIOptions();
     for (auto& opt : opts) {
         auto lowerName = opt.Name;
         std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](auto c) { return std::tolower(c); });
@@ -114,6 +111,3 @@ inline TunableOption& AddUCIOption(const std::string& name, i32 v) {
 //  Spin option, i.e. UCI_Chess960
 #define UCI_OPTION_SPIN(Name, Default) \
     inline TunableOption& Name = AddUCIOption(#Name, Default, false, true, 1, true);
-
-
-#endif // !TUNABLE_H

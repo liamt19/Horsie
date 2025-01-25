@@ -1,9 +1,5 @@
 #pragma once
 
-#ifndef ENUMS_H
-#define ENUMS_H
-
-#include <iostream>
 #include "defs.h"
 
 enum Piece : i32 {
@@ -18,7 +14,7 @@ enum Piece : i32 {
     PIECE_NB = 6
 };
 
-enum Color: i32{
+enum Color : i32 {
     WHITE = 0,
     BLACK,
 
@@ -71,8 +67,7 @@ enum Rank : i32 {
     RANK_NB
 };
 
-enum class CastlingStatus
-{
+enum class CastlingStatus {
     None = 0,
     WK = 1,
     WQ = 2,
@@ -100,8 +95,7 @@ enum Direction : i32 {
     NORTH_WEST = NORTH + WEST
 };
 
-enum TTNodeType
-{
+enum TTNodeType {
     Invalid,
     /// <summary>
     /// Upper Bound
@@ -118,16 +112,14 @@ enum TTNodeType
 constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
 constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
 
-constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { 
+constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) {
     l = CastlingStatus(i32(l) & i32(r));
     return l;
 }
 
-constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { 
+constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) {
     l = CastlingStatus(i32(l) | i32(r));
     return l;
 }
 
 constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
-
-#endif

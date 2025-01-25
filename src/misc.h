@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef MISC_H
-#define MISC_H
-
 #include "util.h"
 
 // xorshift64star Pseudo-Random Number Generator
@@ -25,7 +22,6 @@ class PRNG {
     uint64_t s;
 
     uint64_t rand64() {
-
         s ^= s >> 12, s ^= s << 25, s ^= s >> 27;
         return s * 2685821657736338717LL;
     }
@@ -33,7 +29,6 @@ class PRNG {
 public:
     PRNG(uint64_t seed) :
         s(seed) {
-        assert(seed);
     }
 
     template<typename T>
@@ -48,5 +43,3 @@ public:
         return T(rand64() & rand64() & rand64());
     }
 };
-
-#endif

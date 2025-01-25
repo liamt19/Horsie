@@ -1,7 +1,7 @@
 #pragma once
 
-#include <immintrin.h>
 #include "../defs.h"
+#include <immintrin.h>
 
 #if defined(AVX512)
 

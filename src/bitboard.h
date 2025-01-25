@@ -1,18 +1,13 @@
 #pragma once
 
-#ifndef BITBOARD_H
-#define BITBOARD_H
-
-#include <string>
-#include <cassert>
-
+#include "defs.h"
+#include "enums.h"
 #include "nnue/accumulator.h"
-#include "util.h"
+#include "types.h"
 
 namespace Horsie {
 
-    class Bitboard
-    {
+    class Bitboard {
     public:
         u64 Pieces[6];
         u64 Colors[2];
@@ -45,7 +40,3 @@ namespace Horsie {
         Accumulator accumulator;
     };
 }
-
-
-
-#endif // !BITBOARD_H
