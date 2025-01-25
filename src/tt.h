@@ -86,13 +86,10 @@ namespace Horsie {
     public:
         void Initialize(i32 mb);
         bool Probe(u64 hash, TTEntry*& tte) const;
+        void Clear();
 
         void TTUpdate() {
             Age += TT_AGE_INC;
-        }
-
-        void Clear() const {
-            std::memset(Clusters, 0, sizeof(TTCluster) * ClusterCount);
         }
 
         TTCluster* GetCluster(u64 hash) const {

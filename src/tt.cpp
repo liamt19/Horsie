@@ -3,6 +3,9 @@
 
 #include "util/alloc.h"
 
+#include <thread>
+#include <vector>
+
 namespace Horsie {
 
     bool TranspositionTable::Probe(u64 hash, TTEntry*& tte) const {
@@ -38,7 +41,6 @@ namespace Horsie {
         return false;
     }
 
-
     void TranspositionTable::Initialize(i32 mb) {
         if (Clusters) {
             AlignedFree(Clusters);
@@ -49,6 +51,28 @@ namespace Horsie {
         Clusters = AlignedAlloc<TTCluster>(ClusterCount);
 
         std::memset(Clusters, 0, sizeof(TTCluster) * size);
+    }
+
+    void TranspositionTable::Clear() {
+
+        const auto numThreads = Horsie::Threads.CurrentValue;
+        const u64 clustersPerThread = (ClusterCount / static_cast<u64>(numThreads));
+        std::vector<std::thread> threads{};
+
+        for (i32 i = 0; i < numThreads; ++i) {
+            threads.emplace_back([this, clustersPerThread, numThreads, i]
+            {
+                const u64 start = clustersPerThread * static_cast<u64>(i);
+                const u64 length = (i == numThreads - 1) ? ClusterCount - start : clustersPerThread;
+
+                std::memset(&Clusters[start], 0, sizeof(TTCluster) * length);
+            });
+        }
+
+        for (auto& thread : threads)
+            thread.join();
+
+        Age = 0;
     }
 
     void TTEntry::Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, u8 age, bool isPV) {
@@ -69,5 +93,4 @@ namespace Horsie {
             _AgePVType = static_cast<u8>(age | ((isPV ? 1 : 0) << 2) | static_cast<u32>(nodeType));
         }
     }
-
 }
