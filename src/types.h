@@ -235,6 +235,7 @@ namespace Horsie {
         u64 Hash = 0;
         u64 PawnHash = 0;
         u64 NonPawnHash[2];
+        u64 PieceKeys[6];
         i32 HalfmoveClock = 0;
         i32 EPSquare = EP_NONE;
         i32 CapturedPiece = Piece::NONE;

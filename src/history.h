@@ -49,6 +49,7 @@ namespace Horsie {
     using PieceToHistory = Stats<i16, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
     using CorrectionT = Util::NDArray<i16, 2, 16384>;
+    using TripletT = Util::NDArray<i16, 2, 16384, 10>;
 
     struct HistoryTable {
     public:
@@ -58,6 +59,7 @@ namespace Horsie {
         PlyHistoryT PlyHistory{};
         CorrectionT PawnCorrection{};
         CorrectionT NonPawnCorrection{};
+        TripletT TripletCorrection{};
 
         void Clear() {
             MainHistory.fill(0);
@@ -65,6 +67,7 @@ namespace Horsie {
             PlyHistory.fill(0);
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
             std::memset(&NonPawnCorrection, 0, sizeof(NonPawnCorrection));
+            std::memset(&TripletCorrection, 0, sizeof(TripletCorrection));
 
             for (size_t i = 0; i < 2; i++) {
                 for (size_t j = 0; j < 2; j++) {

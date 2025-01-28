@@ -333,6 +333,7 @@ namespace Horsie {
         State->NonPawnHash[WHITE] = State->NonPawnHash[BLACK] = 0;
         State->Hash = Zobrist::GetHash(*this, &State->PawnHash, &State->NonPawnHash[WHITE]);
         State->NonPawnHash[BLACK] = State->NonPawnHash[WHITE];
+        Zobrist::SetTripletHashes(*this);
     }
 
     void Position::SetCheckInfo() {
@@ -597,6 +598,7 @@ namespace Horsie {
 
     void Position::UpdateHash(i32 pc, i32 pt, i32 sq) const {
         Zobrist::ToggleSquare(State->Hash, pc, pt, sq);
+        Zobrist::ToggleSquare(State->PieceKeys[pt], pc, pt, sq);
 
         if (pt == PAWN)
             Zobrist::ToggleSquare(State->PawnHash, pc, pt, sq);

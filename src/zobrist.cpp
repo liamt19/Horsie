@@ -4,11 +4,9 @@
 #include "bitboard.h"
 #include "types.h"
 
-#define LIZARD_HASHES 1
-
-#if !defined(LIZARD_HASHES)
 #include <random>
-#endif
+
+#define LIZARD_HASHES 1
 
 namespace Zobrist {
 
@@ -16,8 +14,12 @@ namespace Zobrist {
     u64 CastlingRightsHashes[4];
     u64 EnPassantFileHashes[8];
     u64 BlackHash;
+    u64 PieceTypeHashes[6];
 
     void init() {
+        std::mt19937_64 rng(DefaultSeed);
+        std::uniform_int_distribution<u64> dis;
+
 #if defined(LIZARD_HASHES)
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
@@ -32,9 +34,6 @@ namespace Zobrist {
 
         BlackHash = LizardBH;
 #else
-        std::mt19937_64 rng(DefaultSeed);
-        std::uniform_int_distribution<u64> dis;
-
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
                 for (i32 k = 0; k < 64; k++)
@@ -48,6 +47,10 @@ namespace Zobrist {
 
         BlackHash = dis(rng);
 #endif
+
+        for (i32 i = 0; i < 6; i++) {
+            PieceTypeHashes[i] = dis(rng);
+        }
     }
 
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove) {
@@ -128,5 +131,21 @@ namespace Zobrist {
         }
 
         return hash;
+    }
+
+    void SetTripletHashes(Horsie::Position& position) {
+        Horsie::Bitboard& bb = position.bb;
+        
+        for (i32 pt = PAWN; pt <= KING; pt++) {
+            auto& key = position.State->PieceKeys[pt];
+            key = 0;
+
+            auto mask = bb.Pieces[pt];
+            while (mask != 0) {
+                i32 idx = poplsb(mask);
+                i32 pc = bb.GetColorAtIndex(idx);
+                key ^= ColorPieceSquareHashes[pc][pt][idx];
+            }
+        }
     }
 }

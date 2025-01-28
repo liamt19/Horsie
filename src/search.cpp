@@ -1001,25 +1001,51 @@ namespace Horsie {
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
         const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
+
+        const auto& k = pos.State->PieceKeys;
+
+        auto trip = History.TripletCorrection[us][(k[5] ^ k[0] ^ k[1]) % 16384][0] +
+                    History.TripletCorrection[us][(k[5] ^ k[0] ^ k[2]) % 16384][1] +
+                    History.TripletCorrection[us][(k[5] ^ k[0] ^ k[3]) % 16384][2] +
+                    History.TripletCorrection[us][(k[5] ^ k[0] ^ k[4]) % 16384][3] +
+                    History.TripletCorrection[us][(k[5] ^ k[1] ^ k[2]) % 16384][4] +
+                    History.TripletCorrection[us][(k[5] ^ k[1] ^ k[3]) % 16384][5] +
+                    History.TripletCorrection[us][(k[5] ^ k[1] ^ k[4]) % 16384][6] +
+                    History.TripletCorrection[us][(k[5] ^ k[2] ^ k[3]) % 16384][7] +
+                    History.TripletCorrection[us][(k[5] ^ k[2] ^ k[4]) % 16384][8] +
+                    History.TripletCorrection[us][(k[5] ^ k[3] ^ k[4]) % 16384][9];
+
+        trip /= CorrectionGrain;
+
+        const auto corr = (pawn * 2000 + (nonPawnW + nonPawnB) * 1000 + trip * 100) / 3000;
 
         return static_cast<i16>(rawEval + corr);
     }
 
+    static void UpdateSingleCorr(i16& v, i32 diff, i32 blend) {
+        v = std::clamp((v * (CorrectionScale - blend) + (diff * CorrectionGrain * blend)) / CorrectionScale, -CorrectionMax, CorrectionMax);
+    }
+
     void SearchThread::UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth) {
-        const auto scaledWeight = std::min((depth * depth) + 1, 128);
+        const auto us = pos.ToMove;
+        const auto blend = std::min((depth * depth) + 1, 128);
 
-        auto& pawnCh = History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384];
-        const auto pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        pawnCh = std::clamp(pawnBonus, -CorrectionMax, CorrectionMax);
+        UpdateSingleCorr(History.PawnCorrection[us][pos.PawnHash() % 16384], diff, blend);
+        UpdateSingleCorr(History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384], diff, blend);
+        UpdateSingleCorr(History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384], diff, blend);
 
-        auto& nonPawnChW = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::WHITE) % 16384];
-        const auto nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        nonPawnChW = std::clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
+        const auto& k = pos.State->PieceKeys;
 
-        auto& nonPawnChB = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384];
-        const auto nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[0] ^ k[1]) % 16384][0], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[0] ^ k[2]) % 16384][1], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[0] ^ k[3]) % 16384][2], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[0] ^ k[4]) % 16384][3], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[1] ^ k[2]) % 16384][4], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[1] ^ k[3]) % 16384][5], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[1] ^ k[4]) % 16384][6], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[2] ^ k[3]) % 16384][7], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[2] ^ k[4]) % 16384][8], diff, blend);
+        UpdateSingleCorr(History.TripletCorrection[us][(k[5] ^ k[3] ^ k[4]) % 16384][9], diff, blend);
     }
 
     void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) const {
