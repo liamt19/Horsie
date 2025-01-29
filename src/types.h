@@ -71,9 +71,9 @@ namespace {
 
 
 #ifdef USE_PEXT
-    constexpr bool HasPext = true;
+    constexpr bool UsePext = true;
 #else
-    constexpr bool HasPext = false;
+    constexpr bool UsePext = false;
 #endif
 
     inline void prefetch(void* b) {

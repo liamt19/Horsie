@@ -1,13 +1,14 @@
 
 #include "threadpool.h"
 
+#include "defs.h"
 #include "move.h"
 #include "movegen.h"
 #include "types.h"
 #include "util.h"
 
-#include "defs.h"
 #include <chrono>
+#include <condition_variable>
 #include <iostream>
 #include <mutex>
 #include <thread>

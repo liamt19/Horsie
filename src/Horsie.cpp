@@ -54,7 +54,7 @@ i32 main(i32 argc, char* argv[]) {
 #endif
 
     NNUE::LoadNetwork(net);
-    Precomputed::init();
+    Precomputed::Init();
     Zobrist::init();
     Cuckoo::init();
 

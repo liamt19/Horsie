@@ -21,6 +21,7 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include "util/NDArray.h"
 
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <thread>

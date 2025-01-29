@@ -6,11 +6,9 @@
 #include "util.h"
 
 namespace Horsie {
-    extern u8 SquareDistance[SQUARE_NB][SQUARE_NB];
     extern u64 BetweenBB[SQUARE_NB][SQUARE_NB];
     extern u64 LineBB[SQUARE_NB][SQUARE_NB];
     extern u64 RayBB[SQUARE_NB][SQUARE_NB];
-    extern u64 XrayBB[SQUARE_NB][SQUARE_NB];
     extern u64 PseudoAttacks[PIECE_NB][SQUARE_NB];
     extern u64 PawnAttackMasks[COLOR_NB][SQUARE_NB];
     extern u64 HorsieMasks[SQUARE_NB];
@@ -21,102 +19,77 @@ namespace Horsie {
     extern i32 LMPTable[2][MaxDepth];
 
     namespace Precomputed {
-        void init();
+        void Init();
     }
 
     struct Magic {
         u64 mask;
-        u64 magic;
+        u64 number;
         u64* attacks;
         unsigned shift;
-
-        // Compute the attack's index using the 'magic bitboards' approach
-        unsigned index(u64 occupied) const {
-
-            if (HasPext)
-                return unsigned(pext(occupied, mask));
-
-            return unsigned(((occupied & mask) * magic) >> shift);
-        }
     };
 
     extern Magic RookMagics[SQUARE_NB];
     extern Magic BishopMagics[SQUARE_NB];
 
-
-    template<Color C>
-    constexpr u64 pawn_attacks_bb(u64 b) {
-        return C == WHITE ? Shift<NORTH_WEST>(b) | Shift<NORTH_EAST>(b)
-                          : Shift<SOUTH_WEST>(b) | Shift<SOUTH_EAST>(b);
+    inline u64 rook_moves(i32 s, u64 occ) {
+        const auto& m = RookMagics[s];
+        
+        if (UsePext)
+            return m.attacks[pext(occ, m.mask)];
+        
+        return m.attacks[((occ & m.mask) * m.number) >> m.shift];
     }
 
-    inline u64 pawn_attacks_bb(Color c, i32 s) { return PawnAttackMasks[c][s]; }
-    inline u64 pawn_attacks_bb(Color c, Square s) { return pawn_attacks_bb(c, (i32)s); }
+    inline u64 bishop_moves(i32 s, u64 occ) {
+        const auto& m = BishopMagics[s];
 
-    inline u64 line_bb(i32 s1, i32 s2) { return LineBB[(i32)s1][(i32)s2]; }
-    inline u64 line_bb(Square s1, Square s2) { return line_bb((i32)s1, (i32)s2); }
+        if (UsePext)
+            return m.attacks[pext(occ, m.mask)];
 
-    inline u64 between_bb(i32 s1, i32 s2) { return BetweenBB[s1][s2]; }
-    inline u64 between_bb(Square s1, Square s2) { return between_bb((i32)s1, (i32)s2); }
-
-    inline bool aligned(Square s1, Square s2, Square s3) { return line_bb(s1, s2) & s3; }
-
-    template<typename T1 = Square>
-    inline i32 distance(Square x, Square y);
-
-    template<>
-    inline i32 distance<File>(Square x, Square y) {
-        return std::abs(GetIndexFile((i32)x) - GetIndexFile((i32)y));
-    }
-
-    template<>
-    inline i32 distance<Rank>(Square x, Square y) {
-        return std::abs(GetIndexRank((i32)x) - GetIndexRank((i32)y));
-    }
-
-    template<>
-    inline i32 distance<Square>(Square x, Square y) { return SquareDistance[(i32)x][(i32)y]; }
-
-
-    template<typename T1 = i32>
-    inline i32 distance(i32 x, i32 y);
-
-    template<>
-    inline i32 distance<File>(i32 x, i32 y) {
-        return std::abs(GetIndexFile((i32)x) - GetIndexFile((i32)y));
-    }
-
-    template<>
-    inline i32 distance<Rank>(i32 x, i32 y) {
-        return std::abs(GetIndexRank((i32)x) - GetIndexRank((i32)y));
-    }
-
-    template<>
-    inline i32 distance<i32>(i32 x, i32 y) { return SquareDistance[(i32)x][(i32)y]; }
-
-    inline i32 edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
-
-    template<Piece Pt>
-    inline u64 attacks_bb(i32 s) {
-        return PseudoAttacks[Pt][(i32)s];
+        return m.attacks[((occ & m.mask) * m.number) >> m.shift];
     }
 
     template<Piece Pt>
-    inline u64 attacks_bb(i32 s, u64 occupied) {
+    inline u64 attacks_bb(i32 s, u64 occ) {
         switch (Pt) {
-        case BISHOP: return BishopMagics[(i32)s].attacks[BishopMagics[(i32)s].index(occupied)];
-        case ROOK: return RookMagics[(i32)s].attacks[RookMagics[(i32)s].index(occupied)];
-        case QUEEN: return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+        case BISHOP: return bishop_moves(s, occ);
+        case ROOK: return rook_moves(s, occ);
+        case QUEEN: return bishop_moves(s, occ) | rook_moves(s, occ);
         default: return PseudoAttacks[Pt][(i32)s];
         }
     }
 
-    inline u64 attacks_bb(i32 pt, i32 s, u64 occupied) {
+    inline u64 attacks_bb(i32 pt, i32 s, u64 occ) {
         switch (pt) {
-        case BISHOP: return attacks_bb<BISHOP>(s, occupied);
-        case ROOK: return attacks_bb<ROOK>(s, occupied);
-        case QUEEN: return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+        case BISHOP: return bishop_moves(s, occ);
+        case ROOK: return rook_moves(s, occ);
+        case QUEEN: return bishop_moves(s, occ) | rook_moves(s, occ);
         default: return PseudoAttacks[pt][(i32)s];
         }
     }
+
+
+    static u64 RookMagicNumbers[] = {
+        0x1080002084104000, 0x004000B002200840, 0x0480200080300018, 0x0500042010010008, 0x0480140080180086, 0x8080020013800400, 0x0100020007000184, 0x01000200E0864100,
+        0x08008000C0002082, 0x800200420A608102, 0x0022004091820420, 0x0211000820100302, 0x002080040080C800, 0x2000800200800400, 0x0084000201080410, 0x4046000200840043,
+        0x0040008002842040, 0x090282802000C000, 0x8100150041022000, 0x18400A0020420010, 0x00000D0010080100, 0x1244808004000200, 0x0400040006281011, 0x10020A0010408401,
+        0x0200408200210201, 0x0000400080201082, 0x0010200100110044, 0x8310008900210030, 0x0208008500185100, 0x2004008080020004, 0x4023100400020801, 0x0841002500004A8A,
+        0x0840002042800480, 0x0040100800200023, 0x0081100080802000, 0xCC401042020020C8, 0x0000080082800400, 0x0001000401000608, 0x18000A0104001810, 0x5000114882000401,
+        0x0001804000238000, 0x0C90002004484000, 0x000A001042820021, 0x0202100008008080, 0x043268000C008080, 0x000C0010A0140108, 0x01901026182C0001, 0x2430008245020034,
+        0x48FFFE99FECFAA00, 0x48FFFE99FECFAA00, 0x497FFFADFF9C2E00, 0x613FFFDDFFCE9200, 0xFFFFFFE9FFE7CE00, 0xFFFFFFF5FFF3E600, 0x0003FF95E5E6A4C0, 0x510FFFF5F63C96A0,
+        0xEBFFFFB9FF9FC526, 0x61FFFEDDFEEDAEAE, 0x53BFFFEDFFDEB1A2, 0x127FFFB9FFDFB5F6, 0x411FFFDDFFDBF4D6, 0x020100080A64000F, 0x0003FFEF27EEBE74, 0x7645FFFECBFEA79E,
+    };
+
+    static u64 BishopMagicNumbers[] = {
+        0xFFEDF9FD7CFCFFFF, 0xFC0962854A77F576, 0x804200860088A020, 0x0004040080280011, 0x0004104500041401, 0x500A021044200010, 0xFC0A66C64A7EF576, 0x7FFDFDFCBD79FFFF,
+        0xFC0846A64A34FFF6, 0xFC087A874A3CF7F6, 0x180430A082014008, 0x9008040400800400, 0xA600040308340808, 0x0010020222200A00, 0xFC0864AE59B4FF76, 0x3C0860AF4B35FF76,
+        0x73C01AF56CF4CFFB, 0x41A01CFAD64AAFFC, 0x2108021000401022, 0x0008004220244045, 0x6012001012100031, 0x1002000088010800, 0x7C0C028F5B34FF76, 0xFC0A028E5AB4DF76,
+        0x00A0200110043909, 0x001008000202040C, 0x0804100012088012, 0x8010C88008020040, 0x0040840200802000, 0x0012022004100804, 0x100A0E0100A19011, 0x0204004058210400,
+        0x6A30980506481001, 0x3420901081050400, 0x0002020100020804, 0x5000020081080181, 0x54042100300C0040, 0x0002480040460044, 0x58502A020194C900, 0x0A0204050000208C,
+        0xDCEFD9B54BFCC09F, 0xF95FFA765AFD602B, 0x0113140201080804, 0x6001004202813802, 0x0400601410400405, 0x0001810102000100, 0x43FF9A5CF4CA0C01, 0x4BFFCD8E7C587601,
+        0xFC0FF2865334F576, 0xFC0BF6CE5924F576, 0x0102010041100810, 0x0202000020881080, 0x0302004110824100, 0xA084C00803010000, 0xC3FFB7DC36CA8C89, 0xC3FF8A54F4CA2C89,
+        0xFFFFFCFCFD79EDFF, 0xFC0863FCCB147576, 0x0100112201048800, 0x0800000080208838, 0x8080200010020202, 0x42002C0484080201, 0xFC087E8E4BB2F736, 0x43FF9E4EF4CA2C89,
+    };
+
 }
