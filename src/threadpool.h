@@ -40,9 +40,9 @@ namespace Horsie {
         Thread(i32 n);
         virtual ~Thread();
 
-        void   IdleLoop();
-        void   WakeUp();
-        void   WaitForThreadFinished();
+        void IdleLoop();
+        void WakeUp();
+        void WaitForThreadFinished();
 
         std::unique_ptr<SearchThread> worker;
 

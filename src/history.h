@@ -33,7 +33,7 @@ namespace Horsie {
     struct Stats : public std::array<Stats<T, D, Sizes...>, Size> {
         using stats = Stats<T, D, Size, Sizes...>;
 
-        void fill(const T& v) {
+        void Fill(const T& v) {
             using entry = StatsEntry<T, D>;
             entry* p = reinterpret_cast<entry*>(this);
             std::fill(p, p + sizeof(*this) / sizeof(entry), v);
@@ -60,9 +60,9 @@ namespace Horsie {
         CorrectionT NonPawnCorrection{};
 
         void Clear() {
-            MainHistory.fill(0);
-            CaptureHistory.fill(0);
-            PlyHistory.fill(0);
+            MainHistory.Fill(0);
+            CaptureHistory.Fill(0);
+            PlyHistory.Fill(0);
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
             std::memset(&NonPawnCorrection, 0, sizeof(NonPawnCorrection));
 
@@ -70,7 +70,7 @@ namespace Horsie {
                 for (size_t j = 0; j < 2; j++) {
                     for (auto& to : Continuations[i][j])
                         for (auto& h : to)
-                            h->fill(-50);
+                            h->Fill(-50);
                 }
             }
         }

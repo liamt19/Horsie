@@ -157,7 +157,7 @@ namespace Horsie {
 
     struct ScoredMove {
         Move move;
-        i32 Score;
+        i32 score;
     };
 
 }

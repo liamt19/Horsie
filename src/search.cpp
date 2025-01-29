@@ -1071,8 +1071,8 @@ namespace Horsie {
         i32 maxIndex = listIndex;
 
         for (i32 i = listIndex; i < size; i++) {
-            if (moves[i].Score > max) {
-                max = moves[i].Score;
+            if (moves[i].score > max) {
+                max = moves[i].score;
                 maxIndex = i;
             }
         }
@@ -1087,9 +1087,9 @@ namespace Horsie {
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;
 
-            list[i].Score = GetSEEValue(m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To()));
+            list[i].score = GetSEEValue(m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To()));
             if (m.IsPromotion()) {
-                list[i].Score += GetSEEValue(QUEEN) + 1;
+                list[i].score += GetSEEValue(QUEEN) + 1;
             }
         }
     }
@@ -1104,29 +1104,29 @@ namespace Horsie {
             const auto pt = bb.GetPieceAtIndex(moveFrom);
 
             if (m == ttMove) {
-                list[i].Score = INT32_MAX - 100000;
+                list[i].score = INT32_MAX - 100000;
             }
             else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
                 const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
                 auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
-                list[i].Score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
+                list[i].score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
             }
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
 
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
-                    list[i].Score += CheckBonus;
+                    list[i].score += CheckBonus;
                 }
             }
 
             if (pt == HORSIE) {
-                list[i].Score += 200;
+                list[i].score += 200;
             }
         }
     }
@@ -1141,36 +1141,36 @@ namespace Horsie {
             const auto pt = bb.GetPieceAtIndex(moveFrom);
 
             if (m == ttMove) {
-                list[i].Score = INT32_MAX - 100000;
+                list[i].score = INT32_MAX - 100000;
             }
             else if (m == ss->KillerMove) {
-                list[i].Score = INT32_MAX - 1000000;
+                list[i].score = INT32_MAX - 1000000;
             }
             else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
                 const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
                 auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
-                list[i].Score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
+                list[i].score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
             }
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].Score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].Score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
 
                 if (ss->Ply < LowPlyCount) {
-                    list[i].Score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
+                    list[i].score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
                 }
 
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
-                    list[i].Score += CheckBonus;
+                    list[i].score += CheckBonus;
                 }
             }
 
             if (pt == HORSIE) {
-                list[i].Score += 200;
+                list[i].score += 200;
             }
         }
     }
