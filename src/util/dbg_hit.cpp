@@ -23,13 +23,13 @@ namespace {
 }
 
 namespace Horsie {
-    void dbg_hit_on(bool cond, i32 slot) {
+    void DbgHit(bool cond, i32 slot) {
         ++hit.at(slot)[0];
         if (cond)
             ++hit.at(slot)[1];
     }
 
-    void dbg_print() {
+    void DbgPrint() {
         i64 n;
         auto E = [&n](i64 x) { return double(x) / n; };
 

@@ -86,7 +86,7 @@ namespace Horsie {
         while (candidates != 0) {
             i32 idx = poplsb(candidates);
 
-            temp = between_bb(ourKing, idx) & occ;
+            temp = BetweenBB[ourKing][idx] & occ;
 
             if (temp != 0 && !MoreThanOne(temp)) {
                 //  If there is one and only one piece between the candidate and our king, that piece is a blocker
@@ -103,8 +103,8 @@ namespace Horsie {
     }
 
     u64 Bitboard::AttackersTo(i32 idx, u64 occupied) const {
-        return (attacks_bb<BISHOP>(idx, occupied) & (Pieces[BISHOP] | Pieces[QUEEN]))
-            | (attacks_bb<ROOK>(idx, occupied) & (Pieces[ROOK] | Pieces[QUEEN]))
+        return (GetBishopMoves(idx, occupied) & (Pieces[BISHOP] | Pieces[QUEEN]))
+            | (GetRookMoves(idx, occupied) & (Pieces[ROOK] | Pieces[QUEEN]))
             | (PseudoAttacks[HORSIE][idx] & Pieces[HORSIE])
             | (PawnAttackMasks[WHITE][idx] & Colors[BLACK] & Pieces[PAWN])
             | (PawnAttackMasks[BLACK][idx] & Colors[WHITE] & Pieces[PAWN]);
@@ -114,9 +114,9 @@ namespace Horsie {
         switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];
         case HORSIE: return PseudoAttacks[HORSIE][idx];
-        case BISHOP: return attacks_bb<BISHOP>(idx, occupied);
-        case ROOK: return attacks_bb<ROOK>(idx, occupied);
-        case QUEEN: return attacks_bb<QUEEN>(idx, occupied);
+        case BISHOP: return GetBishopMoves(idx, occupied);
+        case ROOK: return GetRookMoves(idx, occupied);
+        case QUEEN: return GetBishopMoves(idx, occupied) | GetRookMoves(idx, occupied);
         case KING: return PseudoAttacks[KING][idx];
         default:
             return 0;

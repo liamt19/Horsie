@@ -870,7 +870,7 @@ namespace Horsie {
                 if ((swap = GetSEEValue(PAWN) - swap) < res)
                     break;
 
-                attackers |= attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+                attackers |= GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[HORSIE]) != 0) {
                 occ ^= SquareBB(lsb(temp));
@@ -882,21 +882,21 @@ namespace Horsie {
                 if ((swap = GetSEEValue(BISHOP) - swap) < res)
                     break;
 
-                attackers |= attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+                attackers |= GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[ROOK]) != 0) {
                 occ ^= SquareBB(lsb(temp));
                 if ((swap = GetSEEValue(ROOK) - swap) < res)
                     break;
 
-                attackers |= attacks_bb<ROOK>(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
+                attackers |= GetRookMoves(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[QUEEN]) != 0) {
                 occ ^= SquareBB(lsb(temp));
                 if ((swap = GetSEEValue(QUEEN) - swap) < res)
                     break;
 
-                attackers |= (attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN])) | (attacks_bb<ROOK>(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
+                attackers |= (GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN])) | (GetRookMoves(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
             }
             else {
                 if ((attackers & ~bb.Pieces[stm]) != 0) {
@@ -927,8 +927,8 @@ namespace Horsie {
 
             auto diff = st->Hash ^ HashFromStack(i);
 
-            if (diff != keys[(slot = hash1(diff))] &&
-                diff != keys[(slot = hash2(diff))])
+            if (diff != keys[(slot = Hash1(diff))] &&
+                diff != keys[(slot = Hash2(diff))])
                 continue;
 
             Move move = moves[slot];

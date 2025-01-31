@@ -12,7 +12,7 @@ namespace Zobrist {
     extern u64 BlackHash;
     const i32 DefaultSeed = 0xBEEF;
 
-    void init();
+    void Init();
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove);
     void Move(u64& hash, i32 from, i32 to, i32 color, i32 pt);
     void ToggleSquare(u64& hash, i32 color, i32 pt, i32 idx);

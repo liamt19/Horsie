@@ -54,9 +54,9 @@ i32 main(i32 argc, char* argv[]) {
 #endif
 
     NNUE::LoadNetwork(net);
-    Precomputed::init();
-    Zobrist::init();
-    Cuckoo::init();
+    Precomputed::Init();
+    Zobrist::Init();
+    Cuckoo::Init();
 
     SearchPool = std::make_unique<SearchThreadPool>(Horsie::Threads);
 
@@ -307,10 +307,10 @@ void HandleEvalCommand(Position& pos) {
         moves.push_back({ m, (eval * -1) });
     }
 
-    moves.sort([](const ScoredMove& l, const ScoredMove& r) { return l.Score > r.Score; });
+    moves.sort([](const ScoredMove& l, const ScoredMove& r) { return l.score > r.score; });
 
     for (ScoredMove m : moves) {
-        cout << Move::ToString(m.move) << ": " << m.Score << endl;
+        cout << Move::ToString(m.move) << ": " << m.score << endl;
     }
 }
 

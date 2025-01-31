@@ -19,7 +19,7 @@ namespace Horsie::Cuckoo {
     std::array<u64, 8192> keys{};
     std::array<Move, 8192> moves{};
 
-    void init() {
+    void Init() {
         i32 count = 0;
         for (i32 pc = Color::WHITE; pc <= Color::BLACK; pc++) {
             for (i32 pt = Piece::HORSIE; pt <= Piece::KING; pt++) {
@@ -29,7 +29,7 @@ namespace Horsie::Cuckoo {
                             Move m = Move(s1, s2);
                             u64 key = Zobrist::ColorPieceSquareHashes[pc][pt][s1] ^ Zobrist::ColorPieceSquareHashes[pc][pt][s2] ^ Zobrist::BlackHash;
 
-                            i32 iter = hash1(key);
+                            i32 iter = Hash1(key);
                             while (true) {
                                 std::swap(keys[iter], key);
                                 std::swap(moves[iter], m);
@@ -37,7 +37,7 @@ namespace Horsie::Cuckoo {
                                 if (m.IsNull())
                                     break;
 
-                                iter = iter == hash1(key) ? hash2(key) : hash1(key);
+                                iter = iter == Hash1(key) ? Hash2(key) : Hash1(key);
                             }
                             ++count;
                         }

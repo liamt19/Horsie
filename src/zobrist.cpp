@@ -17,7 +17,7 @@ namespace Zobrist {
     u64 EnPassantFileHashes[8];
     u64 BlackHash;
 
-    void init() {
+    void Init() {
 #if defined(LIZARD_HASHES)
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
