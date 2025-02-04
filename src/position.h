@@ -86,6 +86,7 @@ namespace Horsie {
         bool IsInsufficientMaterial() const;
         bool IsThreefoldRepetition() const;
         bool IsFiftyMoveDraw() const;
+        bool HasLegalMoves() const;
 
         u64 Perft(i32 depth);
         u64 SplitPerft(i32 depth);

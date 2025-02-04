@@ -40,6 +40,8 @@ namespace Horsie {
         inline std::vector<u64> gameCounts{};
         inline std::vector<u64> positionCounts{};
         inline std::vector<double> threadNPS{};
+        inline std::vector<double> threadDepths{};
+        inline std::vector<SearchThread*> threadRefs{};
 
         enum GameResult {
             BlackWin = 0,

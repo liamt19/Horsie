@@ -6,6 +6,7 @@
 #include "../position.h"
 #include "../threadpool.h"
 
+#include <cassert>
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -71,6 +72,8 @@ namespace Horsie {
             gameCounts.resize(threads);
             positionCounts.resize(threads);
             threadNPS.resize(threads);
+            threadDepths.resize(threads);
+            threadRefs.resize(threads);
 
             std::vector<std::thread> dg_threads;
             for (i32 i = 0; i < threads; i++) {
@@ -88,19 +91,23 @@ namespace Horsie {
                 u64 totalGames = 0;
                 double totalNPS = 0;
                 u64 totalPositions = 0;
+                double totalDepths = 0;
 
                 for (i32 i = 0; i < threads; i++) {
                     const auto games = gameCounts[i];
                     const auto positions = positionCounts[i];
                     const auto nps = threadNPS[i];
-                    std::cout << std::format("Thread {:3}: {:>12} {:>15} {:>12.2f}\n", i, games, positions, nps);
+                    const auto depth = threadDepths[i];
+                    std::cout << std::format("Thread {:3}: {:>12} {:>15} {:>12.2f} {:8.2f}", i, games, positions, nps, depth);
+                    std::cout << "\n";
 
                     totalGames += games;
                     totalPositions += positions;
                     totalNPS += nps;
+                    totalDepths += depth;
                 }
-                std::cout << "           ------------------------------------------" << "\n";
-                std::cout << "            " << std::format("{:>12} {:>15} {:>12.2f}", totalGames, totalPositions, totalNPS) << std::endl;
+                std::cout << "           --------------------------------------------------" << "\n";
+                std::cout << "            " << std::format("{:>12} {:>15} {:>12.2f} {:>8.2f}", totalGames, totalPositions, totalNPS, totalDepths / threads) << std::endl;
             }
 
             for (auto& thread : dg_threads) {
@@ -108,6 +115,77 @@ namespace Horsie {
             }
         }
 
+        void GetStartPos(SearchThread* thread, Position& pos, SearchLimits& prelimInfo, bool dfrc) {
+            const i32 probs[] = {35, 20, 20, 8, 12, 5};
+            const auto ptProbs = [&]() {
+                std::array<i32, PIECE_NB> p = {};
+                i32 s = 0;
+                for (i32 i = 0; i < PIECE_NB; i++) {
+                    s += probs[i];
+                    p[i] = s;
+                }
+                assert(s == 100);
+                return p;
+            }();
+
+            ScoredMove legalMoves[MoveListSize];
+
+            while (true) {
+                thread->SetStop(false);
+                thread->TT->Clear();
+                thread->TT->TTUpdate();
+                thread->History.Clear();
+
+                Retry:
+
+                if (dfrc) 
+                    pos.SetupForDFRC(RandNext(0, 960), RandNext(0, 960));
+                else 
+                    pos.LoadFromFEN(InitialFEN);
+
+                i32 randMoveCount = RandNext(MinOpeningPly, MaxOpeningPly + 1);
+                for (i32 i = 0; i < randMoveCount; i++) {
+                    i32 size = Generate<GenLegal>(pos, legalMoves, 0);
+                    
+                    if (size == 0)
+                        goto Retry;
+                    
+                    const auto GetRandPt = [&]() {
+                        i32 r = RandNext(0, 101);
+                        for (i32 j = 0; j < PIECE_NB; j++)
+                            if (r < ptProbs[j])
+                                return j;
+
+                        assert(false);
+                        return static_cast<i32>(Piece::HORSIE);
+                    };
+
+                    Move toMake = Move::Null();
+                    while (toMake == Move::Null()) {
+                        std::vector<ScoredMove> candidates = {};
+                        i32 rPt = GetRandPt();
+                        for (i32 j = 0; j < size; j++)
+                            if (pos.bb.GetPieceAtIndex(legalMoves[j].move.From()) == rPt)
+                                candidates.push_back(legalMoves[j]);
+
+                        if (!candidates.empty())
+                            toMake = candidates[RandNext(0, candidates.size())].move;
+                    }
+                    
+                    pos.MakeMove(toMake);
+                }
+
+                if (Generate<GenLegal>(pos, legalMoves, 0) == 0)
+                    continue;
+
+                DGSetupThread(pos, *thread);
+                thread->Search(prelimInfo);
+                if (std::abs(thread->RootMoves[0].Score) >= MaxOpeningScore)
+                    continue;
+
+                return;
+            }
+        }
 
         void RunGames(i32 threadID, u64 softNodeLimit, u64 depthLimit, u64 gamesToRun, bool dfrc) {
             Horsie::Hash = HashSize;
@@ -122,19 +200,20 @@ namespace Horsie {
             thread->OnDepthFinish = []() {};
             thread->OnSearchFinish = []() {};
 
+            threadRefs[threadID] = thread.get();
+
             Position pos = Position();
             Bitboard& bb = pos.bb;
 
-            ScoredMove legalMoves[MoveListSize];
             Move bestMove = Move::Null();
             i32 bestMoveScore = 0;
 
             std::stringstream iss;
-            iss << "";
             iss << "./data/";
             if (dfrc) iss << "dfrc_";
             iss << std::to_string(softNodeLimit / 1000) << "k_";
             iss << std::to_string(depthLimit) << "d_";
+            iss << "h";
             iss << std::to_string(threadID) << ".bin";
             std::string fName = iss.str();
 
@@ -148,6 +227,7 @@ namespace Horsie {
 
             u64 totalBadPositions = 0;
             u64 totalGoodPositions = 0;
+            u64 totalDepths = 0;
 
             SearchLimits info{};
             info.SoftNodeLimit = softNodeLimit;
@@ -162,31 +242,8 @@ namespace Horsie {
             std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 
             for (u64 gameNum = 0; gameNum < gamesToRun; gameNum++) {
-                thread->SetStop(false);
-                thread->TT->Clear();
-                thread->TT->TTUpdate();
-                thread->History.Clear();
                 datapoints.clear();
-
-                if (dfrc) {
-                    pos.SetupForDFRC(RandNext(0, 960), RandNext(0, 960));
-                }
-                else {
-                    pos.LoadFromFEN(InitialFEN);
-                }
-
-                int randMoveCount = RandNext(MinOpeningPly, MaxOpeningPly + 1);
-                for (int i = 0; i < randMoveCount; i++) {
-                    int l = Generate<GenLegal>(pos, legalMoves, 0);
-                    if (l == 0) { gameNum--; continue; }
-                    pos.MakeMove(legalMoves[RandNext(0, l)].move);
-                }
-
-                if (Generate<GenLegal>(pos, legalMoves, 0) == 0) { gameNum--; continue; }
-
-                DGSetupThread(pos, *thread);
-                thread->Search(prelimInfo);
-                if (std::abs(thread->RootMoves[0].Score) >= MaxOpeningScore) { gameNum--; continue; }
+                GetStartPos(thread.get(), pos, prelimInfo, dfrc);
 
                 GameResult result = GameResult::Draw;
                 int toWrite = 0;
@@ -210,12 +267,12 @@ namespace Horsie {
                     else
                         adjudicationCounter = 0;
 
-
                     bool inCheck = pos.Checked();
                     bool bmCap = ((bb.GetPieceAtIndex(bestMove.To()) != NONE && !bestMove.IsCastle()) || bestMove.IsEnPassant());
                     bool badScore = std::abs(bestMoveScore) > MaxFilteringScore;
                     if (!(inCheck || bmCap || badScore)) {
                         datapoints.emplace_back(BulletFormatEntry(pos, bestMove, bestMoveScore));
+                        totalDepths += static_cast<u64>(thread->RootDepth);
                         toWrite++;
                     }
                     else {
@@ -224,8 +281,10 @@ namespace Horsie {
 
                     pos.MakeMove(bestMove);
 
-                    if (Generate<GenLegal>(pos, legalMoves, 0) == 0) {
-                        result = (pos.ToMove == WHITE) ? GameResult::BlackWin : GameResult::WhiteWin;
+                    if (!pos.HasLegalMoves()) {
+                        result = !pos.Checked()        ? GameResult::Draw
+                               : (pos.ToMove == WHITE) ? GameResult::BlackWin 
+                               :                         GameResult::WhiteWin;
                         break;
                     }
                     else if (pos.IsDraw()) {
@@ -233,9 +292,9 @@ namespace Horsie {
                         break;
                     }
                     else if (toWrite == WritableDataLimit - 1) {
-                        result = bestMoveScore >  400 ? GameResult::WhiteWin :
-                                 bestMoveScore < -400 ? GameResult::BlackWin :
-                                                        GameResult::Draw;
+                        result = bestMoveScore >  400 ? GameResult::WhiteWin
+                               : bestMoveScore < -400 ? GameResult::BlackWin 
+                               :                        GameResult::Draw;
                         break;
                     }
                 }
@@ -250,11 +309,11 @@ namespace Horsie {
                 gameCounts[threadID] = gameNum;
                 positionCounts[threadID] = totalGoodPositions;
                 threadNPS[threadID] = goodPerSec;
+                threadDepths[threadID] = ((double)totalDepths / totalGoodPositions);
 
                 AddResultsAndWrite(datapoints, result, outputWriter);
             }
         }
-
 
         void AddResultsAndWrite(std::vector<BulletFormatEntry> datapoints, GameResult gr, std::ofstream& outputWriter) {
             for (int i = 0; i < datapoints.size(); i++) {
@@ -264,7 +323,6 @@ namespace Horsie {
 
             outputWriter.flush();
         }
-
 
         void ResetPosition(Position& pos, CastlingStatus cr) {
             Bitboard& bb = pos.bb;
@@ -289,7 +347,6 @@ namespace Horsie {
             NNUE::RefreshAccumulator(pos);
         }
 
-
         void DGSetupThread(Position& pos, SearchThread& td) {
             td.Reset();
 
@@ -306,6 +363,5 @@ namespace Horsie {
 
             td.RootPosition.LoadFromFEN(pos.GetFEN());
         }
-
     }
 }

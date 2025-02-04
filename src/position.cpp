@@ -56,8 +56,7 @@ namespace Horsie {
         Move move = Move::Null();
         found = false;
 
-        auto eq_pred = [&](char a, char b)
-        {
+        auto eq_pred = [&](char a, char b) {
             return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
         };
 
@@ -578,6 +577,12 @@ namespace Horsie {
 
     bool Position::IsFiftyMoveDraw() const {
         return State->HalfmoveClock >= 100;
+    }
+
+    bool Position::HasLegalMoves() const {
+        ScoredMove list[MoveListSize];
+        i32 legals = Generate<GenLegal>(*this, list, 0);
+        return legals != 0;
     }
 
     void Position::RemoveCastling(CastlingStatus cr) const {
