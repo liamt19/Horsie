@@ -261,7 +261,7 @@ namespace Horsie {
             }
         }
 #else
-        if (isPV && (Nodes >= HardNodeLimit && RootDepth > 2)) {
+        if (Nodes >= HardNodeLimit && RootDepth > 2) {
             SetStop();
         }
 #endif
