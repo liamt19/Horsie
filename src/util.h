@@ -1,5 +1,21 @@
 #pragma once
 
+//#if defined(_WIN64)
+//#define WIN32_LEAN_AND_MEAN
+//#define NOMINMAX
+//#include <windows.h>
+//#else
+//#include <sys/ioctl.h>
+//#include <unistd.h>
+//#endif
+
+#include <cstdint>
+#include <string>
+#include <sstream>
+
+#include <iomanip>
+#include <locale>
+
 #include "defs.h"
 #include "enums.h"
 #include "search_options.h"

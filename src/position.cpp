@@ -654,6 +654,86 @@ namespace Horsie {
         return total;
     }
 
+    void Position::SetupForDFRC(i32 wIdx, i32 bIdx) {
+        bb.Reset();
+
+        for (i32 sq = static_cast<i32>(Square::A2); sq <= static_cast<i32>(Square::H2); sq++)
+            bb.AddPiece(sq, WHITE, PAWN);
+
+        for (i32 sq = static_cast<i32>(Square::A7); sq <= static_cast<i32>(Square::H7); sq++)
+            bb.AddPiece(sq, BLACK, PAWN);
+
+        IsChess960 = true;
+        i32 wBackrank[8] = {};
+        i32 bBackrank[8] = {};
+
+        const std::pair<i32, i32> H5H[] = {
+            {0, 0}, {0, 1}, {0, 2}, {0, 3},
+            {1, 1}, {1, 2}, {1, 3},
+            {2, 2}, {2, 3},
+            {3, 3},
+        };
+
+        const auto FillWithScharnaglNumber = [&](i32 n, i32 types[8]) {
+            const auto PlaceInSpot = [&](i32 pt, i32 skip) {
+                i32 skips = 0;
+                for (int i = 0; i < 8; i++) {
+                    if (types[i] == 0 && skips++ >= skip) {
+                        types[i] = pt;
+                        break;
+                    }
+                }
+            };
+
+            int n2 = n / 4;
+            int b1 = n % 4;
+
+            int n3 = n2 / 4;
+            int b2 = n2 % 4;
+
+            int n4 = n3 / 6;
+            int  q = n3 % 6;
+
+            const auto [h1, h2] = H5H[n4];
+
+            types[b1 * 2 + 1] = BISHOP;
+            types[b2 * 2 + 0] = BISHOP;
+
+            PlaceInSpot(QUEEN, q);
+
+            PlaceInSpot(HORSIE, h1);
+            PlaceInSpot(HORSIE, h2);
+
+            PlaceInSpot(ROOK, 0);
+            PlaceInSpot(KING, 0);
+            PlaceInSpot(ROOK, 0);
+        };
+
+        FillWithScharnaglNumber(wIdx, wBackrank);
+        FillWithScharnaglNumber(bIdx, bBackrank);
+
+        for (i32 sq = 0; sq < 8; sq++) {
+            bb.AddPiece(static_cast<i32>(Square::A1) + sq, WHITE, wBackrank[sq]);
+            bb.AddPiece(static_cast<i32>(Square::A8) + sq, BLACK, bBackrank[sq]);
+
+            if (wBackrank[sq] == KING)
+                State->KingSquares[WHITE] = static_cast<i32>(Square::A1) + sq;
+
+            if (bBackrank[sq] == KING)
+                State->KingSquares[BLACK] = static_cast<i32>(Square::A8) + sq;
+        }
+
+        for (i32 sq = 0; sq < 8; sq++) {
+            if (wBackrank[sq] == ROOK)
+                SetCastlingStatus(WHITE, static_cast<i32>(Square::A1) + sq);
+
+            if (bBackrank[sq] == ROOK)
+                SetCastlingStatus(BLACK, static_cast<i32>(Square::A8) + sq);
+        }
+
+        LoadFromFEN(GetFEN());
+    }
+
     void Position::LoadFromFEN(const std::string& fen) {
         bb.Reset();
         FullMoves = 1;

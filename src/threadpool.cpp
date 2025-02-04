@@ -60,7 +60,7 @@ namespace Horsie {
         WaitForMain();
         MainThread()->StartTime = std::chrono::system_clock::now();
 
-        StopThreads = false;
+        SetStop(false);
         SharedInfo = rootInfo;
 
         auto& rootFEN = setup.StartFEN;
@@ -123,10 +123,28 @@ namespace Horsie {
         MainThread()->CheckupCount = 0;
     }
 
-    Thread::Thread(i32 n) {
-        worker = std::make_unique<SearchThread>();
-        _SysThread = std::thread(&Thread::IdleLoop, this);
-    }
+
+	bool SearchThread::ShouldStop() const {
+#if defined(DATAGEN)
+		return DGStopThread;
+#else
+		return AssocPool->StopThreads.load(std::memory_order::relaxed);
+#endif
+	}
+
+	void SearchThread::SetStop(bool flag) {
+#if defined(DATAGEN)
+		DGStopThread = flag;
+#else
+        AssocPool->SetStop(flag);
+#endif
+	}
+
+
+	Thread::Thread(i32 n) {
+		worker = std::make_unique<SearchThread>();
+		_SysThread = std::thread(&Thread::IdleLoop, this);
+	}
 
     Thread::~Thread() {
         Quit = true;

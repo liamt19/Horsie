@@ -27,6 +27,8 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include <thread>
 #include <vector>
 
+#define DATAGEN 1
+
 using namespace Horsie::Util::ThingsIStoleFromStormphrax;
 using namespace Horsie::Search;
 
@@ -113,6 +115,12 @@ namespace Horsie {
         void PrintSearchInfo() const;
 
 
+#if defined(DATAGEN)
+        bool DGStopThread{};
+#endif
+        bool ShouldStop() const;
+        void SetStop(bool flag = true);
+
         i64 GetSearchTime() const {
             auto now = std::chrono::system_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - StartTime);
@@ -151,7 +159,14 @@ namespace Horsie {
         constexpr SearchThread* MainThread() const { return Threads.front()->worker.get(); }
         constexpr Thread* MainThreadBase() const { return Threads.front(); }
 
-        void SetStop() { StopThreads = true; }
+        void SetStop(bool flag = false) 
+        { 
+#if defined(DATAGEN)
+            MainThread()->SetStop(flag);
+#else
+            StopThreads = flag;
+#endif
+        }
 
         void Resize(i32 newThreadCount);
         void StartSearch(Position& rootPosition, const SearchLimits& rootInfo);

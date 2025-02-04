@@ -90,6 +90,7 @@ namespace Horsie {
         u64 Perft(i32 depth);
         u64 SplitPerft(i32 depth);
 
+        void SetupForDFRC(i32 wIdx, i32 bIdx);
         std::string GetFEN() const;
         bool SEE_GE(Move m, i32 threshold = 1) const;
         bool HasCycle(i32 ply) const;
