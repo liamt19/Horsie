@@ -458,9 +458,7 @@ namespace Horsie {
         //  "Small probcut idea" from SF: 
         //  https://github.com/official-stockfish/Stockfish/blob/7ccde25baf03e77926644b282fed68ba0b5ddf95/src/search.cpp#L878
         probBeta = beta + 435;
-        if (ss->InCheck
-            && !isPV
-            && (ttMove != Move::Null() && bb.GetPieceAtIndex(ttMove.To()) != Piece::NONE)
+        if ((ttMove != Move::Null() && bb.GetPieceAtIndex(ttMove.To()) != Piece::NONE)
             && ((tte->Bound() & BoundLower) != 0)
             && tte->Depth() >= depth - 6
             && ttScore >= probBeta
