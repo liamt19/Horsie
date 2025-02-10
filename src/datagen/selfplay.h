@@ -1,16 +1,18 @@
 #pragma once
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 #include <bit>
 #include <span>
+#include <vector>
 
-#include "../position.h"
-#include "../threadpool.h"
 #include "../bitboard.h"
 #include "../move.h"
 #include "../nnue/nn.h"
+#include "../position.h"
+#include "../threadpool.h"
+
 
 
 namespace Horsie {
@@ -93,10 +95,10 @@ namespace Horsie {
                 bb.Occupancy = _occ;
 
                 u64 temp = _occ;
-                int idx = 0;
+                i32 idx = 0;
                 while (temp != 0) {
-                    int sq = poplsb(temp);
-                    int piece = (_pcs[idx / 2] >> (4 * (idx & 1))) & 0b1111;
+                    i32 sq = poplsb(temp);
+                    i32 piece = (_pcs[idx / 2] >> (4 * (idx & 1))) & 0b1111;
 
                     bb.AddPiece(sq, piece / 8, piece % 8);
 
@@ -142,14 +144,14 @@ namespace Horsie {
                     u64 bit = 1ULL << sq;
                     occ2 &= occ2 - 1;
 
-                    u8 colour = static_cast<u8>(((bit & bbs[1]) > 0 ? 1 : 0) << 3);
-                    for (int i = 2; i < 8; i++)
+                    u8 color = static_cast<u8>(((bit & bbs[1]) > 0 ? 1 : 0) << 3);
+                    for (i32 i = 2; i < 8; i++)
                         if ((bit & bbs[i]) > 0) {
                             piece = i - 2;
                             break;
                         }
 
-                    u8 pc = static_cast<u8>(colour | static_cast<u8>(piece));
+                    u8 pc = static_cast<u8>(color | static_cast<u8>(piece));
 
                     _pcs[idx / 2] |= static_cast<u8>(pc << (4 * (idx & 1)));
 
@@ -158,7 +160,7 @@ namespace Horsie {
             }
 
 
-            static BulletFormatEntry FromBitboard(Bitboard& bb, int stm, short score, GameResult result) {
+            static BulletFormatEntry FromBitboard(Bitboard& bb, i32 stm, i16 score, GameResult result) {
                 BulletFormatEntry bfe{};
                 bfe.LoadFromBitboard(bb, stm, score, result);
                 return bfe;

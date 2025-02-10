@@ -682,7 +682,7 @@ namespace Horsie {
         const auto FillWithScharnaglNumber = [&](i32 n, i32 types[8]) {
             const auto PlaceInSpot = [&](i32 pt, i32 skip) {
                 i32 skips = 0;
-                for (int i = 0; i < 8; i++) {
+                for (i32 i = 0; i < 8; i++) {
                     if (types[i] == 0 && skips++ >= skip) {
                         types[i] = pt;
                         break;
@@ -690,14 +690,14 @@ namespace Horsie {
                 }
             };
 
-            int n2 = n / 4;
-            int b1 = n % 4;
+            const auto n2 = n / 4;
+            const auto b1 = n % 4;
 
-            int n3 = n2 / 4;
-            int b2 = n2 % 4;
+            const auto n3 = n2 / 4;
+            const auto b2 = n2 % 4;
 
-            int n4 = n3 / 6;
-            int  q = n3 % 6;
+            const auto n4 = n3 / 6;
+            const auto  q = n3 % 6;
 
             const auto [h1, h2] = H5H[n4];
 

@@ -34,7 +34,7 @@ namespace Horsie {
 #if defined(_WIN64)
             CONSOLE_SCREEN_BUFFER_INFO csbi;
             GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-            int columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+            const auto columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 #else
             struct winsize w;
             ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -175,7 +175,7 @@ namespace Horsie {
                     pos.MakeMove(toMake);
                 }
 
-                if (Generate<GenLegal>(pos, legalMoves, 0) == 0)
+                if (!pos.HasLegalMoves())
                     continue;
 
                 DGSetupThread(pos, *thread);
@@ -232,12 +232,12 @@ namespace Horsie {
             SearchLimits info{};
             info.SoftNodeLimit = softNodeLimit;
             info.MaxNodes = softNodeLimit * 20;
-            info.MaxDepth = (int)depthLimit;
+            info.MaxDepth = static_cast<i32>(depthLimit);
 
             SearchLimits prelimInfo{};
             prelimInfo.SoftNodeLimit = softNodeLimit * 20;
             prelimInfo.MaxNodes = softNodeLimit * 400;
-            prelimInfo.MaxDepth = std::clamp((int)depthLimit, 8, 10);
+            prelimInfo.MaxDepth = std::clamp(static_cast<i32>(depthLimit), 8, 10);
 
             std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 
@@ -246,9 +246,9 @@ namespace Horsie {
                 GetStartPos(thread.get(), pos, prelimInfo, dfrc);
 
                 GameResult result = GameResult::Draw;
-                int toWrite = 0;
-                int filtered = 0;
-                int adjudicationCounter = 0;
+                u32 toWrite = 0;
+                u32 filtered = 0;
+                u32 adjudicationCounter = 0;
 
                 while (true) {
                     DGSetupThread(pos, *thread);
@@ -300,8 +300,8 @@ namespace Horsie {
                 }
 
 
-                totalBadPositions += (u32)filtered;
-                totalGoodPositions += (u32)toWrite;
+                totalBadPositions += filtered;
+                totalGoodPositions += toWrite;
 
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count();
                 auto goodPerSec = totalGoodPositions / (static_cast<double>(duration) / 1000);
@@ -309,14 +309,14 @@ namespace Horsie {
                 gameCounts[threadID] = gameNum;
                 positionCounts[threadID] = totalGoodPositions;
                 threadNPS[threadID] = goodPerSec;
-                threadDepths[threadID] = ((double)totalDepths / totalGoodPositions);
+                threadDepths[threadID] = (static_cast<double>(totalDepths) / totalGoodPositions);
 
                 AddResultsAndWrite(datapoints, result, outputWriter);
             }
         }
 
         void AddResultsAndWrite(std::vector<BulletFormatEntry> datapoints, GameResult gr, std::ofstream& outputWriter) {
-            for (int i = 0; i < datapoints.size(); i++) {
+            for (i32 i = 0; i < datapoints.size(); i++) {
                 datapoints[i].SetResult(gr);
                 outputWriter << datapoints[i];
             }
