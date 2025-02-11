@@ -510,7 +510,7 @@ namespace Horsie {
             i32 moveHist = isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()];
 
             if (ShallowPruning
-                && !isRoot
+                && (!isRoot || RootDepth == 1)
                 && bestScore > ScoreMatedMax
                 && pos.HasNonPawnMaterial(us)) {
                 
