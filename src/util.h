@@ -5,6 +5,10 @@
 #include "search_options.h"
 
 #include <cctype>
+#include <cstdint>
+#include <iomanip>
+#include <locale>
+#include <sstream>
 #include <string>
 
 

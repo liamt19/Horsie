@@ -1,4 +1,5 @@
 
+
 #include "search.h"
 
 #include "movegen.h"
@@ -28,12 +29,12 @@ namespace Horsie {
     void SearchThread::MainThreadSearch() {
         TT->TTUpdate();
 
-        AssocPool->StartThreads();
+        AssocPool->AwakenHelperThreads();
         this->Search(AssocPool->SharedInfo);
 
-        while (!AssocPool->StopThreads && AssocPool->SharedInfo.IsInfinite()) {}
+        while (!ShouldStop() && AssocPool->SharedInfo.IsInfinite()) {}
 
-        AssocPool->SetStop();
+        AssocPool->StopAllThreads();
         AssocPool->WaitForSearchFinished();
 
         if (OnSearchFinish) {
@@ -72,7 +73,7 @@ namespace Horsie {
             if (IsMain() && RootDepth > info.MaxDepth)
                 break;
 
-            if (AssocPool->StopThreads)
+            if (ShouldStop())
                 break;
 
             for (RootMove& rm : RootMoves) {
@@ -82,7 +83,7 @@ namespace Horsie {
             i32 usedDepth = RootDepth;
 
             for (PVIndex = 0; PVIndex < multiPV; PVIndex++) {
-                if (AssocPool->StopThreads)
+                if (ShouldStop())
                     break;
 
                 i32 alpha = AlphaStart;
@@ -102,7 +103,7 @@ namespace Horsie {
 
                     std::stable_sort(RootMoves.begin() + PVIndex, RootMoves.end());
 
-                    if (AssocPool->StopThreads)
+                    if (ShouldStop())
                         break;
 
                     if (score <= alpha) {
@@ -132,7 +133,8 @@ namespace Horsie {
             if (!IsMain())
                 continue;
 
-            if (AssocPool->StopThreads) {
+            if (ShouldStop()) {
+
                 //  If we received a stop command or hit the hard time limit, our RootMoves may not have been filled in properly.
                 //  In that case, we replace the current bestmove with the last depth's bestmove
                 //  so that the move we send is based on an entire depth being searched instead of only a portion of it.
@@ -191,13 +193,14 @@ namespace Horsie {
                 break;
             }
 
-            if (!AssocPool->StopThreads) {
+            if (!ShouldStop()) {
                 CompletedDepth = RootDepth;
             }
         }
 
-        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !AssocPool->StopThreads) {
-            AssocPool->SetStop();
+        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop())
+        {
+            SetStop();
         }
 
         for (i32 i = -10; i < MaxSearchStackPly; i++) {
@@ -241,20 +244,8 @@ namespace Horsie {
         TTEntry _tte{};
         TTEntry* tte = &_tte;
 
-
         if (IsMain()) {
-            if ((++CheckupCount) >= CheckupMax) {
-                CheckupCount = 0;
-
-                if (HardTimeReached()) {
-                    AssocPool->SetStop();
-                }
-            }
-            
-            if ((Threads == 1 && Nodes >= HardNodeLimit)
-                || (CheckupCount == 0 && AssocPool->GetNodeCount() >= HardNodeLimit)) {
-                AssocPool->SetStop();
-            }
+            CheckLimits();
         }
 
         if (isPV) {
@@ -266,7 +257,7 @@ namespace Horsie {
                 return MakeDrawScore(Nodes);
             }
 
-            if (AssocPool->StopThreads.load(std::memory_order::relaxed) || ss->Ply >= MaxSearchStackPly - 1) {
+            if (ShouldStop() || ss->Ply >= MaxSearchStackPly - 1) {
                 if (pos.Checked()) {
                     return ScoreDraw;
                 }
@@ -644,7 +635,7 @@ namespace Horsie {
                 NodeTable[moveFrom][moveTo] += Nodes - prevNodes;
             }
 
-            if (AssocPool->StopThreads.load(std::memory_order::relaxed)) {
+            if (ShouldStop()) {
                 return ScoreDraw;
             }
 
@@ -953,8 +944,8 @@ namespace Horsie {
         if (bmCapPiece != Piece::NONE && !bestMove.IsCastle()) {
             history.CaptureHistory[us][bmPiece][bmTo][bmCapPiece] << bonus;
         }
-        else
-        {
+        else {
+
             if (!bestMove.IsEnPassant()) {
                 ss->KillerMove = bestMove;
             }
