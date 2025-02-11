@@ -60,19 +60,20 @@ namespace Horsie {
 
         struct SearchStackEntry {
         public:
-            Move* PV;
             PieceToHistory* ContinuationHistory;
+            Move* PV;
+            i32 PVLength;
             i16 DoubleExtensions;
             i16 Ply;
             i16 StaticEval;
+            i16 Reduction;
             Move KillerMove;
             Move CurrentMove;
             Move Skip;
             bool InCheck;
             bool TTPV;
             bool TTHit;
-            i32 PVLength;
-
+            bool WasNoisy;
 
             void Clear() {
                 CurrentMove = Skip = KillerMove = Move::Null();
@@ -81,6 +82,7 @@ namespace Horsie {
                 Ply = 0;
                 DoubleExtensions = 0;
                 StaticEval = ScoreNone;
+                Reduction = 0;
 
                 PVLength = 0;
                 if (PV != nullptr) {
@@ -91,6 +93,7 @@ namespace Horsie {
                 InCheck = false;
                 TTPV = false;
                 TTHit = false;
+                WasNoisy = false;
             }
         };
 

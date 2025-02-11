@@ -324,6 +324,17 @@ namespace Horsie {
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
         }
 
+        {
+            const auto prev = (ss - 1);
+
+            if (!isRoot
+                && !(prev->WasNoisy || prev->InCheck)
+                && prev->Reduction > 0
+                && prev->StaticEval < -ss->StaticEval
+                && ss->StaticEval < alpha) {
+                depth++;
+            }
+        }
 
         if (UseRFP
             && !ss->TTPV
@@ -564,6 +575,7 @@ namespace Horsie {
             ss->DoubleExtensions = static_cast<i16>((ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0));
             ss->CurrentMove = m;
             ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCapture][histIdx][moveTo];
+            ss->WasNoisy = pos.IsNoisy(m);
             Nodes++;
 
             pos.MakeMove(m);
@@ -598,7 +610,9 @@ namespace Horsie {
                 R = std::max(1, std::min(R, newDepth));
                 i32 reducedDepth = (newDepth - R);
 
+                ss->Reduction = R;
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
+                ss->Reduction = 0;
 
                 if (score > alpha && R > 1) {
                     newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
