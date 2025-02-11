@@ -1,18 +1,16 @@
 #pragma once
 
-#include <fstream>
-#include <iostream>
-
-#include <bit>
-#include <span>
-#include <vector>
-
 #include "../bitboard.h"
 #include "../move.h"
 #include "../nnue/nn.h"
 #include "../position.h"
 #include "../threadpool.h"
 
+#include <bit>
+#include <fstream>
+#include <iostream>
+#include <span>
+#include <vector>
 
 
 namespace Horsie {
@@ -106,7 +104,6 @@ namespace Horsie {
                 }
             }
 
-
             void LoadFromBitboard(Bitboard& bb, i32 stm, i16 score, GameResult result) {
                 u64 bbs[8] = {
                     bb.Colors[WHITE], bb.Colors[BLACK],
@@ -159,7 +156,6 @@ namespace Horsie {
                 }
             }
 
-
             static BulletFormatEntry FromBitboard(Bitboard& bb, i32 stm, i16 score, GameResult result) {
                 BulletFormatEntry bfe{};
                 bfe.LoadFromBitboard(bb, stm, score, result);
@@ -171,7 +167,6 @@ namespace Horsie {
             }
         };
 #pragma pack(pop)
-
 
         struct PlaintextFormat {
             char FEN[92]{};
@@ -206,7 +201,6 @@ namespace Horsie {
         void MonitorDG(u64 nodes, u64 depth, u64 games, u64 threads, bool dfrc);
         void DGSetupThread(Position& pos, SearchThread& td);
         void RunGames(i32 threadID, u64 softNodeLimit, u64 depthLimit, u64 gamesToRun, bool dfrc);
-        void ResetPosition(Position& pos, CastlingStatus cr = CastlingStatus::None);
 
         void AddResultsAndWrite(std::vector<BulletFormatEntry> datapoints, GameResult gr, std::ofstream& outputWriter);
 

@@ -325,29 +325,6 @@ namespace Horsie {
             outputWriter.flush();
         }
 
-        void ResetPosition(Position& pos, CastlingStatus cr) {
-            Bitboard& bb = pos.bb;
-
-            pos.FullMoves = 1;
-            pos.GamePly = 0;
-
-            pos.State = pos.StartingState();
-
-            auto st = pos.State;
-            std::memset(st, 0, StateCopySize);
-            st->CastleStatus = cr;
-            st->HalfmoveClock = 0;
-            st->PliesFromNull = 0;
-            st->EPSquare = EP_NONE;
-            st->CapturedPiece = NONE;
-            st->KingSquares[WHITE] = bb.KingIndex(WHITE);
-            st->KingSquares[BLACK] = bb.KingIndex(BLACK);
-
-            pos.SetState();
-
-            NNUE::RefreshAccumulator(pos);
-        }
-
         void DGSetupThread(Position& pos, SearchThread& td) {
             td.Reset();
 
