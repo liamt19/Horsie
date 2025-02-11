@@ -27,8 +27,6 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include <thread>
 #include <vector>
 
-#define DATAGEN 1
-
 using namespace Horsie::Util::ThingsIStoleFromStormphrax;
 using namespace Horsie::Search;
 
@@ -56,7 +54,6 @@ namespace Horsie {
         std::thread _SysThread;
     };
 
-
     class SearchThread {
     public:
         u64 Nodes{};
@@ -66,11 +63,13 @@ namespace Horsie {
         i32 RootDepth{};
         i32 SelDepth{};
         i32 CompletedDepth{};
-        i32 CheckupCount{};
 
         i32 HardTimeLimit{};
         i32 SoftTimeLimit{};
         u64 HardNodeLimit{};
+
+        std::atomic_bool StopSearching{};
+        bool IsDatagen{};
 
         SearchThreadPool* AssocPool{};
         TranspositionTable* TT{};
@@ -114,12 +113,9 @@ namespace Horsie {
 
         void PrintSearchInfo() const;
 
-
-#if defined(DATAGEN)
-        bool DGStopThread{};
-#endif
         bool ShouldStop() const;
         void SetStop(bool flag = true);
+        void CheckLimits();
 
         i64 GetSearchTime() const {
             auto now = std::chrono::system_clock::now();
@@ -129,7 +125,7 @@ namespace Horsie {
 
         void Reset() {
             Nodes = 0;
-            PVIndex = RootDepth = SelDepth = CompletedDepth = CheckupCount = NMPPly = 0;
+            PVIndex = RootDepth = SelDepth = CompletedDepth = NMPPly = 0;
         }
 
         Move CurrentMove() const { return RootMoves[PVIndex].move; }
@@ -140,16 +136,14 @@ namespace Horsie {
         inline i32 StatMalus(i32 depth) const { return std::min((i32)(StatMalusMult * depth) - StatMalusSub, (i32)StatMalusMax); }
 
     private:
-        const i32 CheckupMax = 512;
+        const u32 CheckupFrequency = 1023;
     };
-
 
     class SearchThreadPool {
     public:
         SearchLimits SharedInfo;
         std::vector<Thread*> Threads;
         TranspositionTable TTable;
-        std::atomic_bool StopThreads{};
 
         SearchThreadPool(i32 n = 1) {
             TTable.Initialize(Horsie::Hash);
@@ -159,13 +153,18 @@ namespace Horsie {
         constexpr SearchThread* MainThread() const { return Threads.front()->worker.get(); }
         constexpr Thread* MainThreadBase() const { return Threads.front(); }
 
-        void SetStop(bool flag = false) 
-        { 
-#if defined(DATAGEN)
-            MainThread()->SetStop(flag);
-#else
-            StopThreads = flag;
-#endif
+        void StopAllThreads() { 
+            for (i32 i = 1; i < Threads.size(); i++)
+                Threads[i]->worker->SetStop(true);
+
+            MainThread()->SetStop(true);
+        }
+
+        void StartAllThreads() {
+            for (i32 i = 1; i < Threads.size(); i++)
+                Threads[i]->worker->SetStop(false);
+
+            MainThread()->SetStop(false);
         }
 
         void Resize(i32 newThreadCount);
@@ -174,7 +173,7 @@ namespace Horsie {
         void WaitForMain() const;
         SearchThread* GetBestThread() const;
         void SendBestMove() const;
-        void StartThreads() const;
+        void AwakenHelperThreads() const;
         void WaitForSearchFinished() const;
         void Clear() const;
 
@@ -186,5 +185,4 @@ namespace Horsie {
             return sum;
         }
     };
-
 }

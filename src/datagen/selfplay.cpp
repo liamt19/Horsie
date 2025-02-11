@@ -197,6 +197,7 @@ namespace Horsie {
             tt->Initialize(Horsie::Hash);
             thread->TT = tt.get();
             thread->ThreadIdx = 0;
+            thread->IsDatagen = true;
             thread->OnDepthFinish = []() {};
             thread->OnSearchFinish = []() {};
 

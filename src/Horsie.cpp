@@ -321,7 +321,7 @@ void HandleEvalCommand(Position& pos) {
 }
 
 void HandleStopCommand() {
-    SearchPool->SetStop();
+    SearchPool->StopAllThreads();
 }
 
 void HandleUCICommand() {

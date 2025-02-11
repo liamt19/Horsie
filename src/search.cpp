@@ -29,12 +29,12 @@ namespace Horsie {
     void SearchThread::MainThreadSearch() {
         TT->TTUpdate();
 
-        AssocPool->StartThreads();
+        AssocPool->AwakenHelperThreads();
         this->Search(AssocPool->SharedInfo);
 
         while (!ShouldStop() && AssocPool->SharedInfo.IsInfinite()) {}
 
-        SetStop();
+        AssocPool->StopAllThreads();
         AssocPool->WaitForSearchFinished();
 
         if (OnSearchFinish) {
@@ -133,8 +133,8 @@ namespace Horsie {
             if (!IsMain())
                 continue;
 
-            if (ShouldStop())
-            {
+            if (ShouldStop()) {
+
                 //  If we received a stop command or hit the hard time limit, our RootMoves may not have been filled in properly.
                 //  In that case, we replace the current bestmove with the last depth's bestmove
                 //  so that the move we send is based on an entire depth being searched instead of only a portion of it.
@@ -193,8 +193,7 @@ namespace Horsie {
                 break;
             }
 
-            if (!ShouldStop())
-            {
+            if (!ShouldStop()) {
                 CompletedDepth = RootDepth;
             }
         }
@@ -245,26 +244,9 @@ namespace Horsie {
         TTEntry _tte{};
         TTEntry* tte = &_tte;
 
-#if !defined(DATAGEN)
         if (IsMain()) {
-            if ((++CheckupCount) >= CheckupMax) {
-                CheckupCount = 0;
-
-                if (HardTimeReached()) {
-                    SetStop();
-                }
-            }
-            
-            if ((Threads == 1 && Nodes >= HardNodeLimit)
-                || (CheckupCount == 0 && AssocPool->GetNodeCount() >= HardNodeLimit)) {
-                SetStop();
-            }
+            CheckLimits();
         }
-#else
-        if (Nodes >= HardNodeLimit && RootDepth > 2) {
-            SetStop();
-        }
-#endif
 
         if (isPV) {
             SelDepth = std::max(SelDepth, ss->Ply + 1);
@@ -962,8 +944,8 @@ namespace Horsie {
         if (bmCapPiece != Piece::NONE && !bestMove.IsCastle()) {
             history.CaptureHistory[us][bmPiece][bmTo][bmCapPiece] << bonus;
         }
-        else
-        {
+        else {
+
             if (!bestMove.IsEnPassant()) {
                 ss->KillerMove = bestMove;
             }

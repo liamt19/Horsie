@@ -7,6 +7,7 @@
 #include "types.h"
 #include "util.h"
 
+#include <cassert>
 #include <chrono>
 #include <condition_variable>
 #include <iostream>
@@ -60,7 +61,7 @@ namespace Horsie {
         WaitForMain();
         MainThread()->StartTime = std::chrono::system_clock::now();
 
-        SetStop(false);
+        StartAllThreads();
         SharedInfo = rootInfo;
 
         auto& rootFEN = setup.StartFEN;
@@ -106,7 +107,7 @@ namespace Horsie {
         std::cout << "bestmove " << bmStr << std::endl;
     }
 
-    void SearchThreadPool::StartThreads() const {
+    void SearchThreadPool::AwakenHelperThreads() const {
         for (i32 i = 1; i < Threads.size(); i++)
             Threads[i]->WakeUp();
     }
@@ -120,26 +121,37 @@ namespace Horsie {
         for (i32 i = 0; i < Threads.size(); i++)
             Threads[i]->worker.get()->History.Clear();
 
-        MainThread()->CheckupCount = 0;
+        MainThread()->Nodes = 0;
     }
 
-
 	bool SearchThread::ShouldStop() const {
-#if defined(DATAGEN)
-		return DGStopThread;
-#else
-		return AssocPool->StopThreads.load(std::memory_order::relaxed);
-#endif
+        return StopSearching.load(std::memory_order::relaxed);
 	}
 
 	void SearchThread::SetStop(bool flag) {
-#if defined(DATAGEN)
-		DGStopThread = flag;
-#else
-        AssocPool->SetStop(flag);
-#endif
+        StopSearching.store(flag, std::memory_order::relaxed);
 	}
 
+    void SearchThread::CheckLimits() {
+        if (IsDatagen) {
+            if (Nodes >= HardNodeLimit && RootDepth > 2) {
+                SetStop();
+            }
+        }
+        else {
+            assert(IsMain());
+
+            if ((Nodes & CheckupFrequency) == CheckupFrequency && HardTimeReached()) {
+                AssocPool->StopAllThreads();
+            }
+
+            //  Obey node limit exactly when single-threaded, or check it wrt. CheckupFrequency otherwise
+            if ((Horsie::Threads == 1 && Nodes >= HardNodeLimit)
+                || (Nodes & CheckupFrequency) == CheckupFrequency && AssocPool->GetNodeCount() >= HardNodeLimit) {
+                AssocPool->StopAllThreads();
+            }
+        }
+    }
 
 	Thread::Thread(i32 n) {
 		worker = std::make_unique<SearchThread>();
