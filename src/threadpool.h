@@ -82,6 +82,7 @@ namespace Horsie {
         std::function<void()> OnDepthFinish;
         std::function<void()> OnSearchFinish;
         std::vector<RootMove> RootMoves{};
+        std::vector<RootMove> SavedRootMoves{};
 
         constexpr bool HasSoftTime() const { return SoftTimeLimit != 0; }
         constexpr bool IsMain() const { return ThreadIdx == 0; }
@@ -117,6 +118,12 @@ namespace Horsie {
         void SetStop(bool flag = true);
         void CheckLimits();
 
+        void UpdatePoolHistory(RootMove& rm);
+        void AdvanceWithConsensus();
+        void UndoAdvance();
+        void SaveRootMoves();
+        void RestoreRootMoves();
+
         i64 GetSearchTime() const {
             auto now = std::chrono::system_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - StartTime);
@@ -144,6 +151,10 @@ namespace Horsie {
         SearchLimits SharedInfo;
         std::vector<Thread*> Threads;
         TranspositionTable TTable;
+        std::vector<std::vector<RootMove>> PoolHistory{};
+        ThreadSetup SharedSetup{};
+        i32 AdvancedThreads{};
+        std::mutex AdvanceLock{};
 
         SearchThreadPool(i32 n = 1) {
             TTable.Initialize(Horsie::Hash);
@@ -152,6 +163,8 @@ namespace Horsie {
 
         constexpr SearchThread* MainThread() const { return Threads.front()->worker.get(); }
         constexpr Thread* MainThreadBase() const { return Threads.front(); }
+
+        constexpr auto MaxAdvancedThreads() const { return Threads.size() / 2; }
 
         void StopAllThreads() { 
             for (i32 i = 1; i < Threads.size(); i++)
@@ -167,6 +180,12 @@ namespace Horsie {
             MainThread()->SetStop(false);
         }
 
+        void ResetMoveHistory() {
+            for (auto& v : PoolHistory) {
+                v.clear();
+            }
+        }
+
         void Resize(i32 newThreadCount);
         void StartSearch(Position& rootPosition, const SearchLimits& rootInfo);
         void StartSearch(Position& rootPosition, const SearchLimits& rootInfo, ThreadSetup& setup);
@@ -176,6 +195,7 @@ namespace Horsie {
         void AwakenHelperThreads() const;
         void WaitForSearchFinished() const;
         void Clear() const;
+        bool HasConsensus() const;
 
         u64 GetNodeCount() const {
             u64 sum = 0;

@@ -49,6 +49,12 @@ namespace Horsie {
             Threads.push_back(td);
         }
 
+        PoolHistory.clear();
+        PoolHistory.resize(newThreadCount);
+        for (auto& v : PoolHistory) {
+            v.reserve(MaxDepth);
+        }
+
         WaitForMain();
     }
 
@@ -63,11 +69,14 @@ namespace Horsie {
 
         StartAllThreads();
         SharedInfo = rootInfo;
+        SharedSetup = setup;
+        AdvancedThreads = 0;
 
         auto& rootFEN = setup.StartFEN;
         if (rootFEN == InitialFEN && setup.SetupMoves.size() == 0) {
             rootFEN = rootPosition.GetFEN();
         }
+        //  TODO: fix setup.StartFEN too?
 
         ScoredMove rms[MoveListSize] = {};
         i32 size = Generate<GenLegal>(rootPosition, &rms[0], 0);
@@ -124,6 +133,34 @@ namespace Horsie {
         MainThread()->Nodes = 0;
     }
 
+    bool SearchThreadPool::HasConsensus() const {
+        if (Horsie::Threads == 1)
+            return false;
+
+        for (const auto& v : PoolHistory) {
+            //  RootDepth <= 2
+            if (v.size() <= 2)
+                return false;
+
+            if (v.back().PV.size() < 2)
+                return false;
+        }
+
+        const auto& mainVec = PoolHistory[0].back();
+        const auto m0 = mainVec.PV[0];
+        const auto m1 = mainVec.PV[1];
+        i32 agree = 1;
+
+        for (i32 i = 1; i < PoolHistory.size(); i++) {
+            const auto& tVec = PoolHistory[i].back();
+
+            if (tVec.PV[0] == m0 && tVec.PV[1] == m1)
+                agree++;
+        }
+
+        return agree > (PoolHistory.size() / 2);
+    }
+
 	bool SearchThread::ShouldStop() const {
         return StopSearching.load(std::memory_order::relaxed);
 	}
@@ -151,6 +188,51 @@ namespace Horsie {
                 AssocPool->StopAllThreads();
             }
         }
+    }
+
+    void SearchThread::UpdatePoolHistory(RootMove& rm) {
+        AssocPool->PoolHistory[ThreadIdx].push_back(rm);
+    }
+
+    void SearchThread::AdvanceWithConsensus() {
+        SaveRootMoves();
+
+        const auto& rm = AssocPool->PoolHistory[ThreadIdx].back();
+        const auto& pv = rm.PV;
+
+        RootPosition.MakeMove(pv[0]);
+        RootPosition.MakeMove(pv[1]);
+
+        ScoredMove rms[MoveListSize] = {};
+        i32 size = Generate<GenLegal>(RootPosition, &rms[0], 0);
+
+        RootMoves.clear();
+        RootMoves.shrink_to_fit();
+        RootMoves.reserve(size);
+        for (i32 j = 0; j < size; j++) {
+            RootMoves.push_back(RootMove(rms[j].move));
+        }
+    }
+
+    void SearchThread::UndoAdvance() {
+        const auto& setup = AssocPool->SharedSetup;
+
+        const auto& rootFEN = setup.StartFEN;
+        RootPosition.LoadFromFEN(rootFEN);
+
+        for (auto& move : setup.SetupMoves) {
+            RootPosition.MakeMove(move);
+        }
+
+        RestoreRootMoves();
+    }
+
+    void SearchThread::SaveRootMoves() {
+        SavedRootMoves.assign(RootMoves.begin(), RootMoves.end());
+    }
+    
+    void SearchThread::RestoreRootMoves() {
+        RootMoves.assign(SavedRootMoves.begin(), SavedRootMoves.end());
     }
 
 	Thread::Thread(i32 n) {

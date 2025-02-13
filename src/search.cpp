@@ -67,6 +67,10 @@ namespace Horsie {
         RootMove lastBestRootMove = RootMove(Move::Null());
         i32 stability = 0;
 
+        bool isAdvanced = false;
+        i32 advancedDepths = 0;
+        i32 advancedStartDepth = 0;
+
         i32 maxDepth = IsMain() ? MaxDepth : MaxPly;
         while (++RootDepth < maxDepth) {
             //  The main thread is not allowed to search past info.MaxDepth
@@ -75,6 +79,35 @@ namespace Horsie {
 
             if (ShouldStop())
                 break;
+
+            if (isAdvanced) {
+                if (RootDepth > advancedStartDepth + 3) {
+                    std::unique_lock lock{ AssocPool->AdvanceLock };
+                    AssocPool->AdvancedThreads--;
+                    lock.unlock();
+
+                    isAdvanced = false;
+                    advancedDepths = 0;
+                    RootDepth = advancedStartDepth;
+                    UndoAdvance();
+                }
+
+                advancedDepths++;
+            }
+            else if (!IsMain() && RootDepth >= 3) {
+                if (AssocPool->HasConsensus()) {
+                    std::unique_lock lock{ AssocPool->AdvanceLock };
+                    if (AssocPool->AdvancedThreads <= AssocPool->MaxAdvancedThreads()) {
+                        AssocPool->AdvancedThreads++;
+                        AdvanceWithConsensus();
+                        isAdvanced = true;
+                        advancedStartDepth = RootDepth;
+                        RootDepth /= 2;
+                    }
+
+                    lock.unlock();
+                }
+            }
 
             for (RootMove& rm : RootMoves) {
                 rm.PreviousScore = rm.Score;
@@ -129,6 +162,9 @@ namespace Horsie {
                     }
                 }
             }
+
+            if (!isAdvanced)
+                UpdatePoolHistory(RootMoves[0]);
 
             if (!IsMain())
                 continue;
