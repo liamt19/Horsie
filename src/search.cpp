@@ -78,14 +78,17 @@ namespace Horsie {
             if (ShouldStop())
                 break;
 
-            if (!IsMain() && !isAdvanced && RootDepth >= 5) {
+            if (!IsMain() && !isAdvanced && RootDepth >= 8) {
                 if (AssocPool->HasConsensus()) {
                     std::unique_lock lock{ AssocPool->AdvanceLock };
                     if (AssocPool->AdvancedThreads <= AssocPool->MaxAdvancedThreads()) {
                         AssocPool->AdvancedThreads++;
                         AdvanceWithConsensus();
                         isAdvanced = true;
-                        RootDepth /= 2;
+
+                        const i32 maxR = 4;
+                        const i32 targetDepth = 18;
+                        RootDepth = std::max(RootDepth - maxR, RootDepth * ((targetDepth - maxR) / targetDepth));
                     }
 
                     lock.unlock();

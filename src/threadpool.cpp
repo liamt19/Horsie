@@ -142,7 +142,7 @@ namespace Horsie {
             if (v.size() <= 2)
                 return false;
 
-            if (v.back().PV.size() < 2)
+            if (v.back().PV.size() < 3)
                 return false;
         }
 
