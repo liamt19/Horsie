@@ -211,6 +211,9 @@ namespace Horsie {
         RootMoves.reserve(size);
         for (i32 j = 0; j < size; j++) {
             RootMoves.push_back(RootMove(rms[j].move));
+            if (pv.size() > 2 && RootMoves[j].move == pv[2]) {
+                std::swap(RootMoves[0], RootMoves[j]);
+            }
         }
     }
 
