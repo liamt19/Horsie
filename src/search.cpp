@@ -68,8 +68,6 @@ namespace Horsie {
         i32 stability = 0;
 
         bool isAdvanced = false;
-        i32 advancedDepths = 0;
-        i32 advancedStartDepth = 0;
 
         i32 maxDepth = IsMain() ? MaxDepth : MaxPly;
         while (++RootDepth < maxDepth) {
@@ -80,28 +78,13 @@ namespace Horsie {
             if (ShouldStop())
                 break;
 
-            if (isAdvanced) {
-                if (RootDepth > advancedStartDepth + 3) {
-                    std::unique_lock lock{ AssocPool->AdvanceLock };
-                    AssocPool->AdvancedThreads--;
-                    lock.unlock();
-
-                    isAdvanced = false;
-                    advancedDepths = 0;
-                    RootDepth = advancedStartDepth;
-                    UndoAdvance();
-                }
-
-                advancedDepths++;
-            }
-            else if (!IsMain() && RootDepth >= 3) {
+            if (!IsMain() && !isAdvanced && RootDepth >= 5) {
                 if (AssocPool->HasConsensus()) {
                     std::unique_lock lock{ AssocPool->AdvanceLock };
                     if (AssocPool->AdvancedThreads <= AssocPool->MaxAdvancedThreads()) {
                         AssocPool->AdvancedThreads++;
                         AdvanceWithConsensus();
                         isAdvanced = true;
-                        advancedStartDepth = RootDepth;
                         RootDepth /= 2;
                     }
 

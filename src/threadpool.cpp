@@ -195,7 +195,6 @@ namespace Horsie {
     }
 
     void SearchThread::AdvanceWithConsensus() {
-        SaveRootMoves();
 
         const auto& rm = AssocPool->PoolHistory[ThreadIdx].back();
         const auto& pv = rm.PV;
@@ -215,27 +214,6 @@ namespace Horsie {
                 std::swap(RootMoves[0], RootMoves[j]);
             }
         }
-    }
-
-    void SearchThread::UndoAdvance() {
-        const auto& setup = AssocPool->SharedSetup;
-
-        const auto& rootFEN = setup.StartFEN;
-        RootPosition.LoadFromFEN(rootFEN);
-
-        for (auto& move : setup.SetupMoves) {
-            RootPosition.MakeMove(move);
-        }
-
-        RestoreRootMoves();
-    }
-
-    void SearchThread::SaveRootMoves() {
-        SavedRootMoves.assign(RootMoves.begin(), RootMoves.end());
-    }
-    
-    void SearchThread::RestoreRootMoves() {
-        RootMoves.assign(SavedRootMoves.begin(), SavedRootMoves.end());
     }
 
 	Thread::Thread(i32 n) {

@@ -120,9 +120,6 @@ namespace Horsie {
 
         void UpdatePoolHistory(RootMove& rm);
         void AdvanceWithConsensus();
-        void UndoAdvance();
-        void SaveRootMoves();
-        void RestoreRootMoves();
 
         i64 GetSearchTime() const {
             auto now = std::chrono::system_clock::now();
