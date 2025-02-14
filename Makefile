@@ -23,11 +23,14 @@ ifndef EVALFILE
 endif
 
 
-CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -DUSE_PEXT -DUSE_POPCNT -funroll-loops
+CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -funroll-loops
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 
 CXXFLAGS_NATIVE := -march=native
-CXXFLAGS_AVX2_BMI2 := -march=haswell -mtune=haswell
+CXXFLAGS_AVX2_BMI2 := -march=haswell -mtune=haswell -DAVX256
+CXXFLAGS_V4 := -march=x86-64-v4 -DAVX512 -DUSE_PEXT
+CXXFLAGS_V3 := -march=x86-64-v3 -DAVX256 -DUSE_PEXT
+CXXFLAGS_V2 := -march=x86-64-v2 -DAVX128
 
 ifneq ($(findstring __AVX512BW__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DAVX512
@@ -38,6 +41,10 @@ endif
 ifneq ($(findstring __AVX__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DAVX128
 endif
+ifeq ($(findstring __znver2__, $(ARCH_DEFINES)),)
+CXXFLAGS_NATIVE += -DUSE_PEXT
+endif
+ 
 
 
 ifeq ($(CXX),clang++)
@@ -88,7 +95,7 @@ endef
 endif
 
 
-release: avx2-bmi2
+release: avx2-bmi2 v4 v3 v2
 all: native release
 
 .PHONY: all
@@ -110,5 +117,14 @@ native: $(EXE)
 
 avx2-bmi2: $(EVALFILE) $(SOURCES)
 	$(call build,AVX2_BMI2,avx2-bmi2)
+
+v4: $(EVALFILE) $(SOURCES)
+	$(call build,V4,v4)
+
+v3: $(EVALFILE) $(SOURCES)
+	$(call build,V3,v3)
+
+v2: $(EVALFILE) $(SOURCES)
+	$(call build,V2,v2)
 
 clean:

@@ -623,6 +623,7 @@ namespace Horsie
                 }
 
                 if (m_pos >= m_end) {
+                    ZSTD_freeDStream(m_dStream); 
                     return;
                 }
 
