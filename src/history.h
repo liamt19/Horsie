@@ -118,7 +118,7 @@ namespace Horsie {
 
             u64 h = hash & L3Mask;
             while (h != 0) {
-                auto& c = L2Correction[stm][poplsb(h)];
+                auto& c = L3Correction[stm][poplsb(h)];
                 c = std::clamp((c * blendNew + blendOld) / CorrectionScale, -CorrectionMax, CorrectionMax);
             }
         }
