@@ -1013,7 +1013,7 @@ namespace Horsie {
         const auto l2 = History.GetL2Correction(us, ss->ActivationHashes);
         const auto l3 = History.GetL3Correction(us, ss->ActivationHashes);
 
-        const auto corr = ((pawn * 200) + (nonPawnW * 100 + nonPawnB * 100) + (l2 * 100) + (l3 * 100)) / 300;
+        const auto corr = ((pawn * 600) + (nonPawnW * 300 + nonPawnB * 300) + (l2 * 150) + (l3 * 150)) / 900;
 
         return static_cast<i16>(rawEval + corr);
     }

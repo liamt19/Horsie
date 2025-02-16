@@ -85,26 +85,32 @@ namespace Horsie {
 
         constexpr auto GetL2Correction(i32 stm, u64 hash) const {
             i32 c = 0;
+            i32 active = 1;
             u64 h = hash & L2Mask;
-            while (h != 0)
+            while (h != 0) {
                 c += L2Correction[stm][poplsb(h)];
+                active++;
+            }
 
-            return c / CorrectionGrain;
+            return c / (active * CorrectionGrain);
         }
 
         constexpr auto GetL3Correction(i32 stm, u64 hash) const {
             i32 c = 0;
+            i32 active = 1;
             u64 h = hash & L3Mask;
-            while (h != 0)
+            while (h != 0) {
                 c += L3Correction[stm][poplsb(h)];
+                active++;
+            }
 
-            return c / CorrectionGrain;
+            return c / (active * CorrectionGrain);
         }
 
         constexpr void UpdateL2Correction(i32 stm, u64 hash, i32 diff, i32 scaledWeight) {
             const auto blendOld = (diff * CorrectionGrain * scaledWeight);
             const auto blendNew = (CorrectionScale - scaledWeight);
-            
+
             u64 h = hash & L2Mask;
             while (h != 0) {
                 auto& c = L2Correction[stm][poplsb(h)];
@@ -118,7 +124,7 @@ namespace Horsie {
 
             u64 h = hash & L3Mask;
             while (h != 0) {
-                auto& c = L2Correction[stm][poplsb(h)];
+                auto& c = L3Correction[stm][poplsb(h)];
                 c = std::clamp((c * blendNew + blendOld) / CorrectionScale, -CorrectionMax, CorrectionMax);
             }
         }
