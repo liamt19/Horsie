@@ -216,16 +216,12 @@ namespace Horsie
             accumulator.Computed[perspective] = true;
         }
 
-        i32 GetEvaluation(Position& pos) {
-            const auto occ = popcount(pos.bb.Occupancy);
-            const auto outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
-
-            return GetEvaluation(pos, outputBucket);
-        }
-
-        i32 GetEvaluation(Position& pos, i32 outputBucket) {
+        std::pair<i32, u64> GetEvaluation(Position& pos) {
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
+
+            const auto occ = popcount(pos.bb.Occupancy);
+            const auto outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
             auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
             auto them = Span<i16>(accumulator.Sides[Not(pos.ToMove)]);
@@ -237,6 +233,7 @@ namespace Horsie
 
             i32 nnzCount = 0;
             u16 nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
+            u64 activationHashes = 0;
             
             {
                 const auto zero = vec_setzero_epi16();
@@ -312,6 +309,12 @@ namespace Horsie
                     const auto squared = vec_mul_ps(clipped, clipped);
                     vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
                 }
+
+                for (i32 i = 0; i < L2_SIZE; i++) {
+                    if (outputs[i] > float{}) {
+                        activationHashes |= (1ULL << i);
+                    }
+                }
             }
 
 
@@ -340,6 +343,13 @@ namespace Horsie
                     const auto squared = vec_mul_ps(clipped, clipped);
                     vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
                 }
+
+                for (i32 i = 0; i < L3_SIZE; i++) {
+                    if (outputs[i] > float{}) {
+                        activationHashes |= (1ULL << (i + L2_SIZE));
+                    }
+                }
+
             }
 
 
@@ -360,7 +370,8 @@ namespace Horsie
                 L3Output = bias + vec_hsum_ps(sumVecs);
             }
 
-            return static_cast<i32>(L3Output * OutputScale);
+            i32 ev = static_cast<i32>(L3Output * OutputScale);
+            return { ev, activationHashes };
         }
 
         void MakeMoveNN(Position& pos, Move m) {

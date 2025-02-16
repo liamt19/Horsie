@@ -298,7 +298,7 @@ void HandleGoCommand(Position& pos, std::istringstream& is) {
 }
 
 void HandleEvalCommand(Position& pos) {
-    cout << "Evaluation: " << NNUE::GetEvaluation(pos) << endl << endl;
+    cout << "Evaluation: " << NNUE::GetEvaluation(pos).first << endl << endl;
 
     ScoredMove legals[MoveListSize] = {};
     i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
@@ -307,7 +307,7 @@ void HandleEvalCommand(Position& pos) {
     for (size_t i = 0; i < legalsSize; i++) {
         Move m = legals[i].move;
         pos.MakeMove(m);
-        i32 eval = NNUE::GetEvaluation(pos);
+        i32 eval = NNUE::GetEvaluation(pos).first;
         pos.UnmakeMove(m);
 
         moves.push_back({ m, (eval * -1) });

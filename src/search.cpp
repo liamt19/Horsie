@@ -262,7 +262,7 @@ namespace Horsie {
                     return ScoreDraw;
                 }
                 else {
-                    return Horsie::NNUE::GetEvaluation(pos);
+                    return Horsie::NNUE::GetEvaluation(pos).first;
                 }
             }
 
@@ -277,6 +277,7 @@ namespace Horsie {
         
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
         ss->InCheck = pos.Checked();
+        ss->ActivationHashes = 0;
         ss->TTHit = TT->Probe(pos.Hash(), tte);
         if (!doSkip) {
             ss->TTPV = isPV || (ss->TTHit && tte->PV());
@@ -303,18 +304,22 @@ namespace Horsie {
             eval = ss->StaticEval;
         }
         else if (ss->TTHit) {
-            rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
+            rawEval = tte->StatEval();
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            if (rawEval == ScoreNone) {
+                std::tie(rawEval, ss->ActivationHashes) = NNUE::GetEvaluation(pos);
+            }
+
+            eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
 
             if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
                 eval = ttScore;
             }
         }
         else {
-            rawEval = NNUE::GetEvaluation(pos);
+            std::tie(rawEval, ss->ActivationHashes) = NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
 
             tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
@@ -723,7 +728,7 @@ namespace Horsie {
                 && !(bound == TTNodeType::Beta && bestScore >= ss->StaticEval)) {
 
                 auto diff = bestScore - ss->StaticEval;
-                UpdateCorrectionHistory(pos, diff, depth);
+                UpdateCorrectionHistory(pos, ss, diff, depth);
             }
         }
 
@@ -758,6 +763,7 @@ namespace Horsie {
         TTEntry _tte{};
         TTEntry* tte = &_tte;
         ss->InCheck = pos.Checked();
+        ss->ActivationHashes = 0;
         ss->TTHit = TT->Probe(pos.Hash(), tte);
         const i16 ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         const Move ttMove = ss->TTHit ? tte->BestMove : Move::Null();
@@ -773,7 +779,7 @@ namespace Horsie {
         }
 
         if (ss->Ply >= MaxSearchStackPly - 1) {
-            return ss->InCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
+            return ss->InCheck ? ScoreDraw : NNUE::GetEvaluation(pos).first;
         }
 
         if (!isPV
@@ -784,41 +790,52 @@ namespace Horsie {
 
         if (ss->InCheck) {
             eval = ss->StaticEval = -ScoreInfinite;
+            goto MovesLoop;
         }
-        else {
-            if (ss->TTHit) {
-                rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
-
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
-
-                if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
-                    eval = ttScore;
-                }
+        
+        if (ss->TTHit) {
+            if (tte->StatEval() != ScoreNone) {
+                rawEval = tte->StatEval();
             }
             else {
-                rawEval = ((ss - 1)->CurrentMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
-
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+                std::tie(rawEval, ss->ActivationHashes) = NNUE::GetEvaluation(pos);
             }
 
-            if (eval >= beta) {
-                if (!ss->TTHit)
-                    tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, false);
+            eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
 
-                if (std::abs(eval) < ScoreTTWin)
-                    eval = static_cast<i16>((4 * eval + beta) / 5);
-
-                return eval;
+            if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
+                eval = ttScore;
             }
-
-            if (eval > alpha) {
-                alpha = eval;
-            }
-
-            bestScore = eval;
-
-            futility = (std::min(ss->StaticEval, static_cast<i16>(bestScore)) + QSFutileMargin);
         }
+        else {
+            if ((ss - 1)->CurrentMove == Move::Null()) {
+                rawEval = -(ss - 1)->StaticEval;
+            }
+            else {
+                std::tie(rawEval, ss->ActivationHashes) = NNUE::GetEvaluation(pos);
+            }
+
+            eval = ss->StaticEval = AdjustEval(pos, ss, us, rawEval);
+        }
+
+        if (eval >= beta) {
+            if (!ss->TTHit)
+                tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, false);
+
+            if (std::abs(eval) < ScoreTTWin)
+                eval = static_cast<i16>((4 * eval + beta) / 5);
+
+            return eval;
+        }
+
+        if (eval > alpha) {
+            alpha = eval;
+        }
+
+        bestScore = eval;
+        futility = (std::min(ss->StaticEval, static_cast<i16>(bestScore)) + QSFutileMargin);
+
+        MovesLoop:
 
         const auto prevSquare = (ss - 1)->CurrentMove == Move::Null() ? SQUARE_NB : (ss - 1)->CurrentMove.To();
         i32 legalMoves = 0;
@@ -986,18 +1003,22 @@ namespace Horsie {
 
     }
 
-    i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
+    i16 SearchThread::AdjustEval(Position& pos, SearchStackEntry* ss, i32 us, i16 rawEval) const {
         rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
         const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
+
+        const auto l2 = History.GetL2Correction(us, ss->ActivationHashes);
+        const auto l3 = History.GetL3Correction(us, ss->ActivationHashes);
+
+        const auto corr = ((pawn * 200) + (nonPawnW * 100 + nonPawnB * 100) + (l2 * 100) + (l3 * 100)) / 300;
 
         return static_cast<i16>(rawEval + corr);
     }
 
-    void SearchThread::UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth) {
+    void SearchThread::UpdateCorrectionHistory(Position& pos, SearchStackEntry* ss, i32 diff, i32 depth) {
         const auto scaledWeight = std::min((depth * depth) + 1, 128);
 
         auto& pawnCh = History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384];
@@ -1011,6 +1032,9 @@ namespace Horsie {
         auto& nonPawnChB = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384];
         const auto nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
         nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
+
+        History.UpdateL2Correction(pos.ToMove, ss->ActivationHashes, diff, scaledWeight);
+        History.UpdateL3Correction(pos.ToMove, ss->ActivationHashes, diff, scaledWeight);
     }
 
     void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) const {

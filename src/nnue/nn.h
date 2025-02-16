@@ -74,8 +74,7 @@ namespace Horsie
         void ProcessUpdates(Position& pos);
 
 
-        i32 GetEvaluation(Position& pos, i32 outputBucket);
-        i32 GetEvaluation(Position& pos);
+        std::pair<i32, u64> GetEvaluation(Position& pos);
         static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output);
         static void ActivateL1Sparse(Span<i8> inputs, Span<i8> weights, Span<float> biases, Span<float> output, Span<u16> nnzIndices, const i32 nnzCount);
         static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output);

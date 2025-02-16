@@ -1,6 +1,8 @@
 #pragma once
 
 #include "defs.h"
+#include "search_options.h"
+#include "types.h"
 #include "util/NDArray.h"
 
 #include <array>
@@ -49,6 +51,8 @@ namespace Horsie {
     using PieceToHistory = Stats<i16, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
     using CorrectionT = Util::NDArray<i16, 2, 16384>;
+    using L2ActivationT = Util::NDArray<i16, 2, 16>;
+    using L3ActivationT = Util::NDArray<i16, 2, 32>;
 
     struct HistoryTable {
     public:
@@ -58,6 +62,8 @@ namespace Horsie {
         PlyHistoryT PlyHistory{};
         CorrectionT PawnCorrection{};
         CorrectionT NonPawnCorrection{};
+        L2ActivationT L2Correction{};
+        L3ActivationT L3Correction{};
 
         void Clear() {
             MainHistory.Fill(0);
@@ -65,6 +71,8 @@ namespace Horsie {
             PlyHistory.Fill(0);
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
             std::memset(&NonPawnCorrection, 0, sizeof(NonPawnCorrection));
+            std::memset(&L2Correction, 0, sizeof(L2Correction));
+            std::memset(&L3Correction, 0, sizeof(L3Correction));
 
             for (size_t i = 0; i < 2; i++) {
                 for (size_t j = 0; j < 2; j++) {
@@ -74,6 +82,50 @@ namespace Horsie {
                 }
             }
         }
+
+        constexpr auto GetL2Correction(i32 stm, u64 hash) const {
+            i32 c = 0;
+            u64 h = hash & L2Mask;
+            while (h != 0)
+                c += L2Correction[stm][poplsb(h)];
+
+            return c / CorrectionGrain;
+        }
+
+        constexpr auto GetL3Correction(i32 stm, u64 hash) const {
+            i32 c = 0;
+            u64 h = hash & L3Mask;
+            while (h != 0)
+                c += L3Correction[stm][poplsb(h)];
+
+            return c / CorrectionGrain;
+        }
+
+        constexpr void UpdateL2Correction(i32 stm, u64 hash, i32 diff, i32 scaledWeight) {
+            const auto blendOld = (diff * CorrectionGrain * scaledWeight);
+            const auto blendNew = (CorrectionScale - scaledWeight);
+            
+            u64 h = hash & L2Mask;
+            while (h != 0) {
+                auto& c = L2Correction[stm][poplsb(h)];
+                c = std::clamp((c * blendNew + blendOld) / CorrectionScale, -CorrectionMax, CorrectionMax);
+            }
+        }
+
+        constexpr void UpdateL3Correction(i32 stm, u64 hash, i32 diff, i32 scaledWeight) {
+            const auto blendOld = (diff * CorrectionGrain * scaledWeight);
+            const auto blendNew = (CorrectionScale - scaledWeight);
+
+            u64 h = hash & L3Mask;
+            while (h != 0) {
+                auto& c = L2Correction[stm][poplsb(h)];
+                c = std::clamp((c * blendNew + blendOld) / CorrectionScale, -CorrectionMax, CorrectionMax);
+            }
+        }
+
+    private:
+        const u64 L2Mask = 0xFFFF;
+        const u64 L3Mask = 0xFFFFFFFF0000;
     };
 
 }

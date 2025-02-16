@@ -72,6 +72,7 @@ namespace Horsie {
             bool TTPV;
             bool TTHit;
             i32 PVLength;
+            u64 ActivationHashes;
 
 
             void Clear() {
@@ -81,6 +82,7 @@ namespace Horsie {
                 Ply = 0;
                 DoubleExtensions = 0;
                 StaticEval = ScoreNone;
+                ActivationHashes = 0;
 
                 PVLength = 0;
                 if (PV != nullptr) {
