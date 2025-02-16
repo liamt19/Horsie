@@ -722,13 +722,15 @@ namespace Horsie {
             
             tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(bestScore), ss->Ply), bound, depth, moveToSave, rawEval, TT->Age, ss->TTPV);
 
-            if (!ss->InCheck
-                && (bestMove.IsNull() || !pos.IsNoisy(bestMove))
-                && !(bound == TTNodeType::Alpha && bestScore <= ss->StaticEval)
+            if (!(bound == TTNodeType::Alpha && bestScore <= ss->StaticEval)
                 && !(bound == TTNodeType::Beta && bestScore >= ss->StaticEval)) {
-
                 auto diff = bestScore - ss->StaticEval;
-                UpdateCorrectionHistory(pos, ss, diff, depth);
+
+                if (!ss->InCheck && (bestMove.IsNull() || !pos.IsNoisy(bestMove))) {
+                    UpdateCorrectionHistory(pos, ss, diff, depth);
+                }
+
+                UpdateNNCorrection(pos, ss, diff, depth);
             }
         }
 
@@ -1032,6 +1034,10 @@ namespace Horsie {
         auto& nonPawnChB = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384];
         const auto nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
         nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
+    }
+
+    void SearchThread::UpdateNNCorrection(Position& pos, SearchStackEntry* ss, i32 diff, i32 depth) {
+        const auto scaledWeight = std::min((depth * depth) + 1, 128);
 
         History.UpdateL2Correction(pos.ToMove, ss->ActivationHashes, diff, scaledWeight);
         History.UpdateL3Correction(pos.ToMove, ss->ActivationHashes, diff, scaledWeight);
