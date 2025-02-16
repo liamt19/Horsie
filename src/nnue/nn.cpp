@@ -227,137 +227,140 @@ namespace Horsie
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
 
+            auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
+            auto them = Span<i16>(accumulator.Sides[Not(pos.ToMove)]);
+
+            i8 ft_outputs[L1_SIZE];
             float L1Outputs[L2_SIZE];
             float L2Outputs[L3_SIZE];
             float L3Output = 0;
 
-            auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
-            auto them = Span<i16>(accumulator.Sides[Not(pos.ToMove)]);
-
-            ActivateFTSparse(us, them, Span<i8>(net.L1Weights[outputBucket]), Span<float>(net.L1Biases[outputBucket]), L1Outputs);
-            ActivateL2(L1Outputs, Span<float>(net.L2Weights[outputBucket]), Span<float>(net.L2Biases[outputBucket]), L2Outputs);
-            ActivateL3(L2Outputs, Span<float>(net.L3Weights[outputBucket]), net.L3Biases[outputBucket], L3Output);
-
-            return static_cast<i32>(L3Output * OutputScale);
-        }
-
-        static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output) {
-            const auto ft_zero = vec_setzero_epi16();
-            const auto ft_one = vec_set1_epi16(FT_QUANT);
-
             i32 nnzCount = 0;
-            i32 offset = 0;
-
-            i8 ft_outputs[L1_SIZE];
             u16 nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
+            
+            {
+                const auto zero = vec_setzero_epi16();
+                const auto one = vec_set1_epi16(FT_QUANT);
 
-            const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
-            vec_128i baseVec = _mm_setzero_si128();
+                i32 offset = 0;
+                
+                const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
+                vec_128i baseVec = _mm_setzero_si128();
 
-            for (const auto acc : { us, them }) {
-                for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
-                    const auto input0a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
-                    const auto input0b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
+                for (const auto acc : { us, them }) {
+                    for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
+                        const auto input0a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
+                        const auto input0b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + 0]));
 
-                    const auto input1a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
-                    const auto input1b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                        const auto input1a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
+                        const auto input1b = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]));
 
-                    const auto clipped0a = vec_min_epi16(vec_max_epi16(input0a, ft_zero), ft_one);
-                    const auto clipped0b = vec_min_epi16(vec_max_epi16(input0b, ft_zero), ft_one);
+                        const auto clipped0a = vec_min_epi16(vec_max_epi16(input0a, zero), one);
+                        const auto clipped0b = vec_min_epi16(vec_max_epi16(input0b, zero), one);
 
-                    const auto clipped1a = vec_min_epi16(input1a, ft_one);
-                    const auto clipped1b = vec_min_epi16(input1b, ft_one);
+                        const auto clipped1a = vec_min_epi16(input1a, one);
+                        const auto clipped1b = vec_min_epi16(input1b, one);
 
-                    const auto producta = vec_mulhi_epi16(vec_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
-                    const auto productb = vec_mulhi_epi16(vec_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+                        const auto producta = vec_mulhi_epi16(vec_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
+                        const auto productb = vec_mulhi_epi16(vec_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
 
-                    const auto product_one = vec_packus_epi16(producta, productb);
-                    vec_storeu_epi8(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), product_one);
+                        const auto prod = vec_packus_epi16(producta, productb);
+                        vec_storeu_epi8(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), prod);
 
-                    const auto nnz_mask = vec_nnz_mask(product_one);
+                        const auto nnz_mask = vec_nnz_mask(prod);
 
-                    for (i32 j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++) {
-                        i32 lookup = (nnz_mask >> (j * 8)) & 0xFF;
-                        auto offsets = nnzTable.Entries[lookup];
-                        _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
+                        for (i32 j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++) {
+                            i32 lookup = (nnz_mask >> (j * 8)) & 0xFF;
+                            auto offsets = nnzTable.Entries[lookup];
+                            _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
 
-                        nnzCount += std::popcount(static_cast<u32>(lookup));
-                        baseVec = _mm_add_epi16(baseVec, baseInc);
+                            nnzCount += std::popcount(static_cast<u32>(lookup));
+                            baseVec = _mm_add_epi16(baseVec, baseInc);
+                        }
                     }
 
+                    offset += L1_PAIR_COUNT;
+                }
+            }
+
+
+            {
+                const auto inputs = Span<i8>(ft_outputs);
+                const auto& weights = net.L1Weights[outputBucket];
+                const auto& biases = net.L1Biases[outputBucket];
+                const auto outputs = L1Outputs;
+
+                vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
+
+                const auto inputs32 = (i32*)(inputs.data());
+                for (i32 i = 0; i < nnzCount; i++) {
+                    const auto index = nnzIndices[i];
+                    const auto input32 = vec_set1_epi32(inputs32[index]);
+                    const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
+                    for (i32 k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
+                        sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
                 }
 
-                offset += L1_PAIR_COUNT;
+                const auto sumMul = vec_set1_ps(L1_MUL);
+
+                const auto zero = vec_set1_ps(0.0f);
+                const auto one = vec_set1_ps(1.0f);
+                for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
+                    const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+                    const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
+                    const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
+                    const auto squared = vec_mul_ps(clipped, clipped);
+                    vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
+                }
             }
 
-#if defined(PERM_COUNT)
-            EvalCalls++;
-            ActivationCount += static_cast<u64>(nnzCount);
-            for (i32 i = 0; i < L1_SIZE; i++)
-                NNZCounts[i] += (ft_outputs[i] ? 1UL : 0);
-#endif
 
-            ActivateL1Sparse(Span<i8>(ft_outputs), weights, biases, output, Span<u16>(nnzIndices), nnzCount);
-        }
+            {
+                const auto inputs = L1Outputs;
+                const auto& weights = net.L2Weights[outputBucket];
+                const auto& biases = net.L2Biases[outputBucket];
+                const auto outputs = L2Outputs;
 
-        static void ActivateL1Sparse(Span<i8> inputs, Span<i8> weights, Span<float> biases, Span<float> output, Span<u16> nnzIndices, const i32 nnzCount) {
-            vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
+                vec_ps sumVecs[L3_SIZE / F32_CHUNK_SIZE];
 
-            const auto inputs32 = (i32*)(inputs.data());
-            for (i32 i = 0; i < nnzCount; i++) {
-                const auto index = nnzIndices[i];
-                const auto input32 = vec_set1_epi32(inputs32[index]);
-                const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
-                for (i32 k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
-                    sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
+                for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
+                    sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+
+                for (i32 i = 0; i < L2_SIZE; ++i) {
+                    const auto inputVec = vec_set1_ps(inputs[i]);
+                    const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_SIZE]);
+                    for (i32 j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
+                        sumVecs[j] = vec_fmadd_ps(inputVec, weight[j], sumVecs[j]);
+                }
+
+                const auto zero = vec_set1_ps(0.0f);
+                const auto one = vec_set1_ps(1.0f);
+                for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
+                    const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
+                    const auto squared = vec_mul_ps(clipped, clipped);
+                    vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
+                }
             }
 
-            const auto zero = vec_set1_ps(0.0f);
-            const auto one = vec_set1_ps(1.0f);
 
-            const auto sumMul = vec_set1_ps(L1_MUL);
-            for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
-                const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
-                const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
-                const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
-            }
-        }
+            {
+                const auto& inputs = L2Outputs;
+                const auto& weights = net.L3Weights[outputBucket];
+                const auto bias = net.L3Biases[outputBucket];
 
-        static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output) {
-            vec_ps sumVecs[L3_SIZE / F32_CHUNK_SIZE];
+                constexpr auto SUM_COUNT = 64 / sizeof(vec_ps);
+                vec_ps sumVecs[SUM_COUNT]{};
 
-            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
-                sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+                for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
+                    const auto weightVec = vec_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
+                    const auto inputsVec = vec_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
+                    sumVecs[i % SUM_COUNT] = vec_fmadd_ps(inputsVec, weightVec, sumVecs[i % SUM_COUNT]);
+                }
 
-            for (i32 i = 0; i < L2_SIZE; ++i) {
-                const auto inputVec = vec_set1_ps(inputs[i]);
-                const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_SIZE]);
-                for (i32 j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
-                    sumVecs[j] = vec_fmadd_ps(inputVec, weight[j], sumVecs[j]);
+                L3Output = bias + vec_hsum_ps(sumVecs);
             }
 
-            const auto zero = vec_set1_ps(0.0f);
-            const auto one = vec_set1_ps(1.0f);
-            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
-                const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
-            }
-        }
-
-        static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output) {
-            constexpr auto SUM_COUNT = 64 / sizeof(vec_ps);
-            vec_ps sumVecs[SUM_COUNT]{};
-
-            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
-                const auto weightVec = vec_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
-                const auto inputsVec = vec_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
-                sumVecs[i % SUM_COUNT] = vec_fmadd_ps(inputsVec, weightVec, sumVecs[i % SUM_COUNT]);
-            }
-
-            output = bias + vec_hsum_ps(sumVecs);
+            return static_cast<i32>(L3Output * OutputScale);
         }
 
         void MakeMoveNN(Position& pos, Move m) {
@@ -620,6 +623,7 @@ namespace Horsie
                 }
 
                 if (m_pos >= m_end) {
+                    ZSTD_freeDStream(m_dStream); 
                     return;
                 }
 
