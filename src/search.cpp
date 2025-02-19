@@ -603,7 +603,8 @@ namespace Horsie {
                     const bool shallower = score < bestScore + newDepth;
                     newDepth += deeper - shallower;
 
-                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
+                    if (reducedDepth < newDepth)
+                        score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
 
                     const auto stat = StatBonus(newDepth);
                     const auto bonus = score <= alpha ? -stat
