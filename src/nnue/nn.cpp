@@ -71,18 +71,24 @@ namespace Horsie
                                                 + j * L1_CHUNK_PER_32
                                                 + k] = tempL1[i * L1_CHUNK_PER_32 + k][bucket][j];
 
-                for (i32 i = 0; i < L2_SIZE; ++i)
+                for (i32 i = 0; i < L2_SIZE; ++i) {
                     net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
+                }
 
                 for (i32 i = 0; i < L2_SIZE; ++i)
-                    for (i32 j = 0; j < L3_SIZE; ++j)
-                        net.L2Weights[bucket][i * L3_SIZE + j] = UQNet->L2Weights[i][bucket][j];
+                    for (i32 j = 0; j < L3_HALF_SIZE; ++j) {
+                        net.L2SWeights[bucket][i * L3_HALF_SIZE + j] = UQNet->L2SWeights[i][bucket][j];
+                        net.L2CWeights[bucket][i * L3_HALF_SIZE + j] = UQNet->L2CWeights[i][bucket][j];
+                    }
 
-                for (i32 i = 0; i < L3_SIZE; ++i)
-                    net.L2Biases[bucket][i] = UQNet->L2Biases[bucket][i];
+                for (i32 i = 0; i < L3_HALF_SIZE; ++i) {
+                    net.L2CBiases[bucket][i] = UQNet->L2CBiases[bucket][i];
+                    net.L2SBiases[bucket][i] = UQNet->L2SBiases[bucket][i];
+                }
 
-                for (i32 i = 0; i < L3_SIZE; ++i)
+                for (i32 i = 0; i < L3_SIZE; ++i) {
                     net.L3Weights[bucket][i] = UQNet->L3Weights[i][bucket];
+                }
 
                 net.L3Biases[bucket] = UQNet->L3Biases[bucket];
             }
@@ -223,6 +229,32 @@ namespace Horsie
             return GetEvaluation(pos, outputBucket);
         }
 
+
+        void EmplaceFeatures(Position& pos) {
+            Bitboard& bb = pos.bb;
+            std::vector<i32> white = {};
+            std::vector<i32> black = {};
+
+            i32 wksq = pos.State->KingSquares[WHITE];
+            i32 bksq = pos.State->KingSquares[BLACK];
+            u64 occ = bb.Occupancy;
+            while (occ != 0) {
+                i32 pieceIdx = poplsb(occ);
+
+                i32 pt = bb.GetPieceAtIndex(pieceIdx);
+                i32 pc = bb.GetColorAtIndex(pieceIdx);
+
+                auto w = FeatureIndexSingle(pc, pt, pieceIdx, wksq, WHITE);
+                auto b = FeatureIndexSingle(pc, pt, pieceIdx, bksq, BLACK);
+                white.push_back(w);
+                black.push_back(b);
+
+                std::string realPiece = PieceToString(static_cast<Piece>(pt));
+                std::cout << pc << " " << pt << " on " << pieceIdx << " ==\t" << (w / L1_SIZE) << "/" << (b / L1_SIZE) << std::endl;
+            }
+        }
+
+
         i32 GetEvaluation(Position& pos, i32 outputBucket) {
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
@@ -281,6 +313,13 @@ namespace Horsie
 
                     offset += L1_PAIR_COUNT;
                 }
+
+#if defined(PERM_COUNT)
+                EvalCalls++;
+                ActivationCount += static_cast<u64>(nnzCount);
+                for (i32 i = 0; i < L1_SIZE; i++)
+                    NNZCounts[i] += (ft_outputs[i] ? 1UL : 0);
+#endif
             }
 
 
@@ -317,28 +356,55 @@ namespace Horsie
 
             {
                 const auto inputs = L1Outputs;
-                const auto& weights = net.L2Weights[outputBucket];
-                const auto& biases = net.L2Biases[outputBucket];
-                const auto outputs = L2Outputs;
+                const auto& weights = net.L2SWeights[outputBucket];
+                const auto& biases = net.L2SBiases[outputBucket];
+                const auto outputs = &L2Outputs[0];
 
-                vec_ps sumVecs[L3_SIZE / F32_CHUNK_SIZE];
+                vec_ps sumVecs[L3_HALF_SIZE / F32_CHUNK_SIZE];
 
-                for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
+                for (i32 i = 0; i < L3_HALF_SIZE / F32_CHUNK_SIZE; ++i)
                     sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
 
                 for (i32 i = 0; i < L2_SIZE; ++i) {
                     const auto inputVec = vec_set1_ps(inputs[i]);
-                    const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_SIZE]);
-                    for (i32 j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
+                    const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_HALF_SIZE]);
+                    for (i32 j = 0; j < L3_HALF_SIZE / F32_CHUNK_SIZE; ++j)
                         sumVecs[j] = vec_fmadd_ps(inputVec, weight[j], sumVecs[j]);
                 }
 
                 const auto zero = vec_set1_ps(0.0f);
                 const auto one = vec_set1_ps(1.0f);
-                for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
+                for (i32 i = 0; i < L3_HALF_SIZE / F32_CHUNK_SIZE; ++i) {
                     const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
                     const auto squared = vec_mul_ps(clipped, clipped);
                     vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
+                }
+            }
+
+
+            {
+                const auto inputs = L1Outputs;
+                const auto& weights = net.L2CWeights[outputBucket];
+                const auto& biases = net.L2CBiases[outputBucket];
+                const auto outputs = &L2Outputs[L3_HALF_SIZE];
+
+                vec_ps sumVecs[L3_HALF_SIZE / F32_CHUNK_SIZE];
+
+                for (i32 i = 0; i < L3_HALF_SIZE / F32_CHUNK_SIZE; ++i)
+                    sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+
+                for (i32 i = 0; i < L2_SIZE; ++i) {
+                    const auto inputVec = vec_set1_ps(inputs[i]);
+                    const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_HALF_SIZE]);
+                    for (i32 j = 0; j < L3_HALF_SIZE / F32_CHUNK_SIZE; ++j)
+                        sumVecs[j] = vec_fmadd_ps(inputVec, weight[j], sumVecs[j]);
+                }
+
+                const auto zero = vec_set1_ps(0.0f);
+                const auto one = vec_set1_ps(1.0f);
+                for (i32 i = 0; i < L3_HALF_SIZE / F32_CHUNK_SIZE; ++i) {
+                    const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
+                    vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], clipped);
                 }
             }
 
@@ -525,44 +591,24 @@ namespace Horsie
         }
 
         std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk) {
-            const i32 ColorStride = 64 * 6;
-            const i32 PieceStride = 64;
-
-            i32 wSq = sq;
-            i32 bSq = sq ^ 56;
-
-            if (wk % 8 > 3) {
-                wk ^= 7;
-                wSq ^= 7;
-            }
-
-            bk ^= 56;
-            if (bk % 8 > 3) {
-                bk ^= 7;
-                bSq ^= 7;
-            }
-
-            i32 whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + wSq;
-            i32 blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
-
-            return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
+            return { FeatureIndexSingle(pc, pt, sq, wk, WHITE), FeatureIndexSingle(pc, pt, sq, bk, BLACK) };
         }
 
-        i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective) {
+        constexpr i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective) {
             const i32 ColorStride = 64 * 6;
             const i32 PieceStride = 64;
 
-            if (perspective == BLACK) {
-                sq ^= 56;
-                kingSq ^= 56;
-            }
+            auto color = [&]()
+            {
+                if (pt == KING)
+                    return 0;
+                return pc == perspective ? 0 : 1;
+            }();
 
-            if (kingSq % 8 > 3) {
-                sq ^= 7;
-                kingSq ^= 7;
-            }
+            i32 orientedKsq = Orient(kingSq, kingSq, perspective);
+            i32 orientedSq = Orient(sq, kingSq, perspective);
 
-            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * L1_SIZE;
+            return ((INPUT_SIZE * KingBuckets[orientedKsq]) + ((color * ColorStride) + (pt * PieceStride)) + orientedSq) * L1_SIZE;
         }
 
         void ResetCaches(Position& pos) {
