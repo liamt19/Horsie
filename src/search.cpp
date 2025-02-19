@@ -530,6 +530,7 @@ namespace Horsie {
                 && std::abs(ttScore) < ScoreWin
                 && ((tte->Bound() & BoundLower) != 0)
                 && tte->Depth() >= depth - 3) {
+                
                 i32 singleBeta = ttScore - (SENumerator * depth / 10);
                 i32 singleDepth = (depth + SEDepthAdj) / 2;
 
@@ -537,11 +538,15 @@ namespace Horsie {
                 score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
                 ss->Skip = Move::Null();
 
-                if (score < singleBeta) {
-                    bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
-                    bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture * SETripleCapSub));
+                if (score < singleBeta && !isPV) {
+                    bool doubleExt = score < singleBeta - SEDoubleMargin;
+                    bool tripleExt = score < singleBeta - SETripleMargin - (isCapture * SETripleCapSub);
 
                     extend = 1 + doubleExt + tripleExt;
+
+                    if (doubleExt) {
+                        depth += (depth < 10);
+                    }
                 }
                 else if (singleBeta >= beta) {
                     return singleBeta;
