@@ -538,9 +538,9 @@ namespace Horsie {
                 score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
                 ss->Skip = Move::Null();
 
-                if (score < singleBeta && !isPV) {
-                    bool doubleExt = score < singleBeta - SEDoubleMargin;
-                    bool tripleExt = score < singleBeta - SETripleMargin - (isCapture * SETripleCapSub);
+                if (score < singleBeta) {
+                    bool doubleExt = !isPV && score < singleBeta - SEDoubleMargin;
+                    bool tripleExt = doubleExt && score < singleBeta - SETripleMargin - (isCapture * SETripleCapSub);
 
                     extend = 1 + doubleExt + tripleExt;
 

@@ -23,9 +23,9 @@ namespace Horsie {
 
     UCI_OPTION(SEMinDepth, 5)
     UCI_OPTION(SENumerator, 11)
-    UCI_OPTION(SEDoubleMargin, 15)
-    UCI_OPTION(SETripleMargin, 75)
-    UCI_OPTION(SETripleCapSub, 125)
+    UCI_OPTION(SEDoubleMargin, 24)
+    UCI_OPTION(SETripleMargin, 97)
+    UCI_OPTION(SETripleCapSub, 73)
     UCI_OPTION_CUSTOM(SEDepthAdj, -1, -3, 2)
 
     UCI_OPTION(NMPMinDepth, 6)
