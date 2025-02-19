@@ -575,7 +575,7 @@ namespace Horsie {
                 (ss + 1)->PVLength = 0;
             }
 
-            i32 newDepth = depth + extend;
+            i32 newDepth = depth + extend - 1;
 
             if (depth >= 2
                 && legalMoves >= 2
@@ -595,38 +595,32 @@ namespace Horsie {
 
                 R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
-                R = std::max(1, std::min(R, newDepth));
-                i32 reducedDepth = (newDepth - R);
-
+                const auto reducedDepth = std::max(1, std::min(newDepth - R, newDepth));
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
-                if (score > alpha && R > 1) {
-                    newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
-                    newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
+                if (score > alpha && reducedDepth < newDepth) {
+                    const bool deeper    = score > bestScore + LMRExtMargin;
+                    const bool shallower = score < bestScore + newDepth;
+                    newDepth += deeper - shallower;
 
-                    if (newDepth - 1 > reducedDepth) {
-                        score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
-                    }
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
 
-                    i32 bonus = 0;
-                    if (score <= alpha) {
-                        bonus = -StatBonus(newDepth - 1);
-                    }
-                    else if (score >= beta) {
-                        bonus = StatBonus(newDepth - 1);
-                    }
+                    const auto stat = StatBonus(newDepth);
+                    const auto bonus = score <= alpha ? -stat
+                                     : score >= beta  ?  stat
+                                     :                   0;
 
                     UpdateContinuations(ss, us, ourPiece, moveTo, bonus);
                 }
             }
             else if (!isPV || legalMoves > 1) {
-                score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
+                score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
             }
 
             if (isPV && (playedMoves == 1 || score > alpha)) {
                 (ss + 1)->PV[0] = Move::Null();
                 (ss + 1)->PVLength = 0;
-                score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth - 1, false);
+                score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth, false);
             }
 
             pos.UnmakeMove(m);
