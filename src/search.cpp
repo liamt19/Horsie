@@ -608,15 +608,17 @@ namespace Horsie {
                         score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
                     }
 
-                    i32 bonus = 0;
-                    if (score <= alpha) {
-                        bonus = -StatBonus(newDepth - 1);
-                    }
-                    else if (score >= beta) {
-                        bonus = StatBonus(newDepth - 1);
-                    }
+                    if (!isCapture) {
+                        i32 bonus = 0;
+                        if (score <= alpha) {
+                            bonus = -StatBonus(newDepth - 1);
+                        }
+                        else if (score >= beta) {
+                            bonus = StatBonus(newDepth - 1);
+                        }
 
-                    UpdateContinuations(ss, us, ourPiece, moveTo, bonus);
+                        UpdateContinuations(ss, us, ourPiece, moveTo, bonus);
+                    }
                 }
             }
             else if (!isPV || legalMoves > 1) {
