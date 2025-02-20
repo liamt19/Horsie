@@ -284,6 +284,7 @@ namespace Horsie {
 
         const i16 ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         const Move ttMove = isRoot ? CurrentMove() : (ss->TTHit ? tte->BestMove : Move::Null());
+        const bool ttNoisy = ttMove != Move::Null() && pos.IsNoisy(ttMove);
 
         if (!isPV
             && !doSkip
@@ -347,7 +348,7 @@ namespace Horsie {
             && (ss - 1)->CurrentMove != Move::Null()
             && pos.HasNonPawnMaterial(us)) {
 
-            const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, static_cast<i32>(NMPEvalMin));
+            const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, static_cast<i32>(NMPEvalMin)) + ttNoisy;
             ss->CurrentMove = Move::Null();
             ss->ContinuationHistory = &history->Continuations[0][0][0][0];
 
