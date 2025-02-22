@@ -41,7 +41,7 @@ namespace Horsie {
     UCI_OPTION(ProbcutBeta, 257)
     UCI_OPTION(ProbcutBetaImp, 93)
 
-    UCI_OPTION(NMFutileBase, 471)
+    UCI_OPTION(NMFutileBase, 553)
     UCI_OPTION(NMFutilePVCoeff, 1062)
     UCI_OPTION(NMFutileImpCoeff, 1017)
     UCI_OPTION(NMFutileHistCoeff, 1051)
