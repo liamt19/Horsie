@@ -503,10 +503,14 @@ namespace Horsie {
                 lmrRed += !improving * NMFutileImpCoeff;
                 lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
 
+                const i32 lmrFracDepth = std::max(depth * 1024 - lmrRed, 0);
+
                 lmrRed /= 1024;
                 i32 lmrDepth = std::max(0, depth - lmrRed);
 
-                i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
+                i32 futilityMargin = NMFutMarginB 
+                    + (lmrFracDepth * NMFutMarginM) / 1024
+                    + (moveHist / NMFutMarginDiv);
                 if (isQuiet 
                     && !ss->InCheck
                     && lmrDepth <= 8 
