@@ -75,7 +75,7 @@ namespace Horsie
                     net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
                 }
 
-                for (i32 i = 0; i < L2_SIZE; ++i)
+                for (i32 i = 0; i < L2_SKIP_SIZE; ++i)
                     for (i32 j = 0; j < L3_HALF_SIZE; ++j) {
                         net.L2SWeights[bucket][i * L3_HALF_SIZE + j] = UQNet->L2SWeights[i][bucket][j];
                         net.L2CWeights[bucket][i * L3_HALF_SIZE + j] = UQNet->L2CWeights[i][bucket][j];
@@ -365,7 +365,7 @@ namespace Horsie
                 for (i32 i = 0; i < L3_HALF_SIZE / F32_CHUNK_SIZE; ++i)
                     sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
 
-                for (i32 i = 0; i < L2_SIZE; ++i) {
+                for (i32 i = 0; i < L2_SKIP_SIZE; ++i) {
                     const auto inputVec = vec_set1_ps(inputs[i]);
                     const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_HALF_SIZE]);
                     for (i32 j = 0; j < L3_HALF_SIZE / F32_CHUNK_SIZE; ++j)
@@ -393,7 +393,7 @@ namespace Horsie
                 for (i32 i = 0; i < L3_HALF_SIZE / F32_CHUNK_SIZE; ++i)
                     sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
 
-                for (i32 i = 0; i < L2_SIZE; ++i) {
+                for (i32 i = 0; i < L2_SKIP_SIZE; ++i) {
                     const auto inputVec = vec_set1_ps(inputs[i]);
                     const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_HALF_SIZE]);
                     for (i32 j = 0; j < L3_HALF_SIZE / F32_CHUNK_SIZE; ++j)
@@ -426,7 +426,9 @@ namespace Horsie
                 L3Output = bias + vec_hsum_ps(sumVecs);
             }
 
-            return static_cast<i32>(L3Output * OutputScale);
+            const auto skipNeuron = L1Outputs[L2_SKIP_SIZE];
+            const auto fwd = L3Output + skipNeuron;
+            return static_cast<i32>(fwd * OutputScale);
         }
 
         void MakeMoveNN(Position& pos, Move m) {

@@ -8,6 +8,7 @@ constexpr auto INPUT_SIZE = 704;
 constexpr auto L1_SIZE = 1536;
 constexpr auto L2_SIZE = 16;
 constexpr auto L3_SIZE = 32;
+constexpr auto L2_SKIP_SIZE = L2_SIZE - 1;
 constexpr auto L3_HALF_SIZE = L3_SIZE / 2;
 constexpr auto OUTPUT_BUCKETS = 8;
 
