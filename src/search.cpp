@@ -240,7 +240,7 @@ namespace Horsie {
         i16 eval = ss->StaticEval;
 
         const bool doSkip = ss->Skip != Move::Null();
-        bool improving = false;
+        bool improving = true;
         TTEntry _tte{};
         TTEntry* tte = &_tte;
 
@@ -320,8 +320,9 @@ namespace Horsie {
         }
 
         if (ss->Ply >= 2) {
-            improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
-                       ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
+            improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval
+                      : (ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval 
+                      :                                     true;
         }
 
 
