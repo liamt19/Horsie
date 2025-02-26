@@ -403,7 +403,8 @@ namespace Horsie {
                 prefetch(TT->GetCluster(pos.HashAfter(m)));
 
                 const auto [moveFrom, moveTo] = m.Unpack();
-                const auto histIdx = MakePiece(us, bb.GetPieceAtIndex(moveFrom));
+                const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
+                const auto histIdx = MakePiece(us, ourPiece);
 
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = &history->Continuations[0][1][histIdx][moveTo];
@@ -421,7 +422,11 @@ namespace Horsie {
                 pos.UnmakeMove(m);
 
                 if (score >= probBeta) {
+                    const auto theirPiece = bb.GetPieceAtIndex(moveTo);
+
+                    history->CaptureHistory[us][ourPiece][moveTo][theirPiece] << (3 * StatBonusMax / 4);
                     tte->Update(pos.Hash(), MakeTTScore((short)score, ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
+
                     return score;
                 }
             }
