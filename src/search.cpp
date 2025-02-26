@@ -424,7 +424,7 @@ namespace Horsie {
                 if (score >= probBeta) {
                     const auto theirPiece = bb.GetPieceAtIndex(moveTo);
 
-                    history->CaptureHistory[us][ourPiece][moveTo][theirPiece] << (3 * StatBonusMax / 4);
+                    history->CaptureHistory[us][ourPiece][moveTo][theirPiece] << (2 * StatBonusMax / 4);
                     tte->Update(pos.Hash(), MakeTTScore((short)score, ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
 
                     return score;
