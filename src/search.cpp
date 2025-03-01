@@ -844,7 +844,8 @@ namespace Horsie {
             const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
 
             if (bestScore > ScoreTTLoss) {
-                if (!(givesCheck || m.IsPromotion())
+                if (!givesCheck 
+                    && !m.IsPromotion()
                     && futility > -ScoreWin) {
 
                     if (legalMoves > 3 && !ss->InCheck) {
