@@ -23,8 +23,7 @@ namespace Horsie {
     constexpr i32 BoundLower = static_cast<i32>(TTNodeType::Alpha);
     constexpr i32 BoundUpper = static_cast<i32>(TTNodeType::Beta);
 
-    constexpr double StabilityCoefficients[] = { 2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9 };
-    constexpr i32 StabilityMax = 9;
+    constexpr i32 StabilityMax = 10;
 
     void SearchThread::MainThreadSearch() {
         TT->TTUpdate();
@@ -69,7 +68,6 @@ namespace Horsie {
 
         i32 maxDepth = IsMain() ? MaxDepth : MaxPly;
         while (++RootDepth < maxDepth) {
-            //  The main thread is not allowed to search past info.MaxDepth
             if (IsMain() && RootDepth > info.MaxDepth)
                 break;
 
@@ -147,15 +145,18 @@ namespace Horsie {
                 return;
             }
 
-            if (lastBestRootMove.move == RootMoves[0].move) {
+            const auto bestMove = RootMoves[0].move;
+            const auto moveScore = RootMoves[0].Score;
+
+            if (lastBestRootMove.move == bestMove) {
                 stability++;
             }
             else {
                 stability = 0;
             }
 
-            lastBestRootMove.move = RootMoves[0].move;
-            lastBestRootMove.Score = RootMoves[0].Score;
+            lastBestRootMove.move = bestMove;
+            lastBestRootMove.Score = moveScore;
             lastBestRootMove.Depth = RootMoves[0].Depth;
             lastBestRootMove.PV.clear();
             for (i32 i = 0; i < RootMoves[0].PV.size(); i++) {
@@ -165,21 +166,25 @@ namespace Horsie {
                 }
             }
 
-            searchScores.push_back(RootMoves[0].Score);
+            searchScores.push_back(moveScore);
 
             if (HasSoftTime()) {
                 //  Base values taken from Clarity
                 double multFactor = 1.0;
                 if (RootDepth > 7) {
-                    const auto [bmFrom, bmTo] = RootMoves[0].move.Unpack();
+                    const auto [bmFrom, bmTo] = bestMove.Unpack();
 
-                    double nodeTM = 0.6 + (2.1 * (1 - NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes)));
-                    double bmStability = 1.5 - (0.07 * std::min(stability, StabilityMax));
+                    const double nodeFrac = 1 - (NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes));
+                    const double nodeTM = 0.875 + (1.75 * nodeFrac);
+                    const double bmStability = 1.75 - (0.08 * std::min(stability, StabilityMax));
 
-                    double scoreStability = searchScores[searchScores.size() - 4]
-                                          - searchScores[searchScores.size() - 1];
+                    auto scoreDiff = searchScores[searchScores.size() - 4] - moveScore;
+                    auto searchDiff = PreviousScore - moveScore;
+                    if (PreviousScore == ScoreNone) 
+                        searchDiff = 0;
 
-                    scoreStability = std::max(0.85, std::min(1.15, 0.034 * scoreStability));
+                    auto scoreStability = 0.85 + (0.015 * scoreDiff) + (0.019 * searchDiff);
+                    scoreStability = std::clamp(scoreStability, 0.75, 1.50);
 
                     multFactor = nodeTM * bmStability * scoreStability;
                 }
@@ -197,6 +202,8 @@ namespace Horsie {
                 CompletedDepth = RootDepth;
             }
         }
+
+        PreviousScore = RootMoves[0].Score;
 
         if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop())
         {

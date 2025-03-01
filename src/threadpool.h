@@ -63,6 +63,7 @@ namespace Horsie {
         i32 RootDepth{};
         i32 SelDepth{};
         i32 CompletedDepth{};
+        i32 PreviousScore{};
 
         i32 HardTimeLimit{};
         i32 SoftTimeLimit{};
@@ -126,6 +127,7 @@ namespace Horsie {
         void Reset() {
             Nodes = 0;
             PVIndex = RootDepth = SelDepth = CompletedDepth = NMPPly = 0;
+            PreviousScore = ScoreNone;
         }
 
         Move CurrentMove() const { return RootMoves[PVIndex].move; }
