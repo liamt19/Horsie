@@ -820,7 +820,6 @@ namespace Horsie {
             futility = (std::min(ss->StaticEval, static_cast<i16>(bestScore)) + QSFutileMargin);
         }
 
-        const auto prevSquare = (ss - 1)->CurrentMove == Move::Null() ? SQUARE_NB : (ss - 1)->CurrentMove.To();
         i32 legalMoves = 0;
         i32 checkEvasions = 0;
 
@@ -845,8 +844,8 @@ namespace Horsie {
             const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
 
             if (bestScore > ScoreTTLoss) {
-                if (!(givesCheck || m.IsPromotion())
-                    && (prevSquare != moveTo)
+                if (!givesCheck 
+                    && !m.IsPromotion()
                     && futility > -ScoreWin) {
 
                     if (legalMoves > 3 && !ss->InCheck) {
