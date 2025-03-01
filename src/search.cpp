@@ -24,7 +24,7 @@ namespace Horsie {
     constexpr i32 BoundUpper = static_cast<i32>(TTNodeType::Beta);
 
     constexpr double StabilityCoefficients[] = { 2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9 };
-    constexpr i32 StabilityMax = 6;
+    constexpr i32 StabilityMax = 9;
 
     void SearchThread::MainThreadSearch() {
         TT->TTUpdate();
@@ -173,8 +173,8 @@ namespace Horsie {
                 if (RootDepth > 7) {
                     const auto [bmFrom, bmTo] = RootMoves[0].move.Unpack();
 
-                    double nodeTM = (1.5 - NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes)) * 1.75;
-                    double bmStability = StabilityCoefficients[std::min(stability, StabilityMax)];
+                    double nodeTM = 0.6 + (2.1 * (1 - NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes)));
+                    double bmStability = 1.5 - (0.07 * std::min(stability, StabilityMax));
 
                     double scoreStability = searchScores[searchScores.size() - 4]
                                           - searchScores[searchScores.size() - 1];
