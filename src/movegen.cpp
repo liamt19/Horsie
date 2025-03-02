@@ -174,8 +174,8 @@ namespace Horsie {
                         : noisyMoves  ?  them
                         :               ~occ;
 
-                size = GenPawns<GenType>(pos, list, targets, size);
                 size = GenNormal(pos, list, HORSIE, targets, size);
+                size = GenPawns<GenType>(pos, list, targets, size);
                 size = GenNormal(pos, list, BISHOP, targets, size);
                 size = GenNormal(pos, list, ROOK, targets, size);
                 size = GenNormal(pos, list, QUEEN, targets, size);
