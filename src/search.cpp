@@ -183,7 +183,7 @@ namespace Horsie {
                     if (PreviousScore == ScoreNone) 
                         searchDiff = 0;
 
-                    auto scoreStability = 0.85 + (0.015 * scoreDiff) + (0.019 * searchDiff);
+                    auto scoreStability = 0.55 + (0.015 * scoreDiff * (scoreDiff > 0)) + (0.015 * searchDiff * (searchDiff > 0));
                     scoreStability = std::clamp(scoreStability, 0.75, 1.50);
 
                     multFactor = nodeTM * bmStability * scoreStability;
