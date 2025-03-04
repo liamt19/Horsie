@@ -125,14 +125,14 @@ namespace Horsie {
         assert(theirPiece == Piece::NONE || bb.GetColorAtIndex(moveTo) != ourColor || move.IsCastle());
 
         if (ourPiece == Piece::KING) {
+
+            State->KingSquares[ourColor] = moveTo;
+
             if (move.IsCastle()) {
-                //  Move our rook and update the hash
+                //  theirPiece is actually our rook
                 theirPiece = Piece::NONE;
                 DoCastling(ourColor, moveFrom, moveTo, false);
                 State->KingSquares[ourColor] = move.CastlingKingSquare();
-            }
-            else {
-                State->KingSquares[ourColor] = moveTo;
             }
 
             RemoveCastling(ourColor == Color::WHITE ? CastlingStatus::White : CastlingStatus::Black);
@@ -156,7 +156,7 @@ namespace Horsie {
         }
 
 
-        i32 tempEPSquare = State->EPSquare;
+        const auto tempEPSquare = State->EPSquare;
         if (State->EPSquare != EP_NONE) {
             //  Set st->EPSquare to 64 now.
             //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
@@ -166,7 +166,7 @@ namespace Horsie {
 
         if (ourPiece == Piece::PAWN) {
             if (move.IsEnPassant()) {
-                i32 idxPawn = ((bb.Pieces[Piece::PAWN] & SquareBB(tempEPSquare - 8)) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
+                const auto idxPawn = ((bb.Pieces[Piece::PAWN] & SquareBB(tempEPSquare - 8)) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
 
                 bb.RemovePiece(idxPawn, theirColor, Piece::PAWN);
                 UpdateHash(theirColor, Piece::PAWN, idxPawn);
@@ -175,7 +175,7 @@ namespace Horsie {
                 State->CapturedPiece = Piece::PAWN;
             }
             else if ((moveTo ^ moveFrom) == 16) {
-                i32 down = -ShiftUpDir(ourColor);
+                const auto down = -ShiftUpDir(ourColor);
 
                 //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
                 if ((PawnAttackMasks[ourColor][moveTo + down] & bb.Colors[theirColor] & bb.Pieces[PAWN]) != 0) {
@@ -218,27 +218,25 @@ namespace Horsie {
         const auto [moveFrom, moveTo] = move.Unpack();
 
         //  Assume that "we" just made the last move, and "they" are undoing it.
-        i32 ourPiece = bb.GetPieceAtIndex(moveTo);
-        i32 ourColor = Not(ToMove);
-        i32 theirColor = ToMove;
+        auto ourPiece = bb.GetPieceAtIndex(moveTo);
+        const auto ourColor = Not(ToMove);
+        const auto theirColor = ToMove;
 
         GamePly--;
 
-        if (move.IsPromotion()) {
-            //  Remove the promotion piece and replace it with a pawn
-            bb.RemovePiece(moveTo, ourColor, ourPiece);
-
-            ourPiece = Piece::PAWN;
-
-            bb.AddPiece(moveTo, ourColor, ourPiece);
-        }
-        else if (move.IsCastle()) {
+        if (move.IsCastle()) {
             //  Put both pieces back
             DoCastling(ourColor, moveFrom, moveTo, true);
         }
+        else {
+            if (move.IsPromotion()) {
+                //  Remove the promotion piece and replace it with a pawn
+                bb.RemovePiece(moveTo, ourColor, ourPiece);
 
-        if (!move.IsCastle()) {
-            //  Put our piece back to the square it came from.
+                ourPiece = Piece::PAWN;
+                bb.AddPiece(moveTo, ourColor, ourPiece);
+            }
+
             bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
         }
 
@@ -262,7 +260,6 @@ namespace Horsie {
         }
 
         State--;
-
         ToMove = Not(ToMove);
     }
 
