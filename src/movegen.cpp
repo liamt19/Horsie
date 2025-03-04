@@ -45,7 +45,7 @@ namespace Horsie {
 
             const u64 us   = bb.Colors[stm];
             const u64 them = bb.Colors[theirColor];
-            const u64 captureSquares = evasions ? pos.State->Checkers : them;
+            const u64 captureSquares = evasions ? pos.Checkers() : them;
 
             const u64 emptySquares = ~bb.Occupancy;
 
@@ -114,16 +114,16 @@ namespace Horsie {
                 list[size++].move = Move(to - up - Direction::EAST, to);
             }
 
-            if (pos.State->EPSquare != EP_NONE && !noisyMoves) {
-                if (evasions && (targets & (SquareBB(pos.State->EPSquare + up))) != 0) {
+            if (pos.EPSquare() != EP_NONE && !noisyMoves) {
+                if (evasions && (targets & (SquareBB(pos.EPSquare() + up))) != 0) {
                     //  When in check, we can only en passant if the pawn being captured is the one giving check
                     return size;
                 }
 
-                u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][pos.State->EPSquare];
+                u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][pos.EPSquare()];
                 while (mask != 0) {
                     i32 from = poplsb(mask);
-                    list[size++].move = Move(from, pos.State->EPSquare, FlagEnPassant);
+                    list[size++].move = Move(from, pos.EPSquare(), FlagEnPassant);
                 }
             }
 
@@ -162,14 +162,14 @@ namespace Horsie {
             u64 them = bb.Colors[Not(stm)];
             u64 occ  = bb.Occupancy;
 
-            i32 ourKing   = pos.State->KingSquares[stm];
-            i32 theirKing = pos.State->KingSquares[Not(stm)];
+            i32 ourKing   = pos.KingSquare(stm);
+            i32 theirKing = pos.KingSquare(Not(stm));
 
             u64 targets = 0;
 
             // If we are generating evasions and in double check, then skip non-king moves.
-            if (!(evasions && MoreThanOne(pos.State->Checkers))) {
-                targets = evasions    ?  LineBB[ourKing][lsb(pos.State->Checkers)]
+            if (!(evasions && pos.InDoubleCheck())) {
+                targets = evasions    ?  LineBB[ourKing][lsb(pos.Checkers())]
                         : nonEvasions ? ~us
                         : noisyMoves  ?  them
                         :               ~occ;
@@ -190,17 +190,17 @@ namespace Horsie {
             if (nonEvasions) {
                 if (stm == Color::WHITE && (ourKing == static_cast<i32>(Square::E1) || pos.IsChess960)) {
                     if (pos.CanCastle(occ, us, CastlingStatus::WK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::WK)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingSquare(CastlingStatus::WK), FlagCastle);
 
                     if (pos.CanCastle(occ, us, CastlingStatus::WQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::WQ)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingSquare(CastlingStatus::WQ), FlagCastle);
                 }
                 else if (stm == Color::BLACK && (ourKing == static_cast<i32>(Square::E8) || pos.IsChess960)) {
                     if (pos.CanCastle(occ, us, CastlingStatus::BK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::BK)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingSquare(CastlingStatus::BK), FlagCastle);
 
                     if (pos.CanCastle(occ, us, CastlingStatus::BQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::BQ)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingSquare(CastlingStatus::BQ), FlagCastle);
                 }
             }
 
@@ -211,13 +211,13 @@ namespace Horsie {
 
     template <MoveGenType GenType>
     i32 Generate(const Position& pos, ScoredMove* moveList, i32 size) {
-        return pos.State->Checkers ? GenAll<GenEvasions>(pos, moveList, 0) :
-                                     GenAll<GenNonEvasions>(pos, moveList, 0);
+        return pos.Checked() ? GenAll<GenEvasions>(pos, moveList, 0) :
+                               GenAll<GenNonEvasions>(pos, moveList, 0);
     }
 
     i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size) {
-        return pos.State->Checkers ? GenAll<GenEvasions>(pos, moveList, 0) :
-                                     GenAll<GenNoisy>(pos, moveList, 0);
+        return pos.Checked() ? GenAll<GenEvasions>(pos, moveList, 0) :
+                               GenAll<GenNoisy>(pos, moveList, 0);
     }
 
     template i32 Generate<PseudoLegal>(const Position&, ScoredMove*, i32);
@@ -227,12 +227,12 @@ namespace Horsie {
 
     template<>
     i32 Generate<GenLegal>(const Position& pos, ScoredMove* moveList, i32 size) {
-        i32 numMoves = pos.State->Checkers ? Generate<GenEvasions>(pos, moveList, 0) :
-                                             Generate<GenNonEvasions>(pos, moveList, 0);
+        i32 numMoves = pos.Checked() ? Generate<GenEvasions>(pos, moveList, 0) :
+                                       Generate<GenNonEvasions>(pos, moveList, 0);
 
-        i32 ourKing = pos.State->KingSquares[pos.ToMove];
-        i32 theirKing = pos.State->KingSquares[Not(pos.ToMove)];
-        u64 pinned = pos.State->BlockingPieces[pos.ToMove];
+        i32 ourKing = pos.KingSquare(pos.ToMove);
+        i32 theirKing = pos.KingSquare(Not(pos.ToMove));
+        u64 pinned = pos.BlockingPieces(pos.ToMove);
 
         ScoredMove* curr = moveList;
         ScoredMove* end = moveList + numMoves;

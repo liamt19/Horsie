@@ -147,33 +147,28 @@ namespace Horsie {
                 return;
             }
 
-            if (lastBestRootMove.move == RootMoves[0].move) {
+            RootMove bestRootMove = RootMoves[0];
+            const auto bestMove = bestRootMove.move;
+            const auto bestScore = bestRootMove.Score;
+
+            searchScores.push_back(bestScore);
+
+            if (lastBestRootMove.move == bestMove)
                 stability++;
-            }
-            else {
+            else
                 stability = 0;
-            }
 
-            lastBestRootMove.move = RootMoves[0].move;
-            lastBestRootMove.Score = RootMoves[0].Score;
-            lastBestRootMove.Depth = RootMoves[0].Depth;
-            lastBestRootMove.PV.clear();
-            for (i32 i = 0; i < RootMoves[0].PV.size(); i++) {
-                lastBestRootMove.PV.push_back(RootMoves[0].PV[i]);
-                if (lastBestRootMove.PV[i] == Move::Null()) {
-                    break;
-                }
-            }
-
-            searchScores.push_back(RootMoves[0].Score);
+            lastBestRootMove = RootMoves[0];
 
             if (HasSoftTime()) {
                 //  Base values taken from Clarity
                 double multFactor = 1.0;
                 if (RootDepth > 7) {
-                    const auto [bmFrom, bmTo] = RootMoves[0].move.Unpack();
+                    const auto [bmFrom, bmTo] = bestMove.Unpack();
 
-                    double nodeTM = (1.5 - NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes)) * 1.75;
+                    const auto nodeFrac = 1 - (NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes));
+                    const auto nodeTM = 0.875 + 1.75 * nodeFrac;
+
                     double bmStability = StabilityCoefficients[std::min(stability, StabilityMax)];
 
                     double scoreStability = searchScores[searchScores.size() - 4]
@@ -189,7 +184,7 @@ namespace Horsie {
                 }
             }
 
-            if (Nodes >= info.SoftNodeLimit) {
+            if (SurpassedSoftNodeLimit(info.SoftNodeLimit)) {
                 break;
             }
 
@@ -198,8 +193,7 @@ namespace Horsie {
             }
         }
 
-        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop())
-        {
+        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop()) {
             SetStop();
         }
 
@@ -288,9 +282,9 @@ namespace Horsie {
         if (!isPV
             && !doSkip
             && tte->Depth() >= depth
-            && ttScore != ScoreNone
             && (ttScore < alpha || cutNode)
-            && (tte->Bound() & (ttScore >= beta ? BoundLower : BoundUpper)) != 0) {
+            && IsScoreValid(ttScore)
+            && CanUseScore(tte->Bound(), ttScore, beta)) {
             return ttScore;
         }
 
@@ -303,11 +297,11 @@ namespace Horsie {
             eval = ss->StaticEval;
         }
         else if (ss->TTHit) {
-            rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
+            rawEval = IsScoreValid(tte->StatEval()) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
             eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
-            if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
+            if (IsScoreValid(ttScore) && CanUseScore(tte->Bound(), ttScore, eval)) {
                 eval = ttScore;
             }
         }
@@ -320,8 +314,9 @@ namespace Horsie {
         }
 
         if (ss->Ply >= 2) {
-            improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
-                       ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
+            improving = IsScoreValid((ss - 2)->StaticEval) ? ss->StaticEval > (ss - 2)->StaticEval 
+                      : IsScoreValid((ss - 4)->StaticEval) ? ss->StaticEval > (ss - 4)->StaticEval 
+                      :                                      true;
         }
 
 
@@ -330,7 +325,7 @@ namespace Horsie {
             && !doSkip
             && depth <= RFPMaxDepth
             && ttMove == Move::Null()
-            && (eval < ScoreAssuredWin)
+            && !IsWin(eval)
             && (eval >= beta)
             && (eval - GetRFPMargin(depth, improving)) >= beta) {
             return (eval + beta) / 2;
@@ -359,7 +354,7 @@ namespace Horsie {
             if (score >= beta) {
 
                 if (NMPPly > 0 || depth <= 15) {
-                    return score > ScoreWin ? beta : score;
+                    return IsWin(score) ? beta : score;
                 }
 
                 NMPPly = (3 * (depth - reduction) / 4) + ss->Ply;
@@ -386,7 +381,7 @@ namespace Horsie {
         if (UseProbcut
             && !isPV
             && !doSkip
-            && std::abs(beta) < ScoreTTWin
+            && !IsDecisive(beta)
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
 
             ScoredMove captures[MoveListSize];
@@ -439,8 +434,8 @@ namespace Horsie {
             && ((tte->Bound() & BoundLower) != 0)
             && tte->Depth() >= depth - 6
             && ttScore >= probBeta
-            && std::abs(ttScore) < ScoreTTWin
-            && std::abs(beta) < ScoreTTWin) {
+            && !IsDecisive(ttScore)
+            && !IsDecisive(beta)) {
             return probBeta;
         }
 
@@ -485,13 +480,13 @@ namespace Horsie {
 
             if (ShallowPruning
                 && !isRoot
-                && bestScore > ScoreMatedMax
+                && !IsLoss(bestScore)
                 && pos.HasNonPawnMaterial(us)) {
 
                 if (skipQuiets == false)
                     skipQuiets = legalMoves >= lmpMoves;
 
-                const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+                const bool givesCheck = ((pos.CheckSquares(ourPiece) & SquareBB(moveTo)) != 0);
                 const bool isQuiet = !(givesCheck || isCapture);
 
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
@@ -527,9 +522,10 @@ namespace Horsie {
                 && ss->Ply < RootDepth * 2
                 && depth >= (SEMinDepth + (isPV && tte->PV() ? 1 : 0))
                 && m == ttMove
-                && std::abs(ttScore) < ScoreWin
+                && !IsDecisive(ttScore)
                 && ((tte->Bound() & BoundLower) != 0)
                 && tte->Depth() >= depth - 3) {
+
                 i32 singleBeta = ttScore - (SENumerator * depth / 10);
                 i32 singleDepth = (depth + SEDepthAdj) / 2;
 
@@ -777,8 +773,8 @@ namespace Horsie {
         }
 
         if (!isPV
-            && ttScore != ScoreNone
-            && (tte->Bound() & (ttScore >= beta ? BoundLower : BoundUpper)) != 0) {
+            && IsScoreValid(ttScore)
+            && CanUseScore(tte->Bound(), ttScore, beta)) {
             return ttScore;
         }
 
@@ -787,11 +783,11 @@ namespace Horsie {
         }
         else {
             if (ss->TTHit) {
-                rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
+                rawEval = IsScoreValid(tte->StatEval()) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
                 eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
-                if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
+                if (IsScoreValid(ttScore) && CanUseScore(tte->Bound(), ttScore, eval)) {
                     eval = ttScore;
                 }
             }
@@ -805,7 +801,7 @@ namespace Horsie {
                 if (!ss->TTHit)
                     tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, false);
 
-                if (std::abs(eval) < ScoreTTWin)
+                if (!IsDecisive(eval))
                     eval = static_cast<i16>((4 * eval + beta) / 5);
 
                 return eval;
@@ -841,12 +837,12 @@ namespace Horsie {
             const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
 
             const bool isCapture = pos.IsCapture(m);
-            const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+            const bool givesCheck = ((pos.CheckSquares(ourPiece) & SquareBB(moveTo)) != 0);
 
-            if (bestScore > ScoreTTLoss) {
+            if (!IsLoss(bestScore)) {
                 if (!givesCheck 
                     && !m.IsPromotion()
-                    && futility > -ScoreWin) {
+                    && !IsLoss(futility)) {
 
                     if (legalMoves > 3 && !ss->InCheck) {
                         continue;
@@ -899,7 +895,7 @@ namespace Horsie {
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
 
                     if (score >= beta) {
-                        if (std::abs(bestScore) < ScoreTTWin) 
+                        if (!IsDecisive(bestScore))
                             bestScore = ((4 * bestScore + beta) / 5);
 
                         break;
@@ -986,7 +982,7 @@ namespace Horsie {
     }
 
     i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
-        rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
+        rawEval = static_cast<i16>(rawEval * (200 - pos.HalfmoveClock()) / 200);
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
@@ -1110,7 +1106,7 @@ namespace Horsie {
                 list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
                 list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
 
-                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
+                if ((pos.CheckSquares(pt) & SquareBB(moveTo)) != 0) {
                     list[i].score += CheckBonus;
                 }
             }
@@ -1154,7 +1150,7 @@ namespace Horsie {
                     list[i].score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
                 }
 
-                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
+                if ((pos.CheckSquares(pt) & SquareBB(moveTo)) != 0) {
                     list[i].score += CheckBonus;
                 }
             }

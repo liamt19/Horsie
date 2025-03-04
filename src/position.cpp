@@ -28,9 +28,6 @@ namespace Horsie {
         bb = Bitboard();
 
         _stateBlock = AlignedAlloc<StateInfo>(StateStackSize);
-
-        _SentinelStart = &_stateBlock[0];
-        _SentinelEnd = &_stateBlock[StateStackSize - 1];
         State = &_stateBlock[0];
 
         _accumulatorBlock = AlignedAlloc<Accumulator>(StateStackSize);
@@ -474,7 +471,7 @@ namespace Horsie {
         if (pt == Piece::KING) {
             if (move.IsCastle()) {
                 CastlingStatus thisCr = move.RelevantCastlingRight();
-                i32 rookSq = CastlingRookSquares[static_cast<i32>(thisCr)];
+                i32 rookSq = CastlingSquare(thisCr);
 
                 if ((SquareBB(rookSq) & bb.Pieces[ROOK] & bb.Colors[ourColor]) == 0) {
                     //  There isn't a rook on the square that we are trying to castle towards.
@@ -566,7 +563,7 @@ namespace Horsie {
                 }
             }
 
-            if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart) {
+            if ((temp - 1) == StartingState() || (temp - 2) == StartingState()) {
                 break;
             }
 
@@ -591,11 +588,11 @@ namespace Horsie {
     }
 
     constexpr CastlingStatus Position::GetCastlingForRook(i32 sq) const {
-        CastlingStatus cr = sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WQ)] ? CastlingStatus::WQ
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WK)] ? CastlingStatus::WK
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BQ)] ? CastlingStatus::BQ
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BK)] ? CastlingStatus::BK
-                          :                                                                   CastlingStatus::None;
+        CastlingStatus cr = sq == CastlingSquare(CastlingStatus::WQ) ? CastlingStatus::WQ
+                          : sq == CastlingSquare(CastlingStatus::WK) ? CastlingStatus::WK
+                          : sq == CastlingSquare(CastlingStatus::BQ) ? CastlingStatus::BQ
+                          : sq == CastlingSquare(CastlingStatus::BK) ? CastlingStatus::BK
+                          :                                            CastlingStatus::None;
 
         return cr;
     }
@@ -854,16 +851,16 @@ namespace Horsie {
 
         if (State->CastleStatus != CastlingStatus::None) {
             if ((State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::WK])) : 'K');
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingSquare(CastlingStatus::WK))) : 'K');
             }
             if ((State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::WQ])) : 'Q');
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingSquare(CastlingStatus::WQ))) : 'Q');
             }
             if ((State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::BK])) : 'k');
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingSquare(CastlingStatus::BK))) : 'k');
             }
             if ((State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::BQ])) : 'q');
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingSquare(CastlingStatus::BQ))) : 'q');
             }
         }
         else {
@@ -1003,13 +1000,11 @@ namespace Horsie {
         if (dist < 3)
             return false;
 
-        const auto HashFromStack = [&](i32 i) { return _SentinelStart[GamePly - i].Hash; };
+        const StateInfo* startState = StartingState();
+        const auto HashFromStack = [&](i32 i) { return startState[GamePly - i].Hash; };
 
         i32 slot;
-        u64 other = ~(HashFromStack(0) ^ HashFromStack(1));
         for (i32 i = 3; i <= dist; i += 2) {
-            other ^= ~(HashFromStack(i) ^ HashFromStack(i - 1));
-
             auto diff = st->Hash ^ HashFromStack(i);
 
             if (diff != keys[(slot = Hash1(diff))] &&

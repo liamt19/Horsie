@@ -14,22 +14,23 @@
 
 namespace Horsie {
 
-    constexpr i32 NormalListCapacity = 128;
     constexpr i32 MoveListSize = 256;
 
     constexpr i32 MaxDepth = 64;
     constexpr i32 MaxPly = 256;
 
+
     constexpr i16 ScoreNone = 32760;
     constexpr i32 ScoreInfinite = 31200;
-    constexpr i32 ScoreMate = 30000;
+
     constexpr i32 ScoreDraw = 0;
-    constexpr i32 ScoreTTWin = ScoreMate - 512;
-    constexpr i32 ScoreTTLoss = -ScoreTTWin;
+
+    constexpr i32 ScoreMate = 30000;
     constexpr i32 ScoreMateMax = ScoreMate - 256;
     constexpr i32 ScoreMatedMax = -ScoreMateMax;
-    constexpr i32 ScoreAssuredWin = 20000;
-    constexpr i32 ScoreWin = 10000;
+
+    constexpr i32 ScoreTTWin = ScoreMate - 512;
+    constexpr i32 ScoreTTLoss = -ScoreTTWin;
 
     constexpr i32 AlphaStart = -ScoreMate;
     constexpr i32 BetaStart = ScoreMate;
@@ -84,6 +85,22 @@ namespace Horsie {
         }
     }
 
+    constexpr bool IsScoreValid(i32 score) {
+        return score != ScoreNone;
+    }
+
+    constexpr bool IsLoss(i32 score) {
+        return score <= ScoreTTLoss;
+    }
+
+    constexpr bool IsWin(i32 score) {
+        return score >= ScoreTTWin;
+    }
+
+    constexpr bool IsDecisive(i32 score) {
+        return IsLoss(score) || IsWin(score);
+    }
+
     constexpr i32 MakeDrawScore(u64 nodes) {
         return -1 + static_cast<i32>(nodes & 2);
     }
@@ -96,10 +113,10 @@ namespace Horsie {
         if (score == ScoreNone)
             return score;
 
-        if (score >= ScoreTTWin)
+        if (IsWin(score))
             return static_cast<i16>(score + ply);
 
-        if (score <= ScoreTTLoss)
+        if (IsLoss(score))
             return static_cast<i16>(score - ply);
 
         return score;
@@ -109,10 +126,10 @@ namespace Horsie {
         if (ttScore == ScoreNone)
             return ttScore;
 
-        if (ttScore >= ScoreTTWin)
+        if (IsWin(ttScore))
             return static_cast<i16>(ttScore - ply);
 
-        if (ttScore <= ScoreTTLoss)
+        if (IsLoss(ttScore))
             return static_cast<i16>(ttScore + ply);
 
         return ttScore;
@@ -127,15 +144,16 @@ namespace Horsie {
 #endif
     }
 
+    constexpr bool CanUseScore(i32 ttBound, i32 ttScore, i32 lower) {
+        return (ttBound & static_cast<i32>((ttScore >= lower ? TTNodeType::Alpha : TTNodeType::Beta)));
+    }
+
     inline std::string FormatMoveScore(i32 score) {
         if (IsScoreMate(score)) {
-            //  "mateIn" is returned in plies, but we want it in actual moves
-            if (score > 0) {
-                return "mate " + std::to_string((ScoreMate - score + 1) / 2);
-            }
-            else {
-                return "mate " + std::to_string((-ScoreMate - score) / 2);
-            }
+            const auto v = (score > 0) ? ( ScoreMate - score + 1) 
+                                       : (-ScoreMate - score);
+
+            return "mate " + std::to_string(v / 2);
         }
         else {
             const double NormalizeEvalFactor = 252;

@@ -217,15 +217,11 @@ namespace Horsie
         }
 
         i32 GetEvaluation(Position& pos) {
-            const auto occ = popcount(pos.bb.Occupancy);
-            const auto outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
-
-            return GetEvaluation(pos, outputBucket);
-        }
-
-        i32 GetEvaluation(Position& pos, i32 outputBucket) {
             Accumulator& accumulator = *pos.State->accumulator;
             ProcessUpdates(pos);
+
+            const auto occ = popcount(pos.bb.Occupancy);
+            const auto outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
             auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
             auto them = Span<i16>(accumulator.Sides[Not(pos.ToMove)]);
@@ -393,7 +389,7 @@ namespace Horsie
                 dst->NeedsRefresh[us] = true;
 
                 PerspectiveUpdate& theirUpdate = dst->Update[them];
-                i32 theirKing = pos.State->KingSquares[them];
+                i32 theirKing = pos.KingSquare(them);
 
                 i32 from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
                 i32 to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
@@ -419,8 +415,8 @@ namespace Horsie
                 }
             }
             else {
-                i32 wKing = pos.State->KingSquares[WHITE];
-                i32 bKing = pos.State->KingSquares[BLACK];
+                i32 wKing = pos.KingSquare(WHITE);
+                i32 bKing = pos.KingSquare(BLACK);
 
                 const auto [wFrom, bFrom] = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
                 const auto [wTo, bTo] = FeatureIndex(us, m.IsPromotion() ? m.PromotionTo() : ourPiece, moveTo, wKing, bKing);

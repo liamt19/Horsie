@@ -2,6 +2,7 @@
 
 #include "defs.h"
 #include "move.h"
+#include "enums.h"
 
 #include <cstring>
 
@@ -24,15 +25,6 @@ constexpr i32 MinTTClusters = 1000;
 constexpr i32 EntriesPerCluster = 3;
 
 namespace Horsie {
-
-    enum class TTNodeType {
-        Invalid,
-        /// Upper Bound
-        Beta,
-        /// Lower bound
-        Alpha,
-        Exact = Beta | Alpha
-    };
 
     struct TTEntry {
         i16 _Score;     //  16 bits

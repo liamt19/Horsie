@@ -73,14 +73,7 @@ namespace Horsie
         void UpdateSingle(Accumulator* prev, Accumulator* curr, i32 perspective);
         void ProcessUpdates(Position& pos);
 
-
-        i32 GetEvaluation(Position& pos, i32 outputBucket);
         i32 GetEvaluation(Position& pos);
-        static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output);
-        static void ActivateL1Sparse(Span<i8> inputs, Span<i8> weights, Span<float> biases, Span<float> output, Span<u16> nnzIndices, const i32 nnzCount);
-        static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output);
-        static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output);
-
 
         std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk);
         i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective);
