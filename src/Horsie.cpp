@@ -26,24 +26,21 @@ using std::endl;
 
 i32 main(i32 argc, char* argv[]);
 void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken = false);
-void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
-void HandleThreadsCommand(std::istringstream& is);
-void HandleHashCommand(std::istringstream& is);
-void HandleBenchCommand(std::istringstream& is);
 void HandleSetOptionCommand(std::istringstream& is);
 void HandleBenchPerftCommand(Position& pos);
 void HandleMoveCommand(Position& pos, std::istringstream& is);
-void HandleListMovesCommand(Position& pos);
 SearchLimits ParseGoParameters(Position& pos, std::istringstream& is);
 void HandleGoCommand(Position& pos, std::istringstream& is);
-void HandleStopCommand();
 void HandleEvalCommand(Position& pos);
 void HandleUCICommand();
 void HandleNewGameCommand(Position& pos);
 void ScuffedChatGPTPrintActivations();
 void HandleTuneCommand();
 void HandleDatagenCommand(std::istringstream& is);
+
+void UpdateOption(std::string name, i32 value);
+void UpdateOption(std::string name, std::string value);
 
 bool inUCI = false;
 std::unique_ptr<SearchThreadPool> SearchPool;
@@ -83,13 +80,15 @@ i32 main(i32 argc, char* argv[]) {
     std::string token, cmd;
 
     do {
-        if (!getline(std::cin, cmd))  // Wait for an input or an end-of-file (EOF) indication
+        if (!getline(std::cin, cmd))
             cmd = "quit";
 
         std::istringstream is(cmd);
 
-        token.clear();  // Avoid a stale if getline() returns nothing or a blank line
+        token.clear();
         is >> std::skipws >> token;
+
+        std::transform(token.begin(), token.end(), token.begin(), [](auto c) { return std::tolower(c); });
 
         if (token == "quit")
             break;
@@ -98,7 +97,7 @@ i32 main(i32 argc, char* argv[]) {
             HandleSetPosition(pos, is);
 
         else if (token == "d")
-            HandleDisplayPosition(pos);
+            cout << pos << endl;
 
         else if (token == "perft")
             HandlePerftCommand(pos, is);
@@ -107,27 +106,13 @@ i32 main(i32 argc, char* argv[]) {
             HandleBenchPerftCommand(pos);
 
         else if (token == "bench")
-            HandleBenchCommand(is);
-
-        else if (token == "list")
-            HandleListMovesCommand(pos);
+            Horsie::DoBench(*SearchPool, NextToken<i32>(is).value_or(12));
 
         else if (token == "move")
             HandleMoveCommand(pos, is);
 
-        else if (token == "threads")
-            HandleThreadsCommand(is);
-
-        else if (token == "hash")
-            HandleHashCommand(is);
-
-        else if (token == "go") {
+        else if (token == "go")
             HandleGoCommand(pos, is);
-        }
-
-        else if (token == "wait") {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
 
         else if (token == "eval")
             HandleEvalCommand(pos);
@@ -135,11 +120,8 @@ i32 main(i32 argc, char* argv[]) {
         else if (token == "uci")
             HandleUCICommand();
 
-        else if (token == "isready")
-            std::cout << "readyok" << std::endl;
-
         else if (token == "stop")
-            HandleStopCommand();
+            SearchPool->StopAllThreads();
 
         else if (token == "ucinewgame")
             HandleNewGameCommand(pos);
@@ -155,6 +137,21 @@ i32 main(i32 argc, char* argv[]) {
 
         else if (token == "datagen")
             HandleDatagenCommand(is);
+
+        else if (token == "threads")
+            UpdateOption("threads", NextToken<i32>(is).value_or(Horsie::Threads.CurrentValue));
+
+        else if (token == "hash")
+            UpdateOption("hash", NextToken<i32>(is).value_or(Horsie::Hash.CurrentValue));
+
+        else if (token == "multipv")
+            UpdateOption("multipv", NextToken<i32>(is).value_or(Horsie::MultiPV.CurrentValue));
+
+        else if (token == "isready")
+            std::cout << "readyok" << std::endl;
+
+        else if (token == "wait")
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         else if (std::ranges::count(token, '/') == 7) {
             //  Reset the stream so the beginning part of the fen isn't consumed before we call SetPosition
@@ -208,42 +205,13 @@ void HandleSetPosition(Position& pos, std::istringstream& is, bool skipToken) {
 }
 
 void HandleSetOptionCommand(std::istringstream& is) {
-    std::string rawName{}, value{};
-    is >> rawName;
-    is >> rawName;
-
-    is >> value;
-    is >> value;
-
-    std::string name = rawName;
-    std::transform(name.begin(), name.end(), name.begin(), [](auto c) { return std::tolower(c); });
-
-    auto opt = FindUCIOption(name);
-
-    if (!opt) return;
-
-    i32 newVal = (value == "false") ? 0
-               : (value == "true")  ? 1 
-               :                      std::stoi(value);
-
-    if (newVal < opt->MinValue || newVal > opt->MaxValue) return;
-
-    opt->CurrentValue = newVal;
-
-    if (name == "hash") {
-        SearchPool->TTable.Initialize(Horsie::Hash.CurrentValue);
-        std::cout << "info string set hash to " << Horsie::Hash.CurrentValue << std::endl;
-    }
-    else if (name == "threads") {
-        SearchPool->Resize(Horsie::Threads.CurrentValue);
-        std::cout << "info string set threads to " << Horsie::Threads.CurrentValue << std::endl;
-    }
+    const auto [name, value] = UnpackSetoption(is);
+    UpdateOption(name, value);
 }
 
 void HandleMoveCommand(Position& pos, std::istringstream& is) {
-    std::string moveStr;
-    if (is && is.peek() != EOF)
-        is >> moveStr;
+    std::string moveStr = NextToken(is).value();
+
     bool found;
     Move m = pos.TryFindMove(moveStr, found);
     if (found) {
@@ -320,10 +288,6 @@ void HandleEvalCommand(Position& pos) {
     }
 }
 
-void HandleStopCommand() {
-    SearchPool->StopAllThreads();
-}
-
 void HandleUCICommand() {
     std::cout << "id name Horsie " << EngVersion << std::endl;
     std::cout << "id author Liam McGuire" << std::endl;
@@ -342,15 +306,8 @@ void HandleNewGameCommand(Position& pos) {
     SearchPool->TTable.Clear();
 }
 
-void HandleDisplayPosition(Position& pos) {
-    cout << pos << endl;
-}
-
 void HandlePerftCommand(Position& pos, std::istringstream& is) {
-    i32 depth = 5;
-
-    if (is && is.peek() != EOF)
-        is >> depth;
+    i32 depth = NextToken<i32>(is).value_or(5);
 
     cout << "\nSplitPerft(" << depth << "): " << endl;
     auto timeStart = std::chrono::high_resolution_clock::now();
@@ -399,56 +356,29 @@ void HandleBenchPerftCommand(Position& pos) {
 
 }
 
-void HandleBenchCommand(std::istringstream& is) {
-    i32 depth = 12;
-    if (is && is.peek() != EOF)
-        is >> depth;
+void UpdateOption(std::string name, i32 value) { UpdateOption(name, std::to_string(value)); }
+void UpdateOption(std::string name, std::string value) {
+    auto opt = FindUCIOption(name);
+    if (!opt)
+        return;
 
-    Horsie::DoBench(*SearchPool, depth);
-}
+    i32 newVal = (value == "false") ? 0
+               : (value == "true")  ? 1
+               :                      std::stoi(value);
 
-void HandleListMovesCommand(Position& pos) {
-    ScoredMove pseudos[MoveListSize] = {};
-    i32 pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
+    if (!opt->TrySetValue(newVal))
+        return;
 
-    cout << "Pseudo: ";
-    for (size_t i = 0; i < pseudoSize; i++)
-        cout << Move::ToString(pseudos[i].move) << " ";
-    cout << endl;
-
-    ScoredMove legals[MoveListSize] = {};
-    i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
-
-    cout << "Legal: ";
-    for (size_t i = 0; i < legalsSize; i++) {
-        cout << Move::ToString(legals[i].move) << " ";
+    if (name == "hash") {
+        SearchPool->TTable.Initialize(Horsie::Hash.CurrentValue);
+        std::cout << "info string set hash to " << Horsie::Hash.CurrentValue << std::endl;
     }
-    cout << endl;
-}
-
-void HandleThreadsCommand(std::istringstream& is) {
-    i32 cnt = 1;
-    if (is && is.peek() != EOF)
-        is >> cnt;
-
-    if (cnt >= Horsie::Threads.MinValue && cnt <= Horsie::Threads.MaxValue) {
-        Horsie::Threads = cnt;
-        SearchPool->Resize(Horsie::Threads);
+    else if (name == "threads") {
+        SearchPool->Resize(Horsie::Threads.CurrentValue);
         std::cout << "info string set threads to " << Horsie::Threads.CurrentValue << std::endl;
     }
 }
 
-void HandleHashCommand(std::istringstream& is) {
-    i32 cnt = 1;
-    if (is && is.peek() != EOF)
-        is >> cnt;
-
-    if (cnt >= Horsie::Hash.MinValue && cnt <= Horsie::Hash.MaxValue) {
-        Horsie::Hash = cnt;
-        SearchPool->TTable.Initialize(Horsie::Hash.CurrentValue);
-        std::cout << "info string set hash to " << Horsie::Hash.CurrentValue << std::endl;
-    }
-}
 
 #if defined(PERM_COUNT)
 #include <fstream>
@@ -512,6 +442,7 @@ void HandleTuneCommand() {
 
     }
 }
+
 
 void HandleDatagenCommand(std::istringstream& is) {
 

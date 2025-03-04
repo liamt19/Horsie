@@ -67,11 +67,8 @@ namespace Horsie {
         RootMove lastBestRootMove = RootMove(Move::Null());
         i32 stability = 0;
 
-        i32 maxDepth = IsMain() ? MaxDepth : MaxPly;
-        while (++RootDepth < maxDepth) {
-            //  The main thread is not allowed to search past info.MaxDepth
-            if (IsMain() && RootDepth > info.MaxDepth)
-                break;
+        const auto maxDepth = IsMain() ? info.MaxDepth : MaxPly;
+        while (++RootDepth <= maxDepth) {
 
             if (ShouldStop())
                 break;
@@ -193,7 +190,7 @@ namespace Horsie {
             }
         }
 
-        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop()) {
+        if (IsMain() && RootDepth >= maxDepth && Nodes != HardNodeLimit && !ShouldStop()) {
             SetStop();
         }
 

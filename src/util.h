@@ -16,9 +16,8 @@ namespace Horsie {
 
     constexpr i32 MoveListSize = 256;
 
-    constexpr i32 MaxDepth = 64;
+    constexpr i32 MaxDepth = 255;
     constexpr i32 MaxPly = 256;
-
 
     constexpr i16 ScoreNone = 32760;
     constexpr i32 ScoreInfinite = 31200;
@@ -173,6 +172,30 @@ namespace Horsie {
         }
 
         return str;
+    }
+
+    inline std::pair<std::string, std::string> UnpackSetoption(std::istringstream& is) {
+        std::string rawName{}, value{};
+
+        is >> rawName;
+        is >> rawName;
+
+        is >> value;
+        is >> value;
+
+        std::string name = rawName;
+        std::transform(name.begin(), name.end(), name.begin(), [](auto c) { return std::tolower(c); });
+
+        return { name, value };
+    }
+
+    template<typename T = std::string>
+    std::optional<T> NextToken(std::istringstream& is) {
+        T token{};
+        if (is && is.peek() != EOF && is >> token)
+            return token;
+        else
+            return std::nullopt;
     }
 
     const std::string EtherealFENs_D5[] = {

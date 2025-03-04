@@ -29,13 +29,21 @@ struct TunableOption {
 
     operator i32() const { return CurrentValue; }
 
+    constexpr bool TrySetValue(i32 newV) {
+        if (newV < MinValue || newV > MaxValue) {
+            return false;
+        }
+
+        CurrentValue = newV;
+        return true;
+    }
+
     TunableOption& operator=(i32 newV) {
         if (newV < MinValue || newV > MaxValue) {
             throw std::out_of_range("Tunable assignment out of range");
         }
 
         CurrentValue = newV;
-
         return *this;
     }
 };
