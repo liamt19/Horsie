@@ -329,7 +329,7 @@ namespace Horsie {
             && !ss->TTPV
             && !doSkip
             && depth <= RFPMaxDepth
-            && ttMove == Move::Null()
+            && (ttMove == Move::Null() || pos.IsCapture(ttMove))
             && (eval < ScoreAssuredWin)
             && (eval >= beta)
             && (eval - GetRFPMargin(depth, improving)) >= beta) {
