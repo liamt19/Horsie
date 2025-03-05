@@ -60,7 +60,7 @@ namespace Horsie {
 
         NodeTable = {};
 
-        i32 multiPV = std::min(i32(MultiPV), i32(RootMoves.size()));
+        i32 multiPV = std::min(static_cast<i32>(MultiPV.CurrentValue), static_cast<i32>(RootMoves.size()));
 
         std::vector<i32> searchScores(MaxPly);
 
@@ -118,9 +118,9 @@ namespace Horsie {
                     window += window / 2;
                 }
 
-                std::stable_sort(RootMoves.begin() + 0, RootMoves.end());
+                std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIndex + 1);
 
-                if (IsMain()) {
+                if (IsMain() && (ShouldStop() || PVIndex == multiPV - 1)) {
                     if (OnDepthFinish) {
                         OnDepthFinish();
                     }
@@ -462,6 +462,19 @@ namespace Horsie {
 
             if (!pos.IsLegal(m)) {
                 continue;
+            }
+
+            if (isRoot) {
+                bool cont = true;
+                for (auto i = PVIndex; i < RootMoves.size(); i++) {
+                    if (RootMoves[i].move == m) {
+                        cont = false;
+                        break;
+                    }
+                }
+
+                if (cont)
+                    continue;
             }
 
             const auto [moveFrom, moveTo] = m.Unpack();
@@ -1020,33 +1033,39 @@ namespace Horsie {
     }
 
     void SearchThread::PrintSearchInfo() const {
-        const RootMove& rm = RootMoves[0];
-
-        bool moveSearched = rm.Score != -ScoreInfinite;
-        i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
-        i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
 
         auto nodes = AssocPool->GetNodeCount();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
         auto durCnt = std::max(1.0, static_cast<double>(duration.count()));
         i32 nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
 
-        std::cout << "info depth " << depth;
-        std::cout << " seldepth " << rm.Depth;
-        std::cout << " time " << durCnt;
-        std::cout << " score " << FormatMoveScore(moveScore);
-        std::cout << " nodes " << nodes;
-        std::cout << " nps " << nodesPerSec;
-        std::cout << " pv";
+        i32 multiPV = std::min(Horsie::MultiPV.CurrentValue, static_cast<i32>(RootMoves.size()));
 
-        for (i32 j = 0; j < rm.PV.size(); j++) {
-            if (rm.PV[j] == Move::Null())
-                break;
+        for (i32 i = 0; i < multiPV; i++) {
+            const RootMove& rm = RootMoves[i];
 
-            std::cout << " " + rm.PV[j].SmithNotation(RootPosition.IsChess960);
+            bool moveSearched = rm.Score != -ScoreInfinite;
+            i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
+            i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+
+            std::cout << "info depth " << depth;
+            std::cout << " seldepth " << rm.Depth;
+            std::cout << " multipv " << (i + 1);
+            std::cout << " time " << durCnt;
+            std::cout << " score " << FormatMoveScore(moveScore);
+            std::cout << " nodes " << nodes;
+            std::cout << " nps " << nodesPerSec;
+            std::cout << " pv";
+
+            for (i32 j = 0; j < rm.PV.size(); j++) {
+                if (rm.PV[j] == Move::Null())
+                    break;
+
+                std::cout << " " + rm.PV[j].SmithNotation(RootPosition.IsChess960);
+            }
+
+            std::cout << std::endl;
         }
-
-        std::cout << std::endl;
     }
 
     Move SearchThread::OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const {
