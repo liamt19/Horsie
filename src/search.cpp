@@ -595,8 +595,8 @@ namespace Horsie {
 
                 R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
+                i32 reducedDepth = (newDepth - std::max(1, std::min(R, newDepth - (isPV || cutNode))));
                 R = std::max(1, std::min(R, newDepth));
-                i32 reducedDepth = (newDepth - R);
 
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
