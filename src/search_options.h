@@ -34,8 +34,8 @@ namespace Horsie {
     UCI_OPTION(NMPEvalDiv, 165)
     UCI_OPTION_CUSTOM(NMPEvalMin, 2, 0, 6)
 
-    UCI_OPTION(RFPMaxDepth, 6)
-    UCI_OPTION(RFPMargin, 46)
+    UCI_OPTION(RFPMaxDepth, 12)
+    UCI_OPTION(RFPMargin, 70)
 
     //UCI_OPTION_CUSTOM(ProbcutMinDepth, 1, 1, 5)
     UCI_OPTION(ProbcutBeta, 257)

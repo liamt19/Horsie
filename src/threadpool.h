@@ -131,7 +131,7 @@ namespace Horsie {
         Move CurrentMove() const { return RootMoves[PVIndex].move; }
         bool HardTimeReached() const { return (GetSearchTime() > HardTimeLimit - MoveOverhead); }
 
-        inline i32 GetRFPMargin(i32 depth, bool improving) const { return (depth - (improving)) * RFPMargin; }
+        inline i32 GetRFPMargin(i32 depth, bool improving) const { return (depth * RFPMargin) - (improving * ((3 * RFPMargin) / 2)); }
         inline i32 StatBonus(i32 depth) const { return std::min((i32)(StatBonusMult * depth) - StatBonusSub, (i32)StatBonusMax); }
         inline i32 StatMalus(i32 depth) const { return std::min((i32)(StatMalusMult * depth) - StatMalusSub, (i32)StatMalusMax); }
 
