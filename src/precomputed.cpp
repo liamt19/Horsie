@@ -93,8 +93,8 @@ namespace Horsie {
                     continue;
                 }
 
-                LogarithmicReductionTable[0][depth][moveIndex] = std::max(0, i32((std::log(depth) * std::log(moveIndex) / 2.25) + 0.75));
-                LogarithmicReductionTable[1][depth][moveIndex] = std::max(0, i32((std::log(depth) * std::log(moveIndex) / 2.25) - 0.25));
+                LogarithmicReductionTable[1][depth][moveIndex] = std::max(0, i32((std::log(depth) * std::log(moveIndex) / 2.25) + 0.75));
+                LogarithmicReductionTable[0][depth][moveIndex] = std::max(0, i32((std::log(depth) * std::log(moveIndex) / 2.25) - 0.25));
             }
         }
 
