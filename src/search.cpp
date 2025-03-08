@@ -479,7 +479,7 @@ namespace Horsie {
             
             legalMoves++;
             i32 extend = 0;
-            i32 R = LogarithmicReductionTable[depth][legalMoves];
+            i32 R = LogarithmicReductionTable[isCapture || m.IsPromotion()][depth][legalMoves];
 
             i32 moveHist = isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()];
 

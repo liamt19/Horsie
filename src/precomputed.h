@@ -15,7 +15,7 @@ namespace Horsie {
     extern u64 RookRays[SQUARE_NB];
     extern u64 BishopRays[SQUARE_NB];
 
-    extern i32 LogarithmicReductionTable[MaxPly][MoveListSize];
+    extern i32 LogarithmicReductionTable[2][MaxPly][MoveListSize];
     extern i32 LMPTable[2][MaxDepth];
 
     namespace Precomputed {

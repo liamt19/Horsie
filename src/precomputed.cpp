@@ -26,7 +26,7 @@ namespace Horsie {
     Magic RookMagics[SQUARE_NB];
     Magic BishopMagics[SQUARE_NB];
 
-    i32 LogarithmicReductionTable[MaxPly][MoveListSize];
+    i32 LogarithmicReductionTable[2][MaxPly][MoveListSize];
     i32 LMPTable[2][MaxDepth];
 
     namespace {
@@ -88,15 +88,13 @@ namespace Horsie {
         for (i32 depth = 0; depth < MaxPly; depth++) {
             for (i32 moveIndex = 0; moveIndex < MoveListSize; moveIndex++) {
                 if (depth == 0 || moveIndex == 0) {
-                    LogarithmicReductionTable[depth][moveIndex] = 0;
+                    LogarithmicReductionTable[0][depth][moveIndex] = 0;
+                    LogarithmicReductionTable[1][depth][moveIndex] = 0;
                     continue;
                 }
 
-                LogarithmicReductionTable[depth][moveIndex] = i32((std::log(depth) * std::log(moveIndex) / 2.25) + 0.25);
-
-                if (LogarithmicReductionTable[depth][moveIndex] < 1) {
-                    LogarithmicReductionTable[depth][moveIndex] = 0;
-                }
+                LogarithmicReductionTable[0][depth][moveIndex] = std::max(0, i32((std::log(depth) * std::log(moveIndex) / 2.25) + 0.75));
+                LogarithmicReductionTable[1][depth][moveIndex] = std::max(0, i32((std::log(depth) * std::log(moveIndex) / 2.25) - 0.25));
             }
         }
 
