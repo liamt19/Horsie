@@ -586,7 +586,7 @@ namespace Horsie {
 
                 R -= ss->TTPV;
                 R -= isPV;
-                R -= (m == ss->KillerMove);
+                R -= (m == ss->KillerMove && !pos.IsCapture(m));
 
                 i32 histScore = 2 * moveHist +
                                 2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
@@ -940,7 +940,7 @@ namespace Horsie {
         const auto bonus = StatBonus(depth);
         const auto malus = StatMalus(depth);
 
-        if (bmCapPiece != Piece::NONE && !bestMove.IsCastle()) {
+        if (pos.IsCapture(bestMove)) {
             history.CaptureHistory[us][bmPiece][bmTo][bmCapPiece] << bonus;
         }
         else {
@@ -1133,10 +1133,10 @@ namespace Horsie {
             if (m == ttMove) {
                 list[i].score = INT32_MAX - 100000;
             }
-            else if (m == ss->KillerMove) {
+            else if (m == ss->KillerMove && !pos.IsCapture(m)) {
                 list[i].score = INT32_MAX - 1000000;
             }
-            else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
+            else if (pos.IsCapture(m)) {
                 const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
                 auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
                 list[i].score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
