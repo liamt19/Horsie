@@ -21,7 +21,7 @@ namespace Horsie {
     const i32 CorrectionGrain = 256;
     const i32 CorrectionMax = CorrectionGrain * 64;
 
-    UCI_OPTION(SEMinDepth, 5)
+    UCI_OPTION(SEMinDepth, 6)
     UCI_OPTION(SENumerator, 11)
     UCI_OPTION(SEDoubleMargin, 24)
     UCI_OPTION(SETripleMargin, 97)

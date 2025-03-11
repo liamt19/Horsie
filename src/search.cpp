@@ -525,7 +525,7 @@ namespace Horsie {
                 && !isRoot
                 && !doSkip
                 && ss->Ply < RootDepth * 2
-                && depth >= (SEMinDepth + (isPV && tte->PV() ? 1 : 0))
+                && depth >= (SEMinDepth + ss->TTPV)
                 && m == ttMove
                 && std::abs(ttScore) < ScoreWin
                 && ((tte->Bound() & BoundLower) != 0)
