@@ -84,7 +84,8 @@ namespace Horsie {
 
         if (nodeType == TTNodeType::Exact
             || k != Key
-            || depth + (isPV ? 2 : 0) > _depth - 4 + DepthOffset) {
+            || age != Age()
+            || depth + (2 * isPV) > Depth() - 4) {
             
             Key = k;
             SetScore(score);
