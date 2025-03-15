@@ -324,6 +324,13 @@ namespace Horsie {
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
         }
 
+        if (!(ss - 1)->InCheck 
+            && (ss - 1)->CurrentMove != Move::Null() 
+            && pos.State->CapturedPiece == NONE) {
+
+            int bonus = std::clamp(-5 * ((ss - 1)->StaticEval + ss->StaticEval), -50, 100);
+            history->MainHistory[Not(us)][(ss - 1)->CurrentMove.GetMoveMask()] << bonus;
+        }
 
         if (UseRFP
             && !ss->TTPV
