@@ -336,6 +336,17 @@ namespace Horsie {
             return (eval + beta) / 2;
         }
 
+        if (!isPV
+            && !doSkip
+            && depth <= 4
+            && alpha < 2000
+            && ss->StaticEval + 280 * depth <= alpha) {
+
+            score = QSearch<NodeType>(pos, ss, alpha, alpha + 1);
+            if (score <= alpha)
+                return score;
+        }
+
 
         if (UseNMP
             && !isPV
