@@ -326,9 +326,10 @@ namespace Horsie {
 
         if (!(ss - 1)->InCheck 
             && (ss - 1)->CurrentMove != Move::Null() 
-            && pos.State->CapturedPiece == NONE) {
+            && pos.CapturedPiece() == NONE) {
 
-            int bonus = 2 * std::clamp(-5 * ((ss - 1)->StaticEval + ss->StaticEval), -50, 100);
+            const i32 val = -QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval);
+            const auto bonus = std::clamp(val, -QuietOrderMin, (i32)QuietOrderMax);
             history->MainHistory[Not(us)][(ss - 1)->CurrentMove.GetMoveMask()] << bonus;
         }
 
