@@ -14,6 +14,7 @@ namespace Horsie {
     const bool ShallowPruning = true;
     const bool UseSingularExtensions = true;
     const bool UseNMP = true;
+    const bool UseRazoring = true;
     const bool UseRFP = true;
     const bool UseProbcut = true;
 
@@ -37,6 +38,9 @@ namespace Horsie {
     UCI_OPTION(NMPDepthDiv, 4)
     UCI_OPTION(NMPEvalDiv, 165)
     UCI_OPTION_CUSTOM(NMPEvalMin, 2, 0, 6)
+
+    UCI_OPTION(RazoringMaxDepth, 4)
+    UCI_OPTION(RazoringMult, 280)
 
     UCI_OPTION(RFPMaxDepth, 6)
     UCI_OPTION(RFPMargin, 46)
