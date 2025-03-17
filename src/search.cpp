@@ -333,6 +333,7 @@ namespace Horsie {
             history->MainHistory[Not(us)][(ss - 1)->CurrentMove.GetMoveMask()] << bonus;
         }
 
+
         if (UseRFP
             && !ss->TTPV
             && !doSkip
@@ -341,7 +342,21 @@ namespace Horsie {
             && (eval < ScoreAssuredWin)
             && (eval >= beta)
             && (eval - GetRFPMargin(depth, improving)) >= beta) {
+            
             return (eval + beta) / 2;
+        }
+
+
+        if (UseRazoring
+            && !isPV
+            && !doSkip
+            && depth <= RazoringMaxDepth
+            && alpha < 2000
+            && ss->StaticEval + RazoringMult * depth <= alpha) {
+
+            score = QSearch<NodeType>(pos, ss, alpha, alpha + 1);
+            if (score <= alpha)
+                return score;
         }
 
 
