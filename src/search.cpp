@@ -324,6 +324,14 @@ namespace Horsie {
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
         }
 
+        if (!(ss - 1)->InCheck 
+            && (ss - 1)->CurrentMove != Move::Null() 
+            && pos.CapturedPiece() == NONE) {
+
+            const i32 val = -QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval);
+            const auto bonus = std::clamp(val, -QuietOrderMin, (i32)QuietOrderMax);
+            history->MainHistory[Not(us)][(ss - 1)->CurrentMove.GetMoveMask()] << bonus;
+        }
 
         if (UseRFP
             && !ss->TTPV
