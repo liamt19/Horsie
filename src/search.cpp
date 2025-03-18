@@ -331,6 +331,12 @@ namespace Horsie {
             const i32 val = -QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval);
             const auto bonus = std::clamp(val, -QuietOrderMin, (i32)QuietOrderMax);
             history->MainHistory[Not(us)][(ss - 1)->CurrentMove.GetMoveMask()] << bonus;
+
+            const auto prevSq = (ss - 1)->CurrentMove.To();
+            const auto movedPiece = bb.GetPieceAtIndex(prevSq);
+            if (movedPiece != PAWN && !(ss - 1)->CurrentMove.IsPromotion()) {
+                history->PawnHistory[pos.PawnStructureIndex()][Not(us)][movedPiece][prevSq] << bonus;
+            }
         }
 
 
@@ -1128,6 +1134,7 @@ namespace Horsie {
                 i32 contIdx = MakePiece(pc, pt);
 
                 list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += 2 * history.PawnHistory[pos.PawnStructureIndex()][pc][pt][moveTo];
                 list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
                 list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
                 list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
@@ -1168,6 +1175,7 @@ namespace Horsie {
                 i32 contIdx = MakePiece(pc, pt);
 
                 list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += 2 * history.PawnHistory[pos.PawnStructureIndex()][pc][pt][moveTo];
                 list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
                 list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
                 list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];

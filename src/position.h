@@ -97,6 +97,7 @@ namespace Horsie {
         bool SEE_GE(Move m, i32 threshold = 1) const;
         bool HasCycle(i32 ply) const;
 
+        constexpr i32 PawnStructureIndex() const { return static_cast<i32>(PawnHash() % 512); }
 
         inline i32 PawnCorrectionIndex(i32 pc) const {
             return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);

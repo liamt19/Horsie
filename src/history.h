@@ -44,6 +44,7 @@ namespace Horsie {
     struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
     using MainHistoryT = Stats<i16, 16384, 2, 64 * 64>;
+    using PawnHistoryT = Stats<i16, 8192, 512, 2, 6, 64>;
     using CaptureHistoryT = Stats<i16, 16384, 2, 6, 64, 6>;
     using PlyHistoryT = Stats<i16, LowPlyClamp, LowPlyCount, 64 * 64>;
     using PieceToHistory = Stats<i16, 16384, 12, 64>;
@@ -54,6 +55,7 @@ namespace Horsie {
     public:
         ContinuationHistoryT Continuations[2][2];
         MainHistoryT MainHistory{};
+        PawnHistoryT PawnHistory{};
         CaptureHistoryT CaptureHistory{};
         PlyHistoryT PlyHistory{};
         CorrectionT PawnCorrection{};
@@ -61,6 +63,7 @@ namespace Horsie {
 
         void Clear() {
             MainHistory.Fill(0);
+            PawnHistory.Fill(0);
             CaptureHistory.Fill(0);
             PlyHistory.Fill(0);
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
