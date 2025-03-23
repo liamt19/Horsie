@@ -892,7 +892,9 @@ namespace Horsie {
                     break;
                 }
 
-                if (!ss->InCheck && !pos.SEE_GE(m, -QSSeeMargin)) {
+                const auto moveHist = isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()];
+                const auto thresh = -QSSeeMargin - (moveHist / 96);
+                if (!ss->InCheck && !pos.SEE_GE(m, thresh)) {
                     continue;
                 }
             }
