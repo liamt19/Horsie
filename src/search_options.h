@@ -56,7 +56,7 @@ namespace Horsie {
     UCI_OPTION(NMFutMarginB, 180)
     UCI_OPTION(NMFutMarginM, 81)
     UCI_OPTION(NMFutMarginDiv, 139)
-    UCI_OPTION(ShallowSEEMargin, 216)
+    UCI_OPTION(ShallowSEEMargin, 80)
     UCI_OPTION(ShallowMaxDepth, 9)
 
     UCI_OPTION(LMRQuietDiv, 12948)
@@ -80,11 +80,12 @@ namespace Horsie {
     UCI_OPTION(StatMalusSub, 102)
     UCI_OPTION(StatMalusMax, 1441)
 
-    UCI_OPTION(SEEValuePawn, 105)
-    UCI_OPTION(SEEValueHorsie, 900)
-    UCI_OPTION(SEEValueBishop, 1054)
-    UCI_OPTION(SEEValueRook, 1332)
-    UCI_OPTION(SEEValueQueen, 2300)
+    CONST_OPTION(SEEValuePawn, 105)
+    CONST_OPTION(SEEValueHorsie, 300)
+    CONST_OPTION(SEEValueBishop, 315)
+    CONST_OPTION(SEEValueRook, 535)
+    CONST_OPTION(SEEValueQueen, 970)
+
     UCI_OPTION(ValuePawn, 171)
     UCI_OPTION(ValueHorsie, 794)
     UCI_OPTION(ValueBishop, 943)

@@ -538,7 +538,8 @@ namespace Horsie {
                     continue;
                 }
 
-                if ((!isQuiet || skipQuiets) && !pos.SEE_GE(m, -ShallowSEEMargin * depth)) {
+                const auto seeMargin = -ShallowSEEMargin * depth;
+                if ((!isQuiet || skipQuiets) && !pos.SEE_GE(m, seeMargin)) {
                     continue;
                 }
             }
@@ -1100,9 +1101,9 @@ namespace Horsie {
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;
 
-            list[i].score = GetSEEValue(m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To()));
+            list[i].score = m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To());
             if (m.IsPromotion()) {
-                list[i].score += GetSEEValue(QUEEN) + 1;
+                list[i].score += 10;
             }
         }
     }

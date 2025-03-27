@@ -110,3 +110,8 @@ inline TunableOption& AddUCIOption(const std::string& name, i32 v) {
 //  Spin option, i.e. UCI_Chess960
 #define UCI_OPTION_SPIN(Name, Default) \
     inline TunableOption& Name = AddUCIOption(#Name, Default, false, true, 1, true);
+
+//  Temporarily constant
+#define CONST_OPTION(Name, Default) \
+    constexpr i32 Name = Default;
+
