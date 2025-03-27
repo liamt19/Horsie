@@ -80,11 +80,11 @@ namespace Horsie {
     UCI_OPTION(StatMalusSub, 102)
     UCI_OPTION(StatMalusMax, 1441)
 
-    UCI_OPTION(SEEValuePawn, 105)
-    UCI_OPTION(SEEValueHorsie, 300)
-    UCI_OPTION(SEEValueBishop, 315)
-    UCI_OPTION(SEEValueRook, 535)
-    UCI_OPTION(SEEValueQueen, 970)
+    CONST_OPTION(SEEValuePawn, 105)
+    CONST_OPTION(SEEValueHorsie, 300)
+    CONST_OPTION(SEEValueBishop, 315)
+    CONST_OPTION(SEEValueRook, 535)
+    CONST_OPTION(SEEValueQueen, 970)
 
     UCI_OPTION(ValuePawn, 171)
     UCI_OPTION(ValueHorsie, 794)
