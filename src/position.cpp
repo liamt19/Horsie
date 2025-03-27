@@ -916,11 +916,11 @@ namespace Horsie {
 
         const auto [moveFrom, moveTo] = move.Unpack();
 
-        i32 swap = GetSEEValue(bb.PieceTypes[moveTo]) - threshold;
+        i32 swap = GetSEEValue(bb.GetPieceAtIndex(moveTo)) - threshold;
         if (swap < 0)
             return false;
 
-        swap = GetSEEValue(bb.PieceTypes[moveFrom]) - swap;
+        swap = GetSEEValue(bb.GetPieceAtIndex(moveFrom)) - swap;
         if (swap <= 0)
             return true;
 
@@ -952,33 +952,33 @@ namespace Horsie {
 
             if ((temp = stmAttackers & bb.Pieces[PAWN]) != 0) {
                 occ ^= SquareBB(lsb(temp));
-                if ((swap = GetSEEValue(PAWN) - swap) < res)
+                if ((swap = SEEValuePawn - swap) < res)
                     break;
 
                 attackers |= GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[HORSIE]) != 0) {
                 occ ^= SquareBB(lsb(temp));
-                if ((swap = GetSEEValue(HORSIE) - swap) < res)
+                if ((swap = SEEValueHorsie - swap) < res)
                     break;
             }
             else if ((temp = stmAttackers & bb.Pieces[BISHOP]) != 0) {
                 occ ^= SquareBB(lsb(temp));
-                if ((swap = GetSEEValue(BISHOP) - swap) < res)
+                if ((swap = SEEValueBishop - swap) < res)
                     break;
 
                 attackers |= GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[ROOK]) != 0) {
                 occ ^= SquareBB(lsb(temp));
-                if ((swap = GetSEEValue(ROOK) - swap) < res)
+                if ((swap = SEEValueRook - swap) < res)
                     break;
 
                 attackers |= GetRookMoves(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[QUEEN]) != 0) {
                 occ ^= SquareBB(lsb(temp));
-                if ((swap = GetSEEValue(QUEEN) - swap) < res)
+                if ((swap = SEEValueQueen - swap) < res)
                     break;
 
                 attackers |= (GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN])) | (GetRookMoves(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
