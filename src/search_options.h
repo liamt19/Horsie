@@ -61,7 +61,8 @@ namespace Horsie {
 
     UCI_OPTION(LMRQuietDiv, 12948)
     UCI_OPTION(LMRCaptureDiv, 9424)
-    UCI_OPTION(LMRExtMargin, 132)
+
+    UCI_OPTION(DeeperMargin, 50)
 
     UCI_OPTION(QSFutileMargin, 187)
     UCI_OPTION(QSSeeMargin, 78)

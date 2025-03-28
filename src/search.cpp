@@ -625,7 +625,7 @@ namespace Horsie {
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
                 if (score > alpha && R > 1) {
-                    newDepth += (score > (bestScore + 50 + 4 * newDepth));
+                    newDepth += (score > (bestScore + DeeperMargin + 4 * newDepth));
                     newDepth -= (score < (bestScore + newDepth));
 
                     if (newDepth - 1 > reducedDepth) {
