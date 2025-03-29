@@ -301,7 +301,7 @@ void HandleEvalCommand(Position& pos) {
     cout << "Evaluation: " << NNUE::GetEvaluation(pos) << endl << endl;
 
     ScoredMove legals[MoveListSize] = {};
-    i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+    i32 legalsSize = GenerateLegal(pos, &legals[0], 0);
     std::list<ScoredMove> moves;
 
     for (size_t i = 0; i < legalsSize; i++) {
@@ -409,7 +409,7 @@ void HandleBenchCommand(std::istringstream& is) {
 
 void HandleListMovesCommand(Position& pos) {
     ScoredMove pseudos[MoveListSize] = {};
-    i32 pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
+    i32 pseudoSize = GeneratePseudoLegal(pos, &pseudos[0], 0);
 
     cout << "Pseudo: ";
     for (size_t i = 0; i < pseudoSize; i++)
@@ -417,7 +417,7 @@ void HandleListMovesCommand(Position& pos) {
     cout << endl;
 
     ScoredMove legals[MoveListSize] = {};
-    i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+    i32 legalsSize = GenerateLegal(pos, &legals[0], 0);
 
     cout << "Legal: ";
     for (size_t i = 0; i < legalsSize; i++) {

@@ -70,7 +70,7 @@ namespace Horsie {
         }
 
         ScoredMove rms[MoveListSize] = {};
-        i32 size = Generate<GenLegal>(rootPosition, &rms[0], 0);
+        i32 size = GenerateLegal(rootPosition, &rms[0], 0);
 
         for (auto t : Threads) {
             auto td = t->worker.get();

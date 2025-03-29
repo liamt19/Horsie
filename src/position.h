@@ -36,7 +36,7 @@ namespace Horsie {
 
         constexpr bool InCheck()       const { return popcount(State->Checkers) == 1; }
         constexpr bool InDoubleCheck() const { return popcount(State->Checkers) == 2; }
-        constexpr bool Checked()       const { return popcount(State->Checkers) != 0; }
+        constexpr bool Checked()       const { return State->Checkers != 0; }
         constexpr StateInfo* StartingState() const { return _SentinelStart; }
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
@@ -45,18 +45,26 @@ namespace Horsie {
         constexpr u64 PawnHash() const { return State->PawnHash; }
         constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
+        constexpr i32 EPSquare() const { return State->EPSquare; }
 
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
+
+        constexpr i32 CastlingRookSquare(CastlingStatus cr) const { return CastlingRookSquares[static_cast<i32>(cr)]; }
 
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
         constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[static_cast<i32>(cr)]); }
         constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[static_cast<i32>(cr)]) & ourOcc); }
         constexpr bool HasNonPawnMaterial(i32 pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
 
+        constexpr bool GivesCheckOnSquare(i32 type, i32 sq) const { return (State->CheckSquares[type] & SquareBB(sq)); }
+
         constexpr bool IsCapture(Move m) const { return bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle(); }
         constexpr bool IsNoisy(Move m) const { return IsCapture(m) || m.IsEnPassant(); }
+        constexpr bool IsQuiet(Move m) const { return !IsNoisy(m); }
+        constexpr auto Captured(Move m) const { return m.IsCastle() ? NONE : bb.GetPieceAtIndex(m.To()); }
+        constexpr auto Moved(Move m) const { return bb.GetPieceAtIndex(m.From()); }
 
         void RemoveCastling(CastlingStatus cr) const;
         void UpdateHash(i32 pc, i32 pt, i32 sq) const;

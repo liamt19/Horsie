@@ -61,7 +61,7 @@ namespace Horsie {
         };
 
         ScoredMove list[MoveListSize];
-        i32 size = Generate<GenLegal>(*this, list, 0);
+        i32 size = GenerateLegal(*this, list, 0);
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;
 
@@ -454,6 +454,11 @@ namespace Horsie {
             //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
 
             if (pt == Piece::KING) {
+                if (move.IsCastle()) {
+                    //  Can't castle in check
+                    return false;
+                }
+
                 //  We need to move to a square that they don't attack.
                 //  We also need to consider (NeighborsMask[moveTo] & SquareBB[theirKing]), because bb.AttackersTo does NOT include king attacks
                 //  and we can't move to a square that their king attacks.
@@ -581,7 +586,7 @@ namespace Horsie {
 
     bool Position::HasLegalMoves() const {
         ScoredMove list[MoveListSize];
-        i32 legals = Generate<GenLegal>(*this, list, 0);
+        i32 legals = GenerateLegal(*this, list, 0);
         return legals != 0;
     }
 
@@ -619,7 +624,33 @@ namespace Horsie {
 #endif
 
         ScoredMove movelist[MoveListSize];
-        i32 size = Generate<GenLegal>(*this, &movelist[0], 0);
+        i32 size = GenerateLegal(*this, &movelist[0], 0);
+
+        /*ScoredMove pseudo[MoveListSize];
+        i32 nPseudo = GeneratePseudoLegal(*this, &pseudo[0], 0);
+
+        ScoredMove caps[MoveListSize];
+        i32 nCaps = GenerateNoisy(*this, &caps[0], 0);
+
+        ScoredMove quiets[MoveListSize];
+        i32 nQuiets = GenerateQuiet(*this, &quiets[0], 0);
+
+        if (nCaps + nQuiets != nPseudo) {
+            for (size_t i = 0; i < nPseudo; i++) {
+                std::cout << pseudo[i].move << " ";
+            }
+            std::cout << std::endl;
+
+            for (size_t i = 0; i < nCaps; i++) {
+                std::cout << caps[i].move << " ";
+            }
+            std::cout << std::endl;
+            for (size_t i = 0; i < nQuiets; i++) {
+                std::cout << quiets[i].move << " ";
+            }
+            std::cout << std::endl;
+            int z = 0;
+        }*/
 
 #if defined(BULK_PERFT)
         if (depth == 1) {
@@ -642,7 +673,7 @@ namespace Horsie {
     u64 Position::SplitPerft(i32 depth) {
         ScoredMove movelist[MoveListSize];
         ScoredMove* list = &movelist[0];
-        i32 size = Generate<GenLegal>(*this, list, 0);
+        i32 size = GenerateLegal(*this, list, 0);
 
         u64 n, total = 0;
         for (i32 i = 0; i < size; i++) {

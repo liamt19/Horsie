@@ -36,6 +36,16 @@ namespace Horsie {
 
     constexpr std::string_view PieceToChar("pnbrqk ");
 
+#if defined(_DEBUG)
+#define Log(what) std::cout << what << std::endl
+#define Log_MP(what) std::cout << std::string(ss->Ply, '\t') << what << std::endl
+#define Log_NM(what) std::cout << std::string(ss->Ply, '\t') << thisCall << "\t" << what << std::endl
+#else
+#define Log(what)
+#define Log_MP(what)
+#define Log_NM(what)
+#endif
+
 
     inline i32 FenToPiece(char fenChar) {
         fenChar = char(tolower(fenChar));
@@ -81,6 +91,14 @@ namespace Horsie {
         case ROOK: return SEEValueRook;
         case QUEEN: return SEEValueQueen;
         default:     return 0;
+        }
+    }
+
+    constexpr i32 PromotionValue(i32 pt) {
+        switch (pt) {
+        case QUEEN: return 1000000 - 1;
+        case HORSIE: return 1000000 - 2;
+        default: return -1000000;
         }
     }
 
@@ -138,7 +156,7 @@ namespace Horsie {
             }
         }
         else {
-            const double NormalizeEvalFactor = 252;
+            const double NormalizeEvalFactor = 100;
             return "cp " + std::to_string(static_cast<i32>((score * 100) / NormalizeEvalFactor));
         }
     }

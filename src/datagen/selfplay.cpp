@@ -145,7 +145,7 @@ namespace Horsie {
 
                 i32 randMoveCount = RandNext(MinOpeningPly, MaxOpeningPly + 1);
                 for (i32 i = 0; i < randMoveCount; i++) {
-                    i32 size = Generate<GenLegal>(pos, legalMoves, 0);
+                    i32 size = GenerateLegal(pos, legalMoves, 0);
                     
                     if (size == 0)
                         goto Retry;
@@ -329,7 +329,7 @@ namespace Horsie {
             td.Reset();
 
             ScoredMove rms[MoveListSize] = {};
-            i32 size = Generate<GenLegal>(pos, &rms[0], 0);
+            i32 size = GenerateLegal(pos, &rms[0], 0);
 
             td.RootMoves.clear();
             td.RootMoves.shrink_to_fit();

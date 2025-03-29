@@ -1,4 +1,5 @@
 
+#define MP 1
 
 #include "search.h"
 
@@ -10,6 +11,7 @@
 #include "threadpool.h"
 #include "tt.h"
 #include "util/dbg_hit.h"
+#include "movepicker.h"
 
 #include <chrono>
 #include <iostream>
@@ -99,7 +101,9 @@ namespace Horsie {
                 }
 
                 while (true) {
+                    Log("##################" << usedDepth << " START #########################");
                     score = Negamax<RootNode>(RootPosition, ss, alpha, beta, std::max(1, usedDepth), false);
+                    Log("##################" << usedDepth << " DONE  #########################");
 
                     std::stable_sort(RootMoves.begin() + PVIndex, RootMoves.end());
 
@@ -208,7 +212,7 @@ namespace Horsie {
         }
     }
 
-
+    u64 NM_CALL_NUM = 0;
     template <SearchNodeType NodeType>
     i32 SearchThread::Negamax(Position& pos, SearchStackEntry* ss, i32 alpha, i32 beta, i32 depth, bool cutNode) {
         constexpr bool isRoot = NodeType == SearchNodeType::RootNode;
@@ -217,6 +221,11 @@ namespace Horsie {
         if (depth <= 0) {
             return QSearch<NodeType>(pos, ss, alpha, beta);
         }
+
+#if defined(_DEBUG)
+        u64 thisCall = NM_CALL_NUM;
+        NM_CALL_NUM++;
+#endif
 
         if (!isRoot && alpha < ScoreDraw && pos.HasCycle(ss->Ply)) {
             alpha = MakeDrawScore(Nodes);
@@ -413,7 +422,7 @@ namespace Horsie {
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
 
             ScoredMove captures[MoveListSize];
-            i32 numCaps = GenerateQS(pos, captures, 0);
+            i32 numCaps = GenerateNoisy(pos, captures, 0);
             AssignProbcutScores(pos, captures, numCaps);
 
             for (i32 i = 0; i < numCaps; i++) {
@@ -477,14 +486,23 @@ namespace Horsie {
         Move captureMoves[16];
         Move quietMoves[16];
 
+#if defined(MP)
+
+        Log_NM("Movepicker cctor ");
+        Movepicker mp = Movepicker(pos, *history, ss, ttMove);
+        Move m;
+        while ((m = mp.Next())) {
+
+#else
         bool skipQuiets = false;
 
         ScoredMove list[MoveListSize];
-        i32 size = Generate<PseudoLegal>(pos, list, 0);
+        i32 size = GeneratePseudoLegal(pos, list, 0);
         AssignScores(pos, ss, *history, list, size, ttMove);
 
         for (i32 i = 0; i < size; i++) {
             Move m = OrderNextMove(list, size, i);
+#endif
 
             if (m == ss->Skip) {
                 didSkip = true;
@@ -496,9 +514,10 @@ namespace Horsie {
             }
 
             const auto [moveFrom, moveTo] = m.Unpack();
-            const auto theirPiece = bb.GetPieceAtIndex(moveTo);
-            const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
+            const auto theirPiece = pos.Captured(m);
+            const auto ourPiece = pos.Moved(m);
             const bool isCapture = pos.IsCapture(m);
+            const bool isQuiet = pos.IsQuiet(m);
             
             legalMoves++;
             i32 extend = 0;
@@ -511,6 +530,13 @@ namespace Horsie {
                 && bestScore > ScoreMatedMax
                 && pos.HasNonPawnMaterial(us)) {
 
+
+#if defined(MP)
+                if (isQuiet && legalMoves >= lmpMoves) {
+                    mp.StartSkippingQuiets();
+                    continue;
+                }
+#else
                 if (skipQuiets == false)
                     skipQuiets = legalMoves >= lmpMoves;
 
@@ -519,6 +545,7 @@ namespace Horsie {
 
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
                     continue;
+#endif
 
                 i32 lmrRed = (R * 1024) + NMFutileBase;
 
@@ -534,14 +561,27 @@ namespace Horsie {
                     && !ss->InCheck
                     && lmrDepth <= 8 
                     && ss->StaticEval + futilityMargin < alpha) {
+
+#if defined(MP)
+                    mp.StartSkippingQuiets();
+#else
                     skipQuiets = true;
+#endif
                     continue;
                 }
 
+
                 const auto seeMargin = -ShallowSEEMargin * depth;
+#if defined(MP)
+                if (isQuiet && !pos.SEE_GE(m, seeMargin)) {
+                    continue;
+                }
+#else
                 if ((!isQuiet || skipQuiets) && !pos.SEE_GE(m, seeMargin)) {
                     continue;
                 }
+#endif
+
             }
 
 
@@ -656,6 +696,14 @@ namespace Horsie {
             pos.UnmakeMove(m);
 
             if (isRoot) {
+                Log_NM(m << "\t" << score << "***************");
+            }
+            else {
+                Log_NM(m << "\t" << score);
+            }
+
+
+            if (isRoot) {
                 NodeTable[moveFrom][moveTo] += Nodes - prevNodes;
             }
 
@@ -750,7 +798,6 @@ namespace Horsie {
                 UpdateCorrectionHistory(pos, diff, depth);
             }
         }
-
 
         return bestScore;
     }
