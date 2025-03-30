@@ -43,12 +43,26 @@ namespace Horsie {
     template<typename T, i32 D, i32 Size>
     struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
+
+    class CorrectionEntry {
+        i16 entry;
+        
+    public:
+        static constexpr i32 MaxValue = 1024;
+        static constexpr i32 MaxUpdate = MaxValue / 4;
+
+        void operator=(const i16& v) { entry = v; }
+        operator const i16& () const { return entry; }
+
+        void ApplyBonus(i32 bonus) { entry += (bonus - (entry * std::abs(bonus) / MaxValue)); }
+    };
+
     using MainHistoryT = Stats<i16, 16384, 2, 64 * 64>;
     using CaptureHistoryT = Stats<i16, 16384, 2, 6, 64, 6>;
     using PlyHistoryT = Stats<i16, LowPlyClamp, LowPlyCount, 64 * 64>;
     using PieceToHistory = Stats<i16, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
-    using CorrectionT = Util::NDArray<i16, 2, 16384>;
+    using CorrectionT = Util::NDArray<CorrectionEntry, 2, 16384>;
 
     struct HistoryTable {
     public:
