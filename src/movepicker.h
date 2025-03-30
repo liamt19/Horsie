@@ -23,7 +23,20 @@ namespace Horsie {
             PlayQuiets,
             StartBadNoisies,
             BadNoisies,
-            End,
+            NMEnd = 8,
+
+            QSearchTT = 10,
+            QSearchGenNoisies,
+            QSearchPlayNoisies,
+            QSearchGenEvasions,
+            QSearchEvasions,
+            QSEnd = 15,
+        };
+
+        enum class MovepickerType : i32 {
+            Negamax,
+            QSearch,
+            Probcut,
         };
 
 
@@ -66,18 +79,33 @@ namespace Horsie {
 
         class Movepicker {
         public:
-            Movepicker(Position& pos, HistoryTable& history, Search::SearchStackEntry* ss, Move ttMove);
-
+            Movepicker(Position& pos, HistoryTable& history, MovepickerType genType, Search::SearchStackEntry* ss, Move ttMove);
             Move Next();
-            void ScoreList(ScoredMoveList& list);
             void StartSkippingQuiets() { SkipQuiets = true; }
+            bool FinishedGoodNoisies() const;
+
+            static Movepicker Negamax(Position& pos, HistoryTable& history, Search::SearchStackEntry* ss, Move ttMove) {
+                return Movepicker(pos, history, MovepickerType::Negamax, ss, ttMove);
+            }
+
+            static Movepicker QSearch(Position& pos, HistoryTable& history, Search::SearchStackEntry* ss, Move ttMove) {
+                return Movepicker(pos, history, MovepickerType::QSearch, ss, ttMove);
+            }
+
 
         private:
+
+            ScoredMove OrderNext(ScoredMoveList& list);
+            void ScoreList(ScoredMoveList& list);
+
             Position& Pos;
             HistoryTable& History;
+            MovepickerType GenerationType;
             Search::SearchStackEntry* ss;
             Move TTMove{};
             Move KillerMove{};
+
+            bool Evasions{};
 
             ScoredMoveList NoisyMoves;
             ScoredMoveList BadNoisyMoves;

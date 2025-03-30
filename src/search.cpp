@@ -478,7 +478,7 @@ namespace Horsie {
         Move captureMoves[16];
         Move quietMoves[16];
 
-        Movepicker mp = Movepicker(pos, *history, ss, ttMove);
+        Movepicker mp = Movepicker::Negamax(pos, *history, ss, ttMove);
         Move m;
         while ((m = mp.Next())) {
 
@@ -764,6 +764,7 @@ namespace Horsie {
 
         Move bestMove = Move::Null();
 
+        const bool inCheck = pos.Checked();
         const auto us = pos.ToMove;
         i32 score = -ScoreMate - MaxPly;
         i32 bestScore = -ScoreInfinite;
@@ -774,7 +775,7 @@ namespace Horsie {
 
         TTEntry _tte{};
         TTEntry* tte = &_tte;
-        ss->InCheck = pos.Checked();
+        ss->InCheck = inCheck;
         ss->TTHit = TT->Probe(pos.Hash(), tte);
         const i16 ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         const Move ttMove = ss->TTHit ? tte->BestMove : Move::Null();
@@ -790,7 +791,7 @@ namespace Horsie {
         }
 
         if (ss->Ply >= MaxSearchStackPly - 1) {
-            return ss->InCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
+            return inCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
         }
 
         if (!isPV
@@ -799,7 +800,7 @@ namespace Horsie {
             return ttScore;
         }
 
-        if (ss->InCheck) {
+        if (inCheck) {
             eval = ss->StaticEval = -ScoreInfinite;
         }
         else {
@@ -828,24 +829,21 @@ namespace Horsie {
                 return eval;
             }
 
-            if (eval > alpha) {
-                alpha = eval;
-            }
+            alpha = std::max(static_cast<i32>(eval), alpha);
 
             bestScore = eval;
-
-            futility = (std::min(ss->StaticEval, static_cast<i16>(bestScore)) + QSFutileMargin);
+            futility = bestScore + QSFutileMargin;
         }
 
         i32 legalMoves = 0;
-        i32 checkEvasions = 0;
 
-        ScoredMove list[MoveListSize];
-        i32 size = GenerateQS(pos, list, 0);
-        AssignQuiescenceScores(pos, ss, *history, list, size, ttMove);
+        Movepicker mp = Movepicker::QSearch(pos, *history, ss, ttMove);
+        Move m;
+        while ((m = mp.Next())) {
 
-        for (i32 i = 0; i < size; i++) {
-            Move m = OrderNextMove(list, size, i);
+            if (bestScore > ScoreTTLoss && !inCheck && mp.FinishedGoodNoisies()) {
+                break;
+            }
 
             if (!pos.IsLegal(m)) {
                 continue;
@@ -854,51 +852,28 @@ namespace Horsie {
             legalMoves++;
 
             const auto [moveFrom, moveTo] = m.Unpack();
-            const auto theirPiece = bb.GetPieceAtIndex(moveTo);
             const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
 
             const bool isCapture = pos.IsCapture(m);
-            const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
-
             if (bestScore > ScoreTTLoss) {
-                if (!givesCheck 
-                    && !m.IsPromotion()
-                    && futility > -ScoreWin) {
 
-                    if (legalMoves > 3 && !ss->InCheck) {
-                        continue;
-                    }
-
-                    i32 futilityValue = (futility + GetPieceValue(theirPiece));
-
-                    if (futilityValue <= alpha) {
-                        bestScore = std::max(bestScore, futilityValue);
-                        continue;
-                    }
-
-                    if (futility <= alpha && !pos.SEE_GE(m, 1)) {
-                        bestScore = std::max(bestScore, futility);
-                        continue;
-                    }
-                }
-
-                if (checkEvasions >= 2) {
+                if (legalMoves > 3)
                     break;
+
+                if (!inCheck && futility <= alpha && !pos.SEE_GE(m, 1)) {
+                    bestScore = std::max(bestScore, futility);
+                    continue;
                 }
 
-                if (!ss->InCheck && !pos.SEE_GE(m, -QSSeeMargin)) {
+                if (!pos.SEE_GE(m, -QSSeeMargin)) {
                     continue;
                 }
             }
 
             prefetch(TT->GetCluster(pos.HashAfter(m)));
 
-            if (ss->InCheck && !isCapture) {
-                checkEvasions++;
-            }
-
             ss->CurrentMove = m;
-            ss->ContinuationHistory = &History.Continuations[ss->InCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
+            ss->ContinuationHistory = &History.Continuations[inCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
             Nodes++;
 
             pos.MakeMove(m);
@@ -925,7 +900,7 @@ namespace Horsie {
             }
         }
 
-        if (ss->InCheck && legalMoves == 0)
+        if (inCheck && legalMoves == 0)
             return MakeMateScore(ss->Ply);
 
         TTNodeType bound = (bestScore >= beta) ? TTNodeType::Alpha : TTNodeType::Beta;

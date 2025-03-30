@@ -6,35 +6,43 @@
 
 namespace Horsie::Search {
 
-    Movepicker::Movepicker(Position& pos, HistoryTable& history, SearchStackEntry* _ss, Move ttMove) : 
+    Movepicker::Movepicker(Position& pos, HistoryTable& history, MovepickerType genType, SearchStackEntry* _ss, Move ttMove) :
         Pos(pos),
         History(history),
+        GenerationType(genType),
         ss(_ss),
         TTMove(ttMove)
     {
-        
-        Stage = MovepickerStage::TT;
-        KillerMove = (ss->KillerMove != ttMove) ? ss->KillerMove : Move::Null();
+        Stage = genType == MovepickerType::Negamax ? MovepickerStage::TT
+              : genType == MovepickerType::QSearch ? MovepickerStage::QSearchTT
+              :                                      MovepickerStage::TT;
 
-        if (!(ttMove && pos.IsPseudoLegal(ttMove))) {
-            ++Stage;
-        }
+        KillerMove = (ss->KillerMove != ttMove) ? ss->KillerMove : Move::Null();
+        Evasions = pos.Checked();
+
     }
 
 
-    ScoredMove OrderNext(ScoredMoveList& list, i32 listIndex) {
-        i32 max = list[listIndex].score;
-        i32 maxIndex = listIndex;
+    bool Movepicker::FinishedGoodNoisies() const {
+        return GenerationType == MovepickerType::Negamax ? (Stage > MovepickerStage::GoodNoisies)
+             : GenerationType == MovepickerType::QSearch ? (Stage > MovepickerStage::QSearchPlayNoisies)
+             :                                             (Stage > MovepickerStage::GoodNoisies);
+    }
 
-        for (i32 i = listIndex + 1; i < list.Size(); i++) {
+
+    ScoredMove Movepicker::OrderNext(ScoredMoveList& list) {
+        i32 max = list[MoveIndex].score;
+        i32 maxIndex = MoveIndex;
+
+        for (i32 i = MoveIndex + 1; i < list.Size(); i++) {
             if (list[i].score > max) {
                 max = list[i].score;
                 maxIndex = i;
             }
         }
 
-        std::swap(list[maxIndex], list[listIndex]);
-        return list[listIndex];
+        std::swap(list[maxIndex], list[MoveIndex]);
+        return list[MoveIndex++];
     }
 
 
@@ -44,7 +52,12 @@ namespace Horsie::Search {
         case MovepickerStage::TT:
         {
             ++Stage;
-            return TTMove;
+
+            if (TTMove && Pos.IsPseudoLegal(TTMove)) {
+                return TTMove;
+            }
+
+            [[fallthrough]];
         }
 
         case MovepickerStage::GenNoisies:
@@ -58,10 +71,8 @@ namespace Horsie::Search {
         case MovepickerStage::GoodNoisies:
         {
             while (MoveIndex < NoisyMoves.Size()) {
-                const auto sm = OrderNext(NoisyMoves, MoveIndex);
+                const auto sm = OrderNext(NoisyMoves);
                 const auto [move, score] = sm;
-
-                MoveIndex++;
 
                 const auto thresh = -score / 4;
                 if (!Pos.SEE_GE(move, thresh)) {
@@ -86,7 +97,6 @@ namespace Horsie::Search {
 
             [[fallthrough]];
         }
-
         case MovepickerStage::GenQuiets:
         {
             if (!SkipQuiets) {
@@ -98,14 +108,12 @@ namespace Horsie::Search {
             ++Stage;
             [[fallthrough]];
         }
+
         case MovepickerStage::PlayQuiets:
         {
             if (!SkipQuiets && MoveIndex < QuietMoves.Size()) {
-                const auto sm = OrderNext(QuietMoves, MoveIndex);
-                const auto [move, score] = sm;
-                MoveIndex++;
-
-                return move;
+                const auto sm = OrderNext(QuietMoves);
+                return sm.move;
             }
 
             ++Stage;
@@ -125,16 +133,69 @@ namespace Horsie::Search {
                 return BadNoisyMoves[MoveIndex++].move;
             }
 
-            Stage = MovepickerStage::End;
+            Stage = MovepickerStage::NMEnd;
             [[fallthrough]];
         }
-        
-        case MovepickerStage::End:
-        default:
+
+
+        case MovepickerStage::QSearchTT:
         {
-            return Move::Null();
+            ++Stage;
+
+            if (TTMove && Pos.IsPseudoLegal(TTMove) && (Evasions || Pos.IsNoisy(TTMove))) {
+                return TTMove;
+            }
+
+            [[fallthrough]];
+        }
+        case MovepickerStage::QSearchGenNoisies:
+        {
+            NoisyMoves.GeneratedSize = GenerateNoisy(Pos, NoisyMoves.List, 0);
+            ScoreList(NoisyMoves);
+
+            ++Stage;
+            [[fallthrough]];
+        }
+        case MovepickerStage::QSearchPlayNoisies:
+        {
+            while (MoveIndex < NoisyMoves.Size()) {
+                const auto sm = OrderNext(NoisyMoves);
+                return sm.move;
+            }
+
+            if (!Evasions)
+                return Move::Null();
+
+            ++Stage;
+            [[fallthrough]];
+        }
+        case MovepickerStage::QSearchGenEvasions:
+        {
+            if (!SkipQuiets) {
+                MoveIndex = 0;
+                QuietMoves.GeneratedSize = GenerateQuiet(Pos, QuietMoves.List, 0);
+                ScoreList(QuietMoves);
+            }
+
+            ++Stage;
+            [[fallthrough]];
+        }
+        case MovepickerStage::QSearchEvasions:
+        {
+            if (!SkipQuiets && MoveIndex < QuietMoves.Size()) {
+                const auto sm = OrderNext(QuietMoves);
+                return sm.move;
+            }
+
+            ++Stage;
+            [[fallthrough]];
         }
 
+
+        case MovepickerStage::QSEnd:
+        case MovepickerStage::NMEnd:
+        default:
+            return Move::Null();
         }
 
     }
