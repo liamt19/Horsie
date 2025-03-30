@@ -764,7 +764,6 @@ namespace Horsie {
 
         Move bestMove = Move::Null();
 
-        const bool inCheck = pos.Checked();
         const auto us = pos.ToMove;
         i32 score = -ScoreMate - MaxPly;
         i32 bestScore = -ScoreInfinite;
@@ -775,7 +774,7 @@ namespace Horsie {
 
         TTEntry _tte{};
         TTEntry* tte = &_tte;
-        ss->InCheck = inCheck;
+        ss->InCheck = pos.Checked();
         ss->TTHit = TT->Probe(pos.Hash(), tte);
         const i16 ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         const Move ttMove = ss->TTHit ? tte->BestMove : Move::Null();
@@ -791,7 +790,7 @@ namespace Horsie {
         }
 
         if (ss->Ply >= MaxSearchStackPly - 1) {
-            return inCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
+            return ss->InCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
         }
 
         if (!isPV
@@ -800,7 +799,7 @@ namespace Horsie {
             return ttScore;
         }
 
-        if (inCheck) {
+        if (ss->InCheck) {
             eval = ss->StaticEval = -ScoreInfinite;
         }
         else {
@@ -829,14 +828,17 @@ namespace Horsie {
                 return eval;
             }
 
-            alpha = std::max(static_cast<i32>(eval), alpha);
+            if (eval > alpha) {
+                alpha = eval;
+            }
 
             bestScore = eval;
-            futility = bestScore + QSFutileMargin;
+
+            futility = (std::min(ss->StaticEval, static_cast<i16>(bestScore)) + QSFutileMargin);
         }
 
         i32 legalMoves = 0;
-        i32 quietEvasions = 0;
+        i32 checkEvasions = 0;
 
         ScoredMove list[MoveListSize];
         i32 size = GenerateQS(pos, list, 0);
@@ -852,35 +854,51 @@ namespace Horsie {
             legalMoves++;
 
             const auto [moveFrom, moveTo] = m.Unpack();
+            const auto theirPiece = bb.GetPieceAtIndex(moveTo);
             const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
 
             const bool isCapture = pos.IsCapture(m);
+            const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+
             if (bestScore > ScoreTTLoss) {
+                if (!givesCheck
+                    && !m.IsPromotion()
+                    && futility > -ScoreWin) {
 
-                if (quietEvasions >= 2)
-                    break;
+                    if (legalMoves > 3 && !ss->InCheck) {
+                        continue;
+                    }
 
-                if (!inCheck && legalMoves > 3)
-                    continue;
+                    i32 futilityValue = (futility + GetPieceValue(theirPiece));
 
-                if (!inCheck && futility <= alpha && !pos.SEE_GE(m, 1)) {
-                    bestScore = std::max(bestScore, futility);
-                    continue;
+                    if (futilityValue <= alpha) {
+                        bestScore = std::max(bestScore, futilityValue);
+                        continue;
+                    }
+
+                    if (futility <= alpha && !pos.SEE_GE(m, 1)) {
+                        bestScore = std::max(bestScore, futility);
+                        continue;
+                    }
                 }
 
-                if (!inCheck && !pos.SEE_GE(m, -QSSeeMargin)) {
+                if (checkEvasions >= 2) {
+                    break;
+                }
+
+                if (!ss->InCheck && !pos.SEE_GE(m, -QSSeeMargin)) {
                     continue;
                 }
             }
 
             prefetch(TT->GetCluster(pos.HashAfter(m)));
 
-            if (inCheck && !isCapture) {
-                quietEvasions++;
+            if (ss->InCheck && !isCapture) {
+                checkEvasions++;
             }
 
             ss->CurrentMove = m;
-            ss->ContinuationHistory = &History.Continuations[inCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
+            ss->ContinuationHistory = &History.Continuations[ss->InCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
             Nodes++;
 
             pos.MakeMove(m);
@@ -894,11 +912,11 @@ namespace Horsie {
                     bestMove = m;
                     alpha = score;
 
-                    if (isPV) 
+                    if (isPV)
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
 
                     if (score >= beta) {
-                        if (std::abs(bestScore) < ScoreTTWin) 
+                        if (std::abs(bestScore) < ScoreTTWin)
                             bestScore = ((4 * bestScore + beta) / 5);
 
                         break;
@@ -907,7 +925,7 @@ namespace Horsie {
             }
         }
 
-        if (inCheck && legalMoves == 0)
+        if (ss->InCheck && legalMoves == 0)
             return MakeMateScore(ss->Ply);
 
         TTNodeType bound = (bestScore >= beta) ? TTNodeType::Alpha : TTNodeType::Beta;

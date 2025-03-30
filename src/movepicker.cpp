@@ -31,18 +31,19 @@ namespace Horsie::Search {
 
 
     ScoredMove Movepicker::OrderNext(ScoredMoveList& list) {
-        i32 max = list[MoveIndex].score;
-        i32 maxIndex = MoveIndex;
+        const auto listIndex = MoveIndex;
+        i32 max = list[listIndex].score;
+        i32 maxIndex = listIndex;
 
-        for (i32 i = MoveIndex + 1; i < list.Size(); i++) {
+        for (i32 i = listIndex + 1; i < list.Size(); i++) {
             if (list[i].score > max) {
                 max = list[i].score;
                 maxIndex = i;
             }
         }
 
-        std::swap(list[maxIndex], list[MoveIndex]);
-        return list[MoveIndex++];
+        std::swap(list[maxIndex], list[listIndex]);
+        return list[listIndex];
     }
 
 
@@ -73,6 +74,7 @@ namespace Horsie::Search {
             while (MoveIndex < NoisyMoves.Size()) {
                 const auto sm = OrderNext(NoisyMoves);
                 const auto [move, score] = sm;
+                MoveIndex++;
 
                 const auto thresh = -score / 4;
                 if (!Pos.SEE_GE(move, thresh)) {
@@ -113,7 +115,10 @@ namespace Horsie::Search {
         {
             if (!SkipQuiets && MoveIndex < QuietMoves.Size()) {
                 const auto sm = OrderNext(QuietMoves);
-                return sm.move;
+                const auto [move, score] = sm;
+                MoveIndex++;
+
+                return move;
             }
 
             ++Stage;
@@ -160,7 +165,10 @@ namespace Horsie::Search {
         {
             while (MoveIndex < NoisyMoves.Size()) {
                 const auto sm = OrderNext(NoisyMoves);
-                return sm.move;
+                const auto [move, score] = sm;
+                MoveIndex++;
+
+                return move;
             }
 
             if (!Evasions)
@@ -184,7 +192,10 @@ namespace Horsie::Search {
         {
             if (!SkipQuiets && MoveIndex < QuietMoves.Size()) {
                 const auto sm = OrderNext(QuietMoves);
-                return sm.move;
+                const auto [move, score] = sm;
+                MoveIndex++;
+
+                return move;
             }
 
             ++Stage;
