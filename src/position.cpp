@@ -414,13 +414,13 @@ namespace Horsie {
             u64 empty = ~bb.Occupancy;
             if ((moveTo ^ moveFrom) != 16) {
                 //  This is NOT a pawn double move, so it can only go to a square it attacks or the empty square directly above/below.
-                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0
                     || (empty & SquareBB(moveTo)) != 0;
             }
             else {
                 //  This IS a pawn double move, so it can only go to a square it attacks,
                 //  or the empty square 2 ranks above/below provided the square 1 rank above/below is also empty.
-                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0
                     || ((empty & SquareBB(moveTo - ShiftUpDir(pc))) != 0 && (empty & SquareBB(moveTo)) != 0);
             }
 
@@ -428,7 +428,7 @@ namespace Horsie {
 
         //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
         //  Pieces can only move to squares that they attack, with the one exception of queenside castling
-        return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
+        return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
     }
 
     bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }
@@ -437,7 +437,6 @@ namespace Horsie {
         const auto [moveFrom, moveTo] = move.Unpack();
 
         const auto pt = bb.GetPieceAtIndex(moveFrom);
-
         if (pt == NONE) {
             return false;
         }
@@ -625,32 +624,6 @@ namespace Horsie {
 
         ScoredMove movelist[MoveListSize];
         i32 size = GenerateLegal(*this, &movelist[0], 0);
-
-        /*ScoredMove pseudo[MoveListSize];
-        i32 nPseudo = GeneratePseudoLegal(*this, &pseudo[0], 0);
-
-        ScoredMove caps[MoveListSize];
-        i32 nCaps = GenerateNoisy(*this, &caps[0], 0);
-
-        ScoredMove quiets[MoveListSize];
-        i32 nQuiets = GenerateQuiet(*this, &quiets[0], 0);
-
-        if (nCaps + nQuiets != nPseudo) {
-            for (size_t i = 0; i < nPseudo; i++) {
-                std::cout << pseudo[i].move << " ";
-            }
-            std::cout << std::endl;
-
-            for (size_t i = 0; i < nCaps; i++) {
-                std::cout << caps[i].move << " ";
-            }
-            std::cout << std::endl;
-            for (size_t i = 0; i < nQuiets; i++) {
-                std::cout << quiets[i].move << " ";
-            }
-            std::cout << std::endl;
-            int z = 0;
-        }*/
 
 #if defined(BULK_PERFT)
         if (depth == 1) {

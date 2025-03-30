@@ -53,7 +53,6 @@ namespace Horsie::Search {
         switch (Stage) {
         case MovepickerStage::TT:
         {
-            Log_MP("TT == " << TTMove);
             ++Stage;
             return TTMove;
         }
@@ -62,8 +61,6 @@ namespace Horsie::Search {
         {
             NoisyMoves.GeneratedSize = GenerateNoisy(Pos, NoisyMoves.List, 0);
             ScoreList(NoisyMoves);
-
-            Log_MP("GenNoisies Scored " << NoisyMoves.Size() << " noisy");
 
             ++Stage;
             [[fallthrough]];
@@ -78,7 +75,6 @@ namespace Horsie::Search {
 
                 const auto thresh = -score / 4;
                 if (!Pos.SEE_GE(move, thresh)) {
-                    Log_MP("Noisy " << move << " is bad");
                     BadNoisyMoves.Append(sm);
                 }
                 else {
@@ -92,11 +88,9 @@ namespace Horsie::Search {
 
         case MovepickerStage::Killer:
         {
-            Log_MP("Killer");
             ++Stage;
 
             if (KillerMove && Pos.IsPseudoLegal(KillerMove)) {
-                Log_MP("Returning " << KillerMove << " as killer");
                 return KillerMove;
             }
 
@@ -109,7 +103,6 @@ namespace Horsie::Search {
             QuietMoves.GeneratedSize = GenerateQuiet(Pos, QuietMoves.List, 0);
             ScoreList(QuietMoves);
 
-            Log_MP("GenQuiets Scored " << QuietMoves.Size() << " quiets");
             ++Stage;
             [[fallthrough]];
         }
@@ -120,8 +113,6 @@ namespace Horsie::Search {
                 const auto [move, score] = sm;
                 MoveIndex++;
 
-                assert(Pos.IsQuiet(move));
-
                 return move;
             }
 
@@ -131,7 +122,6 @@ namespace Horsie::Search {
 
         case MovepickerStage::StartBadNoisies:
         {
-            Log_MP("StartBadNoisies");
             MoveIndex = 0;
 
             ++Stage;
@@ -150,7 +140,6 @@ namespace Horsie::Search {
         case MovepickerStage::End:
         default:
         {
-            Log_MP("End");
             return Move::Null();
         }
 
@@ -173,13 +162,13 @@ namespace Horsie::Search {
                 continue;
             }
 
-            if (Pos.IsCapture(m)) {
+            if (m.IsPromotion()) {
+                list[i].score = PromotionValue(m.PromotionTo());
+            }
+            else if (Pos.IsCapture(m)) {
                 const auto capturedPiece = Pos.Captured(m);
                 const auto& hist = History.CaptureHistory[stm][type][moveTo][capturedPiece];
                 list[i].score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
-            }
-            else if (m.IsPromotion()) {
-                list[i].score = PromotionValue(m.PromotionTo());
             }
             else {
                 const auto contIdx = MakePiece(stm, type);

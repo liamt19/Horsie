@@ -87,14 +87,6 @@ namespace Horsie {
             list[size++].move = Move(to - up - Direction::EAST, to);
         }
 
-        //if (pos.State->EPSquare != EP_NONE && !noisyMoves) {
-        //    u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][pos.State->EPSquare];
-        //    while (mask != 0) {
-        //        i32 from = poplsb(mask);
-        //        list[size++].move = Move(from, pos.State->EPSquare, FlagEnPassant);
-        //    }
-        //}
-
         if (pos.EPSquare() != EP_NONE && noisyMoves) {
             u64 epMask = notPromotingPawns & PawnAttackMasks[Not(stm)][pos.EPSquare()];
             while (epMask != 0) {
@@ -105,7 +97,8 @@ namespace Horsie {
         return size;
     }
 
-    i32 GenNormal(const Position& pos, ScoredMove* list, i32 pt, u64 targets, i32 size) {
+    template <i32 pt>
+    i32 GenNormal(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
         const Color stm = pos.ToMove;
         const Bitboard& bb = pos.bb;
         const u64 occ = bb.Occupancy;
@@ -113,7 +106,7 @@ namespace Horsie {
 
         while (ourPieces != 0) {
             i32 idx = poplsb(ourPieces);
-            u64 moves = bb.AttackMask(idx, stm, pt, occ) & targets;
+            u64 moves = bb.AttackMask<pt>(idx, stm, occ) & targets;
             while (moves != 0) {
                 list[size++].move = Move(idx, poplsb(moves));
             }
@@ -121,7 +114,6 @@ namespace Horsie {
 
         return size;
     }
-
 
     template i32 Generate<GenQuiet>(const Position&, ScoredMove*, i32);
     template i32 Generate<GenNoisy>(const Position&, ScoredMove*, i32);
@@ -159,17 +151,17 @@ namespace Horsie {
         //}
 
         size = GenPawns<GenType>(pos, list, targets, size);
-        size = GenNormal(pos, list, HORSIE, targets, size);
-        size = GenNormal(pos, list, BISHOP, targets, size);
-        size = GenNormal(pos, list, ROOK, targets, size);
-        size = GenNormal(pos, list, QUEEN, targets, size);
+        size = GenNormal<HORSIE>(pos, list, targets, size);
+        size = GenNormal<BISHOP>(pos, list, targets, size);
+        size = GenNormal<ROOK>(pos, list, targets, size);
+        size = GenNormal<QUEEN>(pos, list, targets, size);
 
         u64 kingMoves = PseudoAttacks[KING][ourKing] & targets;
         while (kingMoves != 0) {
             list[size++].move = Move(ourKing, poplsb(kingMoves));
         }
 
-        if (quietMoves) {
+        if (quietMoves && !pos.Checked()) {
             if (stm == Color::WHITE && (ourKing == static_cast<i32>(Square::E1) || pos.IsChess960)) {
                 if (pos.CanCastle(occ, us, CastlingStatus::WK))
                     list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WK), FlagCastle);

@@ -36,16 +36,6 @@ namespace Horsie {
 
     constexpr std::string_view PieceToChar("pnbrqk ");
 
-#if defined(_DEBUG)
-#define Log(what) std::cout << what << std::endl
-#define Log_MP(what) std::cout << std::string(ss->Ply, '\t') << what << std::endl
-#define Log_NM(what) std::cout << std::string(ss->Ply, '\t') << thisCall << "\t" << what << std::endl
-#else
-#define Log(what)
-#define Log_MP(what)
-#define Log_NM(what)
-#endif
-
 
     inline i32 FenToPiece(char fenChar) {
         fenChar = char(tolower(fenChar));

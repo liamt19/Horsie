@@ -34,7 +34,7 @@ namespace Horsie {
 
 
         struct ScoredMoveList {
-            ScoredMove List[MoveListSize]{};
+            ScoredMove List[MoveListSize];
             i32 GeneratedSize{};
 
             constexpr auto Size() const { return GeneratedSize; }
@@ -44,15 +44,8 @@ namespace Horsie {
             
             void RemoveAt(int i) {
                 assert(i < GeneratedSize);
-
-                if (GeneratedSize <= 1) {
-                    List[i] = { Move::Null(), 0 };
-                    GeneratedSize = 0;
-                }
-                else {
-                    GeneratedSize--;
-                    std::swap(List[i], List[GeneratedSize]);
-                }
+                GeneratedSize--;
+                std::swap(List[i], List[GeneratedSize]);
             }
 
             constexpr auto& First() const { return List[0]; }

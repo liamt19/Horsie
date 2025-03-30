@@ -122,4 +122,25 @@ namespace Horsie {
             return 0;
         };
     }
+
+    template u64 Bitboard::AttackMask<PAWN>(i32 idx, i32 pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<HORSIE>(i32 idx, i32 pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<BISHOP>(i32 idx, i32 pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<ROOK>(i32 idx, i32 pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<QUEEN>(i32 idx, i32 pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<KING>(i32 idx, i32 pc, u64 occupied) const;
+
+    template<i32 pt>
+    u64 Bitboard::AttackMask(i32 idx, i32 pc, u64 occupied) const {
+        switch (pt) {
+        case PAWN: return PawnAttackMasks[pc][idx];
+        case HORSIE: return PseudoAttacks[HORSIE][idx];
+        case BISHOP: return GetBishopMoves(idx, occupied);
+        case ROOK: return GetRookMoves(idx, occupied);
+        case QUEEN: return GetBishopMoves(idx, occupied) | GetRookMoves(idx, occupied);
+        case KING: return PseudoAttacks[KING][idx];
+        default:
+            return 0;
+        };
+    }
 }
