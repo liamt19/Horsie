@@ -614,30 +614,31 @@ namespace Horsie {
     }
 
 
-#define BULK_PERFT 1
     u64 Position::Perft(i32 depth) {
-#if !defined(BULK_PERFT)
-        if (depth == 0) {
+
+        if (depth == 0)
             return 1;
-        }
-#endif
+
+        depth--;
 
         ScoredMove movelist[MoveListSize];
-        i32 size = GenerateLegal(*this, &movelist[0], 0);
-
-#if defined(BULK_PERFT)
-        if (depth == 1) {
-            return size;
-        }
-#endif
+        i32 size = GeneratePseudoLegal(*this, movelist, 0);
 
         u64 n = 0;
         for (i32 i = 0; i < size; i++) {
             Move m = movelist[i].move;
 
-            MakeMove<false>(m);
-            n += Perft(depth - 1);
-            UnmakeMove(m);
+            if (!IsLegal(m))
+                continue;
+
+            if (depth == 0) {
+                n++;
+            }
+            else {
+                MakeMove<false>(m);
+                n += Perft(depth);
+                UnmakeMove(m);
+            }
         }
 
         return n;
@@ -645,12 +646,14 @@ namespace Horsie {
 
     u64 Position::SplitPerft(i32 depth) {
         ScoredMove movelist[MoveListSize];
-        ScoredMove* list = &movelist[0];
-        i32 size = GenerateLegal(*this, list, 0);
+        i32 size = GeneratePseudoLegal(*this, movelist, 0);
 
         u64 n, total = 0;
         for (i32 i = 0; i < size; i++) {
-            Move m = list[i].move;
+            Move m = movelist[i].move;
+
+            if (!IsLegal(m))
+                continue;
 
             MakeMove<false>(m);
             n = Perft(depth - 1);

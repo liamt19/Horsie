@@ -24,7 +24,7 @@ namespace Horsie {
         constexpr bool noisyMoves = (GenType & GenNoisy);
         constexpr bool quietMoves = (GenType & GenQuiet);
 
-        const Color stm = pos.ToMove;
+        const auto stm = pos.ToMove;
         const Bitboard& bb = pos.bb;
 
         const Direction up = static_cast<Direction>(ShiftUpDir(stm));
@@ -32,18 +32,19 @@ namespace Horsie {
         const Direction UpRight = (up + Direction::EAST);
 
         const u64 rank7 = (stm == WHITE) ? Rank7BB : Rank2BB;
-        const u64 rank3 = (stm == WHITE) ? Rank3BB : Rank6BB;
+        const u64 rank2 = (stm == WHITE) ? Rank2BB : Rank7BB;
         
         const u64 ourPawns = bb.Colors[stm] & bb.Pieces[Piece::PAWN];
         const u64 promotingPawns = ourPawns & rank7;
         const u64 notPromotingPawns = ourPawns & ~rank7;
+        const u64 doublePushPawns = ourPawns & rank2;
 
         const u64 pushSquares = targets & (quietMoves ? ~bb.Occupancy : 0);
         const u64 capSquares = targets & (noisyMoves ? bb.Colors[Not(stm)] : 0);
 
         if (quietMoves) {
             u64 moves = Forward(stm, notPromotingPawns) & pushSquares;
-            u64 twoMoves = Forward(stm, moves & rank3) & pushSquares;
+            u64 twoMoves = DoublePush(stm, doublePushPawns, bb.Occupancy) & pushSquares;
             while (moves != 0) {
                 i32 to = poplsb(moves);
                 list[size++].move = Move(to - up, to);
@@ -137,7 +138,7 @@ namespace Horsie {
         if (noisyMoves) targets |= them;
         if (quietMoves) targets |= ~occ;
 
-        if (MoreThanOne(pos.State->Checkers)) {
+        if (pos.InDoubleCheck()) {
             u64 moves = PseudoAttacks[KING][ourKing] & targets;
             while (moves != 0) {
                 list[size++].move = Move(ourKing, poplsb(moves));
@@ -145,10 +146,10 @@ namespace Horsie {
             return size;
         }
 
-        //  todo restrict moves to those that block the check
-        //if (pos.Checked()) {
-        //    targets &= LineBB[ourKing][lsb(pos.State->Checkers)];
-        //}
+        const u64 kingTargets = targets;
+        if (pos.Checked()) {
+            targets &= LineBB[ourKing][lsb(pos.State->Checkers)];
+        }
 
         size = GenPawns<GenType>(pos, list, targets, size);
         size = GenNormal<HORSIE>(pos, list, targets, size);
@@ -156,7 +157,7 @@ namespace Horsie {
         size = GenNormal<ROOK>(pos, list, targets, size);
         size = GenNormal<QUEEN>(pos, list, targets, size);
 
-        u64 kingMoves = PseudoAttacks[KING][ourKing] & targets;
+        u64 kingMoves = PseudoAttacks[KING][ourKing] & kingTargets;
         while (kingMoves != 0) {
             list[size++].move = Move(ourKing, poplsb(kingMoves));
         }

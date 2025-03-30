@@ -154,6 +154,11 @@ namespace Horsie {
 
     constexpr u64 Forward(i32 c, u64 b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
 
+    constexpr u64 DoublePush(i32 c, u64 b, u64 blockers) {
+        const auto dir = (c == WHITE) ? NORTH : SOUTH;
+        return Shift(dir, Shift(dir, b) & ~blockers);
+    };
+
 
     inline u64  operator&(u64 b, Square s) { return b & SquareBB(s); }
     inline u64  operator|(u64 b, Square s) { return b | SquareBB(s); }

@@ -6,11 +6,6 @@
 
 namespace Horsie::Search {
 
-    template <MoveGenType GenType>
-    void ScoredMoveList::GenerateInto(Position& pos) {
-        GeneratedSize = Generate<GenType>(pos, List, 0);
-    }
-
     Movepicker::Movepicker(Position& pos, HistoryTable& history, SearchStackEntry* _ss, Move ttMove) : 
         Pos(pos),
         History(history),
@@ -28,7 +23,7 @@ namespace Horsie::Search {
 
 
     ScoredMove OrderNext(ScoredMoveList& list, i32 listIndex) {
-        i32 max = INT32_MIN;
+        i32 max = list[listIndex].score;
         i32 maxIndex = listIndex;
 
         for (i32 i = listIndex + 1; i < list.Size(); i++) {
@@ -42,11 +37,6 @@ namespace Horsie::Search {
         return list[listIndex];
     }
 
-    void Movepicker::StartSkippingQuiets() { 
-        if (Stage == MovepickerStage::GenQuiets || Stage == MovepickerStage::PlayQuiets) {
-            Stage = MovepickerStage::StartBadNoisies;
-        }
-    }
 
     Move Movepicker::Next() {
 
@@ -90,7 +80,7 @@ namespace Horsie::Search {
         {
             ++Stage;
 
-            if (KillerMove && Pos.IsPseudoLegal(KillerMove)) {
+            if (!SkipQuiets && KillerMove && Pos.IsPseudoLegal(KillerMove)) {
                 return KillerMove;
             }
 
@@ -99,16 +89,18 @@ namespace Horsie::Search {
 
         case MovepickerStage::GenQuiets:
         {
-            MoveIndex = 0;
-            QuietMoves.GeneratedSize = GenerateQuiet(Pos, QuietMoves.List, 0);
-            ScoreList(QuietMoves);
+            if (!SkipQuiets) {
+                MoveIndex = 0;
+                QuietMoves.GeneratedSize = GenerateQuiet(Pos, QuietMoves.List, 0);
+                ScoreList(QuietMoves);
+            }
 
             ++Stage;
             [[fallthrough]];
         }
         case MovepickerStage::PlayQuiets:
         {
-            while (MoveIndex < QuietMoves.Size()) {
+            if (!SkipQuiets && MoveIndex < QuietMoves.Size()) {
                 const auto sm = OrderNext(QuietMoves, MoveIndex);
                 const auto [move, score] = sm;
                 MoveIndex++;

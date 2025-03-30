@@ -51,8 +51,15 @@ namespace Horsie {
             constexpr auto& First() const { return List[0]; }
             constexpr auto& Last() const { return List[GeneratedSize]; }
 
-            template <MoveGenType GenType>
-            void GenerateInto(Position& pos);
+            std::string ToString() const {
+                std::ostringstream oss;
+                for (size_t i = 0; i < GeneratedSize; i++) {
+                    oss << List[i].move << ": " << List[i].score;
+                    if (i != GeneratedSize - 1)
+                        oss << ", ";
+                }
+                return oss.str();
+            }
         };
 
 
@@ -63,7 +70,7 @@ namespace Horsie {
 
             Move Next();
             void ScoreList(ScoredMoveList& list);
-            void StartSkippingQuiets();
+            void StartSkippingQuiets() { SkipQuiets = true; }
 
         private:
             Position& Pos;
