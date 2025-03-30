@@ -836,14 +836,14 @@ namespace Horsie {
         }
 
         i32 legalMoves = 0;
+        i32 quietEvasions = 0;
 
-        Movepicker mp = Movepicker::QSearch(pos, *history, ss, ttMove);
-        Move m;
-        while ((m = mp.Next())) {
+        ScoredMove list[MoveListSize];
+        i32 size = GenerateQS(pos, list, 0);
+        AssignQuiescenceScores(pos, ss, *history, list, size, ttMove);
 
-            if (bestScore > ScoreTTLoss && !inCheck && mp.FinishedGoodNoisies()) {
-                break;
-            }
+        for (i32 i = 0; i < size; i++) {
+            Move m = OrderNextMove(list, size, i);
 
             if (!pos.IsLegal(m)) {
                 continue;
@@ -857,20 +857,27 @@ namespace Horsie {
             const bool isCapture = pos.IsCapture(m);
             if (bestScore > ScoreTTLoss) {
 
-                if (legalMoves > 3)
+                if (quietEvasions >= 2)
                     break;
+
+                if (!inCheck && legalMoves > 3)
+                    continue;
 
                 if (!inCheck && futility <= alpha && !pos.SEE_GE(m, 1)) {
                     bestScore = std::max(bestScore, futility);
                     continue;
                 }
 
-                if (!pos.SEE_GE(m, -QSSeeMargin)) {
+                if (!inCheck && !pos.SEE_GE(m, -QSSeeMargin)) {
                     continue;
                 }
             }
 
             prefetch(TT->GetCluster(pos.HashAfter(m)));
+
+            if (inCheck && !isCapture) {
+                quietEvasions++;
+            }
 
             ss->CurrentMove = m;
             ss->ContinuationHistory = &History.Continuations[inCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
