@@ -134,7 +134,7 @@ namespace Horsie::Search {
             }
 
             Stage = MovepickerStage::NMEnd;
-            [[fallthrough]];
+            return Move::Null();
         }
 
 
@@ -187,8 +187,8 @@ namespace Horsie::Search {
                 return sm.move;
             }
 
-            ++Stage;
-            [[fallthrough]];
+            Stage = MovepickerStage::QSEnd;
+            return Move::Null();
         }
 
 
