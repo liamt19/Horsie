@@ -204,6 +204,10 @@ namespace Horsie::Search {
     void Movepicker::ScoreList(ScoredMoveList& list) {
         const auto stm = Pos.ToMove;
 
+        const auto pawnThreats = Pos.ThreatsBy<PAWN>(Not(stm));
+        const auto minorThreats = Pos.ThreatsBy<HORSIE>(Not(stm)) | Pos.ThreatsBy<BISHOP>(Not(stm)) | pawnThreats;
+        const auto rookThreats = Pos.ThreatsBy<ROOK>(Not(stm)) | minorThreats;
+
         for (i32 i = 0; i < list.Size(); i++) {
             const Move m = list[i].move;
             const auto [moveFrom, moveTo] = m.Unpack();
@@ -239,11 +243,25 @@ namespace Horsie::Search {
                 if (Pos.GivesCheckOnSquare(type, moveTo)) {
                     list[i].score += CheckBonus;
                 }
-            }
 
-            //if (type == HORSIE) {
-            //    list[i].score += 200;
-            //}
+                i32 threat = 0;
+                const auto fromBB = SquareBB(moveFrom);
+                const auto toBB = SquareBB(moveTo);
+                if (type == QUEEN) {
+                    threat += ((fromBB & rookThreats) ? 12288 : 0);
+                    threat -= ((  toBB & rookThreats) ? 11264 : 0);
+                }
+                else if (type == ROOK) {
+                    threat += ((fromBB & minorThreats) ? 10240 : 0);
+                    threat -= ((  toBB & minorThreats) ?  9216 : 0);
+                }
+                else if (type == BISHOP || type == HORSIE) {
+                    threat += ((fromBB & pawnThreats) ? 8192 : 0);
+                    threat -= ((  toBB & pawnThreats) ? 7168 : 0);
+                }
+
+                list[i].score += threat;
+            }
         }
 
     }

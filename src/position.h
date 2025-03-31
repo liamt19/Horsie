@@ -106,6 +106,11 @@ namespace Horsie {
         bool HasCycle(i32 ply) const;
 
 
+        template<i32 pt>
+        constexpr u64 ThreatsBy(i32 pc) const {
+            return bb.ThreatsBy<pt>(pc);
+        }
+
         inline i32 PawnCorrectionIndex(i32 pc) const {
             return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);
         }
