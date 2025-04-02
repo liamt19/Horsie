@@ -33,6 +33,19 @@ namespace Horsie {
         u64 BlockingPieces(i32 pc, u64* pinners) const;
         u64 AttackersTo(i32 idx, u64 occupied) const;
         u64 AttackMask(i32 idx, i32 pc, i32 pt, u64 occupied) const;
+
+        template<i32 pt>
+        u64 AttackMask(i32 idx, i32 pc, u64 occupied) const;
+
+        template<i32 pt>
+        inline u64 ThreatsBy(i32 pc) const {
+            u64 mask{};
+            auto pieces = Pieces[pt] & Colors[pc];
+            while (pieces != 0)
+                mask |= AttackMask<pt>(poplsb(pieces), pc, Occupancy);
+
+            return mask;
+        }
     };
 
     struct BucketCache {

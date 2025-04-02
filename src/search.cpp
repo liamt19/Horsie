@@ -1181,6 +1181,28 @@ namespace Horsie {
                 if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
                     list[i].score += CheckBonus;
                 }
+
+                const auto pawnThreats = pos.ThreatsBy<PAWN>(Not(pc));
+                const auto minorThreats = pos.ThreatsBy<HORSIE>(Not(pc)) | pos.ThreatsBy<BISHOP>(Not(pc)) | pawnThreats;
+                const auto rookThreats = pos.ThreatsBy<ROOK>(Not(pc)) | minorThreats;
+
+                i32 threat = 0;
+                const auto fromBB = SquareBB(moveFrom);
+                const auto toBB = SquareBB(moveTo);
+                if (pt == QUEEN) {
+                    threat += ((fromBB & rookThreats) ? 12288 : 0);
+                    threat -= ((toBB & rookThreats) ? 11264 : 0);
+                }
+                else if (pt == ROOK) {
+                    threat += ((fromBB & minorThreats) ? 10240 : 0);
+                    threat -= ((toBB & minorThreats) ? 9216 : 0);
+                }
+                else if (pt == BISHOP || pt == HORSIE) {
+                    threat += ((fromBB & pawnThreats) ? 8192 : 0);
+                    threat -= ((toBB & pawnThreats) ? 7168 : 0);
+                }
+
+                list[i].score += threat;
             }
 
             if (pt == HORSIE) {
