@@ -514,7 +514,7 @@ namespace Horsie {
                 if (skipQuiets == false)
                     skipQuiets = legalMoves >= lmpMoves;
 
-                const bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
+                const bool givesCheck = pos.GivesCheck(ourPiece, moveTo);
                 const bool isQuiet = !(givesCheck || isCapture);
 
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
@@ -1116,7 +1116,7 @@ namespace Horsie {
                 list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
                 list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
 
-                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
+                if (pos.GivesCheck(pt, moveTo)) {
                     list[i].score += CheckBonus;
                 }
             }
@@ -1130,6 +1130,10 @@ namespace Horsie {
     void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
         Bitboard& bb = pos.bb;
         const auto pc = pos.ToMove;
+
+        const auto pawnThreats = pos.ThreatsBy<PAWN>(Not(pc));
+        const auto minorThreats = pos.ThreatsBy<HORSIE>(Not(pc)) | pos.ThreatsBy<BISHOP>(Not(pc)) | pawnThreats;
+        const auto rookThreats = pos.ThreatsBy<ROOK>(Not(pc)) | minorThreats;
 
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;
@@ -1160,9 +1164,27 @@ namespace Horsie {
                     list[i].score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
                 }
 
-                if ((pos.State->CheckSquares[pt] & SquareBB(moveTo)) != 0) {
+                if (pos.GivesCheck(pt, moveTo)) {
                     list[i].score += CheckBonus;
                 }
+
+                i32 threat = 0;
+                const auto fromBB = SquareBB(moveFrom);
+                const auto   toBB = SquareBB(moveTo);
+                if (pt == QUEEN) {
+                    threat += ((fromBB & rookThreats) ? 12288 : 0);
+                    threat -= ((  toBB & rookThreats) ? 11264 : 0);
+                }
+                else if (pt == ROOK) {
+                    threat += ((fromBB & minorThreats) ? 10240 : 0);
+                    threat -= ((  toBB & minorThreats) ? 9216 : 0);
+                }
+                else if (pt == BISHOP || pt == HORSIE) {
+                    threat += ((fromBB & pawnThreats) ? 8192 : 0);
+                    threat -= ((  toBB & pawnThreats) ? 7168 : 0);
+                }
+
+                list[i].score += threat;
             }
 
             if (pt == HORSIE) {
