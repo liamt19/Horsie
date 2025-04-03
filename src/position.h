@@ -46,6 +46,8 @@ namespace Horsie {
         constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
 
+        constexpr bool GivesCheck(i32 pt, i32 sq) const { return (State->CheckSquares[pt] & SquareBB(sq)); }
+
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
@@ -97,6 +99,10 @@ namespace Horsie {
         bool SEE_GE(Move m, i32 threshold = 1) const;
         bool HasCycle(i32 ply) const;
 
+        template<i32 pt>
+        constexpr u64 ThreatsBy(i32 pc) const {
+            return bb.ThreatsBy<pt>(pc);
+        }
 
         inline i32 PawnCorrectionIndex(i32 pc) const {
             return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);
