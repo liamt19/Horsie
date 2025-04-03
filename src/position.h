@@ -46,6 +46,8 @@ namespace Horsie {
         constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
 
+        constexpr bool GivesCheck(i32 pt, i32 sq) const { return (State->CheckSquares[pt] & SquareBB(sq)); }
+
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
