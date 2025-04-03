@@ -23,7 +23,7 @@
 namespace Horsie {
 
     constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    constexpr auto EngVersion = "1.0.16";
+    constexpr auto EngVersion = "1.0.17";
 
     constexpr u64 FileABB = 0x0101010101010101ULL;
     constexpr u64 FileBBB = FileABB << 1;
