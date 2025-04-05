@@ -904,7 +904,7 @@ namespace Horsie {
 
         os << "   a   b   c   d   e   f   g   h\n";
         os << "\nFen: " << pos.GetFEN() << "\n";
-        os << "\nHash: " << pos.State->Hash << "\n";
+        os << "\nHash: " << pos.Hash() << "\n";
 
         return os;
     }
@@ -955,7 +955,7 @@ namespace Horsie {
                 if ((swap = SEEValuePawn - swap) < res)
                     break;
 
-                attackers |= GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+                attackers |= attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[HORSIE]) != 0) {
                 occ ^= SquareBB(lsb(temp));
@@ -967,21 +967,22 @@ namespace Horsie {
                 if ((swap = SEEValueBishop - swap) < res)
                     break;
 
-                attackers |= GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
+                attackers |= attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[ROOK]) != 0) {
                 occ ^= SquareBB(lsb(temp));
                 if ((swap = SEEValueRook - swap) < res)
                     break;
 
-                attackers |= GetRookMoves(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
+                attackers |= attacks_bb<ROOK>(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]);
             }
             else if ((temp = stmAttackers & bb.Pieces[QUEEN]) != 0) {
                 occ ^= SquareBB(lsb(temp));
                 if ((swap = SEEValueQueen - swap) < res)
                     break;
 
-                attackers |= (GetBishopMoves(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN])) | (GetRookMoves(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
+                attackers |= (attacks_bb<BISHOP>(moveTo, occ) & (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]));
+                attackers |= (attacks_bb<ROOK>(moveTo, occ) & (bb.Pieces[ROOK] | bb.Pieces[QUEEN]));
             }
             else {
                 if ((attackers & ~bb.Pieces[stm]) != 0) {
@@ -1006,10 +1007,7 @@ namespace Horsie {
         const auto HashFromStack = [&](i32 i) { return _SentinelStart[GamePly - i].Hash; };
 
         i32 slot;
-        u64 other = ~(HashFromStack(0) ^ HashFromStack(1));
         for (i32 i = 3; i <= dist; i += 2) {
-            other ^= ~(HashFromStack(i) ^ HashFromStack(i - 1));
-
             auto diff = st->Hash ^ HashFromStack(i);
 
             if (diff != keys[(slot = Hash1(diff))] &&

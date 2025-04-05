@@ -103,8 +103,8 @@ namespace Horsie {
     }
 
     u64 Bitboard::AttackersTo(i32 idx, u64 occupied) const {
-        return (GetBishopMoves(idx, occupied) & (Pieces[BISHOP] | Pieces[QUEEN]))
-            | (GetRookMoves(idx, occupied) & (Pieces[ROOK] | Pieces[QUEEN]))
+        return (attacks_bb<BISHOP>(idx, occupied) & (Pieces[BISHOP] | Pieces[QUEEN]))
+            | (attacks_bb<ROOK>(idx, occupied) & (Pieces[ROOK] | Pieces[QUEEN]))
             | (PseudoAttacks[HORSIE][idx] & Pieces[HORSIE])
             | (PawnAttackMasks[WHITE][idx] & Colors[BLACK] & Pieces[PAWN])
             | (PawnAttackMasks[BLACK][idx] & Colors[WHITE] & Pieces[PAWN]);
@@ -113,13 +113,10 @@ namespace Horsie {
     u64 Bitboard::AttackMask(i32 idx, i32 pc, i32 pt, u64 occupied) const {
         switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];
-        case HORSIE: return PseudoAttacks[HORSIE][idx];
-        case BISHOP: return GetBishopMoves(idx, occupied);
-        case ROOK: return GetRookMoves(idx, occupied);
-        case QUEEN: return GetBishopMoves(idx, occupied) | GetRookMoves(idx, occupied);
-        case KING: return PseudoAttacks[KING][idx];
-        default:
-            return 0;
+        case BISHOP: return attacks_bb<BISHOP>(idx, occupied);
+        case ROOK: return attacks_bb<ROOK>(idx, occupied);
+        case QUEEN: return attacks_bb<BISHOP>(idx, occupied) | attacks_bb<ROOK>(idx, occupied);
+        default: return PseudoAttacks[pt][idx];
         };
     }
 
@@ -131,17 +128,11 @@ namespace Horsie {
     template u64 Bitboard::AttackMask<QUEEN>(i32 idx, i32 pc, u64 occupied) const;
     template u64 Bitboard::AttackMask<KING>(i32 idx, i32 pc, u64 occupied) const;
 
-    template<i32 pt>
+    template<Piece pt>
     u64 Bitboard::AttackMask(i32 idx, i32 pc, u64 occupied) const {
         switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];
-        case HORSIE: return PseudoAttacks[HORSIE][idx];
-        case BISHOP: return GetBishopMoves(idx, occupied);
-        case ROOK: return GetRookMoves(idx, occupied);
-        case QUEEN: return GetBishopMoves(idx, occupied) | GetRookMoves(idx, occupied);
-        case KING: return PseudoAttacks[KING][idx];
-        default:
-            return 0;
+        default: return attacks_bb<pt>(idx, occupied);
         };
     }
 }

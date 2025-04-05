@@ -27,7 +27,7 @@ namespace Horsie::Cuckoo {
                     for (i32 s2 = s1 + 1; s2 < 64; s2++) {
                         if ((attacks_bb(pt, s1, 0) & SquareBB(s2)) != 0) {
                             Move m = Move(s1, s2);
-                            u64 key = Zobrist::ColorPieceSquareHashes[pc][pt][s1] ^ Zobrist::ColorPieceSquareHashes[pc][pt][s2] ^ Zobrist::BlackHash;
+                            u64 key = Zobrist::PSQHashes[pc][pt][s1] ^ Zobrist::PSQHashes[pc][pt][s2] ^ Zobrist::ColorHash;
 
                             i32 iter = Hash1(key);
                             while (true) {

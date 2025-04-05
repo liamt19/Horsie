@@ -141,14 +141,14 @@ namespace Horsie
         }
 
         void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective) {
-            Accumulator& accumulator = *pos.State->accumulator;
+            Accumulator& accumulator = *pos.accumulator();
             Bitboard& bb = pos.bb;
 
             accumulator.Sides[perspective] = g_network->FTBiases;
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
-            i32 ourKing = pos.State->KingSquares[perspective];
+            i32 ourKing = pos.KingSquare(perspective);
             u64 occ = bb.Occupancy;
             while (occ != 0) {
                 i32 pieceIdx = poplsb(occ);
@@ -172,10 +172,10 @@ namespace Horsie
         }
 
         void RefreshAccumulatorPerspective(Position& pos, i32 perspective) {
-            Accumulator& accumulator = *pos.State->accumulator;
+            Accumulator& accumulator = *pos.accumulator();
             Bitboard& bb = pos.bb;
 
-            i32 ourKing = pos.State->KingSquares[perspective];
+            i32 ourKing = pos.KingSquare(perspective);
 
             BucketCache& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
             Bitboard& entryBB = rtEntry.Boards[perspective];
@@ -224,7 +224,7 @@ namespace Horsie
         }
 
         i32 GetEvaluation(Position& pos, i32 outputBucket) {
-            Accumulator& accumulator = *pos.State->accumulator;
+            Accumulator& accumulator = *pos.accumulator();
             ProcessUpdates(pos);
 
             auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
@@ -366,7 +366,7 @@ namespace Horsie
         void MakeMoveNN(Position& pos, Move m) {
             Bitboard& bb = pos.bb;
 
-            Accumulator* src = pos.State->accumulator;
+            Accumulator* src = pos.accumulator();
             Accumulator* dst = pos.NextState()->accumulator;
 
             dst->NeedsRefresh[WHITE] = src->NeedsRefresh[WHITE];
@@ -393,7 +393,7 @@ namespace Horsie
                 dst->NeedsRefresh[us] = true;
 
                 PerspectiveUpdate& theirUpdate = dst->Update[them];
-                i32 theirKing = pos.State->KingSquares[them];
+                i32 theirKing = pos.KingSquare(them);
 
                 i32 from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
                 i32 to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
@@ -419,8 +419,8 @@ namespace Horsie
                 }
             }
             else {
-                i32 wKing = pos.State->KingSquares[WHITE];
-                i32 bKing = pos.State->KingSquares[BLACK];
+                i32 wKing = pos.KingSquare(WHITE);
+                i32 bKing = pos.KingSquare(BLACK);
 
                 const auto [wFrom, bFrom] = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
                 const auto [wTo, bTo] = FeatureIndex(us, m.IsPromotion() ? m.PromotionTo() : ourPiece, moveTo, wKing, bKing);
@@ -446,7 +446,7 @@ namespace Horsie
         }
 
         void MakeNullMove(Position& pos) {
-            Accumulator* currAcc = pos.State->accumulator;
+            Accumulator* currAcc = pos.accumulator();
             Accumulator* nextAcc = pos.NextState()->accumulator;
 
             currAcc->CopyTo(nextAcc);

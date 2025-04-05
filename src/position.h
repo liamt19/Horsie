@@ -36,15 +36,22 @@ namespace Horsie {
 
         constexpr bool InCheck()       const { return popcount(State->Checkers) == 1; }
         constexpr bool InDoubleCheck() const { return popcount(State->Checkers) == 2; }
-        constexpr bool Checked()       const { return popcount(State->Checkers) != 0; }
+        constexpr bool Checked()       const { return State->Checkers != 0; }
         constexpr StateInfo* StartingState() const { return _SentinelStart; }
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
-
+        
+        constexpr u64 BlockingPieces(i32 pc) const { return State->BlockingPieces[pc]; }
+        constexpr i32 KingSquare(i32 pc) const { return State->KingSquares[pc]; }
+        constexpr u64 Checkers() const { return State->Checkers; }
         constexpr u64 Hash() const { return State->Hash; }
         constexpr u64 PawnHash() const { return State->PawnHash; }
         constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
+        constexpr i32 HalfmoveClock() const { return State->HalfmoveClock; }
+        constexpr i32 EPSquare() const { return State->EPSquare; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
+        constexpr auto CastleStatus() const { return State->CastleStatus; }
+        constexpr auto accumulator() const { return State->accumulator; }
 
         constexpr bool GivesCheck(i32 pt, i32 sq) const { return (State->CheckSquares[pt] & SquareBB(sq)); }
 
@@ -52,9 +59,10 @@ namespace Horsie {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
 
+        constexpr i32 CastlingRookSquare(CastlingStatus cr) const { return CastlingRookSquares[static_cast<i32>(cr)]; }
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
         constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPaths[static_cast<i32>(cr)]); }
-        constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquares[static_cast<i32>(cr)]) & ourOcc); }
+        constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquare(cr)) & ourOcc); }
         constexpr bool HasNonPawnMaterial(i32 pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
 
         constexpr bool IsCapture(Move m) const { return bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle(); }
@@ -99,7 +107,7 @@ namespace Horsie {
         bool SEE_GE(Move m, i32 threshold = 1) const;
         bool HasCycle(i32 ply) const;
 
-        template<i32 pt>
+        template<Piece pt>
         constexpr u64 ThreatsBy(i32 pc) const {
             return bb.ThreatsBy<pt>(pc);
         }

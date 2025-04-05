@@ -86,7 +86,7 @@ namespace Horsie {
             while (true) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-                ClearConsoleLines(threads + 2);
+                ClearConsoleLines(static_cast<i32>(threads + 2));
 
                 u64 totalGames = 0;
                 double totalNPS = 0;
@@ -169,7 +169,7 @@ namespace Horsie {
                                 candidates.push_back(legalMoves[j]);
 
                         if (!candidates.empty())
-                            toMake = candidates[RandNext(0, candidates.size())].move;
+                            toMake = candidates[RandNext(0, static_cast<i32>(candidates.size()))].move;
                     }
                     
                     pos.MakeMove(toMake);

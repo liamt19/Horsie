@@ -67,7 +67,7 @@ enum Rank : i32 {
     RANK_NB
 };
 
-enum class CastlingStatus {
+enum class CastlingStatus : i32 {
     None = 0,
     WK = 1,
     WQ = 2,
@@ -108,18 +108,8 @@ enum TTNodeType {
     Exact = Beta | Alpha
 };
 
-
+constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
 constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
 constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
-
-constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) {
-    l = CastlingStatus(i32(l) & i32(r));
-    return l;
-}
-
-constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) {
-    l = CastlingStatus(i32(l) | i32(r));
-    return l;
-}
-
-constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
+constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l = CastlingStatus(i32(l) & i32(r)); }
+constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l = CastlingStatus(i32(l) | i32(r)); }

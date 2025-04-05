@@ -70,7 +70,7 @@ namespace {
     constexpr Color Not(Color c) { return Color(i32(c) ^ 1); }
 
 
-#ifdef USE_PEXT
+#if defined(USE_PEXT)
     constexpr bool UsePext = true;
 #else
     constexpr bool UsePext = false;

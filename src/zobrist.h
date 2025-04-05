@@ -6,10 +6,10 @@
 
 namespace Zobrist {
 
-    extern u64 ColorPieceSquareHashes[2][6][64];
-    extern u64 CastlingRightsHashes[4];
-    extern u64 EnPassantFileHashes[8];
-    extern u64 BlackHash;
+    extern u64 PSQHashes[2][6][64];
+    extern u64 CastlingHashes[4];
+    extern u64 EPHashes[8];
+    extern u64 ColorHash;
     const i32 DefaultSeed = 0xBEEF;
 
     void Init();

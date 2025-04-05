@@ -50,7 +50,7 @@ namespace Horsie {
         ClusterCount = size;
         Clusters = AlignedAlloc<TTCluster>(ClusterCount);
 
-        std::memset(Clusters, 0, sizeof(TTCluster) * size);
+        Clear();
     }
 
     void TranspositionTable::Clear() {
@@ -74,6 +74,22 @@ namespace Horsie {
 
         Age = 0;
     }
+    
+    u32 TranspositionTable::Hashfull() const {
+        u32 entries = 0;
+        for (size_t i = 0; i < 1000; i++) {
+            const auto& cluster = Clusters[i];
+
+            for (size_t j = 0; j < EntriesPerCluster; j++) {
+                const auto e = cluster.entries[j];
+
+                if (!e.IsEmpty() && e.Age() == Age)
+                    entries++;
+            }
+        }
+
+        return entries / EntriesPerCluster;
+    }
 
     void TTEntry::Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, u8 age, bool isPV) {
         u16 k = static_cast<u16>(key);
@@ -91,7 +107,7 @@ namespace Horsie {
             SetScore(score);
             SetStatEval(statEval);
             _depth = static_cast<u8>(depth - DepthOffset);
-            _AgePVType = static_cast<u8>(age | ((isPV ? 1 : 0) << 2) | static_cast<u32>(nodeType));
+            _AgePVType = static_cast<u8>(age | (isPV << 2) | static_cast<u32>(nodeType));
         }
     }
 }

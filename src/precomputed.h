@@ -24,48 +24,41 @@ namespace Horsie {
 
     struct Magic {
         u64 mask;
-        u64 number;
         u64* attacks;
-        unsigned shift;
+#if !defined(USE_PEXT)
+        u64 number;
+        u32 shift;
+#endif
+
+        u32 MapToIndex(u64 occ) const {
+#if defined(USE_PEXT)
+            return static_cast<u32>(pext(occ, mask));
+#else
+            return ((occ & mask) * number) >> shift;
+#endif
+        }
+
+        u64 GetAttacks(u64 occ) const { return attacks[MapToIndex(occ)]; }
     };
 
-    extern Magic RookMagics[SQUARE_NB];
-    extern Magic BishopMagics[SQUARE_NB];
+    extern Magic Magics[SQUARE_NB][2];
 
-    inline u64 GetRookMoves(i32 s, u64 occ) {
-        const auto& m = RookMagics[s];
-        
-        if (UsePext)
-            return m.attacks[pext(occ, m.mask)];
-        
-        return m.attacks[((occ & m.mask) * m.number) >> m.shift];
-    }
-
-    inline u64 GetBishopMoves(i32 s, u64 occ) {
-        const auto& m = BishopMagics[s];
-
-        if (UsePext)
-            return m.attacks[pext(occ, m.mask)];
-
-        return m.attacks[((occ & m.mask) * m.number) >> m.shift];
-    }
-
-    template<Piece Pt>
+    template<Piece pt>
     inline u64 attacks_bb(i32 s, u64 occ) {
-        switch (Pt) {
-        case BISHOP: return GetBishopMoves(s, occ);
-        case ROOK: return GetRookMoves(s, occ);
-        case QUEEN: return GetBishopMoves(s, occ) | GetRookMoves(s, occ);
-        default: return PseudoAttacks[Pt][(i32)s];
+        switch (pt) {
+        case BISHOP:
+        case ROOK: return Magics[s][pt - BISHOP].GetAttacks(occ);
+        case QUEEN: return attacks_bb<BISHOP>(s, occ) | attacks_bb<ROOK>(s, occ);
+        default: return PseudoAttacks[pt][s];
         }
     }
 
     inline u64 attacks_bb(i32 pt, i32 s, u64 occ) {
         switch (pt) {
-        case BISHOP: return GetBishopMoves(s, occ);
-        case ROOK: return GetRookMoves(s, occ);
-        case QUEEN: return GetBishopMoves(s, occ) | GetRookMoves(s, occ);
-        default: return PseudoAttacks[pt][(i32)s];
+        case BISHOP: return attacks_bb<BISHOP>(s, occ);
+        case ROOK: return attacks_bb<ROOK>(s, occ);
+        case QUEEN: return attacks_bb<BISHOP>(s, occ) | attacks_bb<ROOK>(s, occ);
+        default: return PseudoAttacks[pt][s];
         }
     }
 

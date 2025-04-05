@@ -52,27 +52,24 @@ namespace Horsie {
         constexpr explicit operator bool() const { return data != 0; }
 
         constexpr i32 CastlingKingSquare() const {
-            if (From() < Square::A2) {
-                return (To() > From()) ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1);
-            }
-
-            return (To() > From()) ? static_cast<i32>(Square::G8) : static_cast<i32>(Square::C8);
+            const auto [moveFrom, moveTo] = Unpack();
+            const auto relativeRank = (moveFrom > Square::H1) * 56;
+            const auto dstFile = (moveFrom < moveTo) ? FILE_G : FILE_C;
+            return relativeRank + dstFile;
         }
 
         constexpr i32 CastlingRookSquare() const {
-            if (From() < Square::A2) {
-                return (To() > From()) ? static_cast<i32>(Square::F1) : static_cast<i32>(Square::D1);
-            }
-
-            return (To() > From()) ? static_cast<i32>(Square::F8) : static_cast<i32>(Square::D8);
+            const auto [moveFrom, moveTo] = Unpack();
+            const auto relativeRank = (moveFrom > Square::H1) * 56;
+            const auto dstFile = (moveFrom < moveTo) ? FILE_F : FILE_D;
+            return relativeRank + dstFile;
         }
 
         constexpr CastlingStatus RelevantCastlingRight() const {
-            if (From() < Square::A2) {
-                return (To() > From()) ? CastlingStatus::WK : CastlingStatus::WQ;
-            }
-
-            return (To() > From()) ? CastlingStatus::BK : CastlingStatus::BQ;
+            const auto [moveFrom, moveTo] = Unpack();
+            const auto color = (moveFrom > Square::H1) ? CastlingStatus::Black : CastlingStatus::White;
+            const auto side = (moveFrom < moveTo) ? CastlingStatus::Kingside : CastlingStatus::Queenside;
+            return color & side;
         }
 
         std::string ToString(const Bitboard& bb) const {

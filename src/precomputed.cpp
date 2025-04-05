@@ -23,8 +23,7 @@ namespace Horsie {
     u64 RookRays[SQUARE_NB];
     u64 BishopRays[SQUARE_NB];
 
-    Magic RookMagics[SQUARE_NB];
-    Magic BishopMagics[SQUARE_NB];
+    Magic Magics[SQUARE_NB][2];
 
     i32 LogarithmicReductionTable[MaxPly][MoveListSize];
     i32 LMPTable[2][MaxDepth];
@@ -33,20 +32,13 @@ namespace Horsie {
         u64 RookTable[0x19000];   // To store rook attacks
         u64 BishopTable[0x1480];  // To store bishop attacks
 
-        void InitPextMagics(Piece pt, u64 table[], Magic magics[]);
-        void InitNormalMagics(Piece pt, u64 table[], Magic magics[]);
+        void InitMagics(Piece pt, u64 table[], Magic magics[][2]);
     }
 
     void Precomputed::Init() {
 
-        if (UsePext) {
-            InitPextMagics(ROOK, RookTable, RookMagics);
-            InitPextMagics(BISHOP, BishopTable, BishopMagics);
-        }
-        else {
-            InitNormalMagics(ROOK, RookTable, RookMagics);
-            InitNormalMagics(BISHOP, BishopTable, BishopMagics);
-        }
+        InitMagics(ROOK, RookTable, Magics);
+        InitMagics(BISHOP, BishopTable, Magics);
 
         for (Square sq1 = Square::A1; sq1 <= Square::H8; ++sq1) {
             i32 s1 = static_cast<i32>(sq1);
@@ -108,7 +100,7 @@ namespace Horsie {
 
     namespace {
         u64 sliding_attack(Piece pt, Square sq, u64 occupied) {
-            u64  attacks = 0;
+            u64 attacks = 0;
             Direction RookDirections[4] = { NORTH, SOUTH, EAST, WEST };
             Direction BishopDirections[4] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
@@ -121,54 +113,37 @@ namespace Horsie {
             return attacks;
         }
 
-        void InitPextMagics(Piece pt, u64 table[], Magic magics[]) {
-            u64 combo = 0;
+        void InitMagics(Piece pt, u64 table[], Magic magics[][2]) {
             u64 iter = 0;
-            u64 edges = 0;
-            for (int sq = 0; sq <= 63; sq++) {
-                auto& m = magics[sq];
-                
-                edges = ((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq));
+            for (i32 sq = 0; sq <= 63; sq++) {
+                u64 edges = ((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq));
+
+                auto& m = magics[sq][pt - BISHOP];
                 m.mask = sliding_attack(pt, static_cast<Square>(sq), 0) & ~edges;
-                m.shift = (int)(64 - popcount(m.mask));
+#if !defined(USE_PEXT)
+                m.number = (pt == BISHOP) ? BishopMagicNumbers[sq] : RookMagicNumbers[sq];
+                m.shift = 64 - popcount(m.mask);
+#endif
                 if (sq == 0) {
-                    m.attacks = (u64*)(table + 0);
+                    m.attacks = &table[0];
                 }
                 else {
-                    m.attacks = magics[sq - 1].attacks + iter;
+                    m.attacks = magics[sq - 1][pt - BISHOP].attacks + iter;
                 }
 
-                combo = 0;
+                u64 combo = 0;
                 iter = 0;
                 do {
+#if defined(USE_PEXT)
                     m.attacks[pext(combo, m.mask)] = sliding_attack(pt, static_cast<Square>(sq), combo);
-                    iter++;
-                    combo = (combo - m.mask) & m.mask;
-                } while (combo != 0);
-            }
-        }
-
-        void InitNormalMagics(Piece pt, u64 table[], Magic magics[]) {
-            u64 offset = 0;
-
-            for (int sq = 0; sq <= 63; sq++) {
-                auto& m = magics[sq];
-
-                m.number = (pt == BISHOP) ? BishopMagicNumbers[sq] : RookMagicNumbers[sq];
-                m.mask = sliding_attack(pt, static_cast<Square>(sq), 0) & ~(((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq)));
-                m.shift = (int)(64 - popcount(m.mask));
-                m.attacks = &table[offset];
-
-                u64 combo = 0;
-                u32 iter = 0;
-                do {
+#else
                     m.attacks[(combo * m.number) >> m.shift] = sliding_attack(pt, static_cast<Square>(sq), combo);
+#endif
                     iter++;
                     combo = (combo - m.mask) & m.mask;
                 } while (combo != 0);
-
-                offset += iter;
             }
         }
+
     }
 }

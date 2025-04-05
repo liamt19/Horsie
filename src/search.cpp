@@ -549,7 +549,7 @@ namespace Horsie {
                 && !isRoot
                 && !doSkip
                 && ss->Ply < RootDepth * 2
-                && depth >= (SEMinDepth + (isPV && tte->PV() ? 1 : 0))
+                && depth >= (SEMinDepth + (isPV && tte->PV()))
                 && m == ttMove
                 && std::abs(ttScore) < ScoreWin
                 && ((tte->Bound() & BoundLower) != 0)
@@ -571,7 +571,7 @@ namespace Horsie {
                     return singleBeta;
                 }
                 else if (ttScore >= beta) {
-                    extend = -2 + (isPV ? 1 : 0);
+                    extend = -2 + isPV;
                 }
                 else if (cutNode) {
                     extend = -2;
@@ -585,7 +585,7 @@ namespace Horsie {
 
             const auto histIdx = MakePiece(us, ourPiece);
 
-            ss->DoubleExtensions = static_cast<i16>((ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0));
+            ss->DoubleExtensions = static_cast<i16>((ss - 1)->DoubleExtensions + (extend >= 2));
             ss->CurrentMove = m;
             ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCapture][histIdx][moveTo];
             Nodes++;
@@ -992,7 +992,7 @@ namespace Horsie {
     }
 
     i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
-        rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
+        rawEval = static_cast<i16>(rawEval * (200 - pos.HalfmoveClock()) / 200);
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
@@ -1043,6 +1043,7 @@ namespace Horsie {
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
         auto durCnt = std::max(1.0, static_cast<double>(duration.count()));
         i32 nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
+        auto hashfull = TT->Hashfull();
 
         std::cout << "info depth " << depth;
         std::cout << " seldepth " << rm.Depth;
@@ -1050,6 +1051,7 @@ namespace Horsie {
         std::cout << " score " << FormatMoveScore(moveScore);
         std::cout << " nodes " << nodes;
         std::cout << " nps " << nodesPerSec;
+        std::cout << " hashfull " << hashfull;
         std::cout << " pv";
 
         for (i32 j = 0; j < rm.PV.size(); j++) {

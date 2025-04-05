@@ -5,7 +5,7 @@
 #include <atomic>
 #include <iostream>
 
-constexpr int MaxDebugSlots = 32;
+constexpr i32 MaxDebugSlots = 32;
 
 //  See https://github.com/official-stockfish/Stockfish/blob/c085670b8474dd2137446ff278f6b73f4374cc68/src/misc.cpp#L283
 namespace {
@@ -33,7 +33,7 @@ namespace Horsie {
         i64 n;
         auto E = [&n](i64 x) { return double(x) / n; };
 
-        for (int i = 0; i < MaxDebugSlots; ++i)
+        for (i32 i = 0; i < MaxDebugSlots; ++i)
             if ((n = hit[i][0]))
                 std::cout << "Hit #" << i << ": Total " << n << " Hits " << hit[i][1] << " Hit Rate (%) " << 100.0 * E(hit[i][1]) << std::endl;
     }
