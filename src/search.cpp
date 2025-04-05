@@ -273,6 +273,7 @@ namespace Horsie {
             }
         }
 
+        (ss + 2)->Cutoffs = 0;
         (ss + 1)->KillerMove = Move::Null();
         
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
@@ -607,6 +608,7 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
+                R += ((ss + 1)->Cutoffs > 2);
 
                 R -= ss->TTPV;
                 R -= isPV;
@@ -701,6 +703,7 @@ namespace Horsie {
                     }
 
                     if (score >= beta) {
+                        ss->Cutoffs++;
                         UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
                         break;
                     }

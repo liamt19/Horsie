@@ -72,25 +72,25 @@ namespace Horsie {
             bool TTPV;
             bool TTHit;
             i32 PVLength;
+            i32 Cutoffs;
 
 
             void Clear() {
-                CurrentMove = Skip = KillerMove = Move::Null();
+                
+                if (PV != nullptr)
+                    AlignedFree(PV);
+
+                PV = nullptr;
                 ContinuationHistory = nullptr;
 
-                Ply = 0;
-                DoubleExtensions = 0;
+                DoubleExtensions = Ply = 0;
                 StaticEval = ScoreNone;
 
-                PVLength = 0;
-                if (PV != nullptr) {
-                    AlignedFree(PV);
-                    PV = nullptr;
-                }
+                KillerMove = CurrentMove = Skip = Move::Null();
 
-                InCheck = false;
-                TTPV = false;
-                TTHit = false;
+                InCheck = TTPV = TTHit = false;
+
+                PVLength = Cutoffs = 0;
             }
         };
 
