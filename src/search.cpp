@@ -608,7 +608,7 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
-                R += ((ss + 1)->Cutoffs > 2);
+                R += ((ss + 1)->Cutoffs >= 5);
 
                 R -= ss->TTPV;
                 R -= isPV;
