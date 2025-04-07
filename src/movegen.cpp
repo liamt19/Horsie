@@ -163,9 +163,7 @@ namespace Horsie {
             u64 them = bb.Colors[Not(stm)];
             u64 occ  = bb.Occupancy;
 
-            i32 ourKing   = pos.State->KingSquares[stm];
-            i32 theirKing = pos.State->KingSquares[Not(stm)];
-
+            i32 ourKing = pos.KingSquare(stm);
             u64 targets = 0;
 
             // If we are generating evasions and in double check, then skip non-king moves.
@@ -231,9 +229,10 @@ namespace Horsie {
         i32 numMoves = pos.State->Checkers ? Generate<GenEvasions>(pos, moveList, 0) :
                                              Generate<GenNonEvasions>(pos, moveList, 0);
 
-        i32 ourKing = pos.State->KingSquares[pos.ToMove];
-        i32 theirKing = pos.State->KingSquares[Not(pos.ToMove)];
-        u64 pinned = pos.State->BlockingPieces[pos.ToMove];
+        const auto stm = pos.ToMove;
+        const auto ourKing   = pos.KingSquare(stm);
+        const auto theirKing = pos.KingSquare(Not(stm));
+        u64 pinned = pos.State->BlockingPieces[stm];
 
         ScoredMove* curr = moveList;
         ScoredMove* end = moveList + numMoves;

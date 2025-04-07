@@ -148,7 +148,7 @@ namespace Horsie
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
-            i32 ourKing = pos.State->KingSquares[perspective];
+            i32 ourKing = pos.KingSquare(perspective);
             u64 occ = bb.Occupancy;
             while (occ != 0) {
                 i32 pieceIdx = poplsb(occ);
@@ -175,7 +175,7 @@ namespace Horsie
             Accumulator& accumulator = *pos.State->accumulator;
             Bitboard& bb = pos.bb;
 
-            i32 ourKing = pos.State->KingSquares[perspective];
+            i32 ourKing = pos.KingSquare(perspective);
 
             BucketCache& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
             Bitboard& entryBB = rtEntry.Boards[perspective];
@@ -393,7 +393,7 @@ namespace Horsie
                 dst->NeedsRefresh[us] = true;
 
                 PerspectiveUpdate& theirUpdate = dst->Update[them];
-                i32 theirKing = pos.State->KingSquares[them];
+                i32 theirKing = pos.KingSquare(them);
 
                 i32 from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
                 i32 to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
@@ -419,8 +419,8 @@ namespace Horsie
                 }
             }
             else {
-                i32 wKing = pos.State->KingSquares[WHITE];
-                i32 bKing = pos.State->KingSquares[BLACK];
+                i32 wKing = pos.KingSquare(WHITE);
+                i32 bKing = pos.KingSquare(BLACK);
 
                 const auto [wFrom, bFrom] = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
                 const auto [wTo, bTo] = FeatureIndex(us, m.IsPromotion() ? m.PromotionTo() : ourPiece, moveTo, wKing, bKing);
