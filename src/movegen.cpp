@@ -45,7 +45,7 @@ namespace Horsie {
 
             const u64 us   = bb.Colors[stm];
             const u64 them = bb.Colors[theirColor];
-            const u64 captureSquares = evasions ? pos.State->Checkers : them;
+            const u64 captureSquares = evasions ? pos.Checkers() : them;
 
             const u64 emptySquares = ~bb.Occupancy;
 
@@ -167,8 +167,8 @@ namespace Horsie {
             u64 targets = 0;
 
             // If we are generating evasions and in double check, then skip non-king moves.
-            if (!(evasions && MoreThanOne(pos.State->Checkers))) {
-                targets = evasions    ?  LineBB[ourKing][lsb(pos.State->Checkers)]
+            if (!(evasions && MoreThanOne(pos.Checkers()))) {
+                targets = evasions    ?  LineBB[ourKing][lsb(pos.Checkers())]
                         : nonEvasions ? ~us
                         : noisyMoves  ?  them
                         :               ~occ;
@@ -210,13 +210,13 @@ namespace Horsie {
 
     template <MoveGenType GenType>
     i32 Generate(const Position& pos, ScoredMove* moveList, i32 size) {
-        return pos.State->Checkers ? GenAll<GenEvasions>(pos, moveList, 0) :
-                                     GenAll<GenNonEvasions>(pos, moveList, 0);
+        return pos.Checkers() ? GenAll<GenEvasions>(pos, moveList, 0) :
+                                GenAll<GenNonEvasions>(pos, moveList, 0);
     }
 
     i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size) {
-        return pos.State->Checkers ? GenAll<GenEvasions>(pos, moveList, 0) :
-                                     GenAll<GenNoisy>(pos, moveList, 0);
+        return pos.Checkers() ? GenAll<GenEvasions>(pos, moveList, 0) :
+                                GenAll<GenNoisy>(pos, moveList, 0);
     }
 
     template i32 Generate<PseudoLegal>(const Position&, ScoredMove*, i32);
@@ -226,8 +226,8 @@ namespace Horsie {
 
     template<>
     i32 Generate<GenLegal>(const Position& pos, ScoredMove* moveList, i32 size) {
-        i32 numMoves = pos.State->Checkers ? Generate<GenEvasions>(pos, moveList, 0) :
-                                             Generate<GenNonEvasions>(pos, moveList, 0);
+        i32 numMoves = pos.Checkers() ? Generate<GenEvasions>(pos, moveList, 0) :
+                                        Generate<GenNonEvasions>(pos, moveList, 0);
 
         const auto stm = pos.ToMove;
         const auto ourKing   = pos.KingSquare(stm);
