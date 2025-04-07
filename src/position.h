@@ -55,7 +55,7 @@ namespace Horsie {
         constexpr auto CastleStatus() const { return State->CastleStatus; }
         constexpr auto accumulator() const { return State->accumulator; }
 
-        constexpr bool GivesCheck(i32 pt, i32 sq) const { return (State->CheckSquares[pt] & SquareBB(sq)); }
+        constexpr bool GivesCheck(i32 pt, i32 sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
 
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);

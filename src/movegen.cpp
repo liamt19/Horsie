@@ -232,7 +232,7 @@ namespace Horsie {
         const auto stm = pos.ToMove;
         const auto ourKing   = pos.KingSquare(stm);
         const auto theirKing = pos.KingSquare(Not(stm));
-        u64 pinned = pos.State->BlockingPieces[stm];
+        u64 pinned = pos.BlockingPieces(stm);
 
         ScoredMove* curr = moveList;
         ScoredMove* end = moveList + numMoves;
