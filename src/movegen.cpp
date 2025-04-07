@@ -114,16 +114,17 @@ namespace Horsie {
                 list[size++].move = Move(to - up - Direction::EAST, to);
             }
 
-            if (pos.State->EPSquare != EP_NONE && !noisyMoves) {
-                if (evasions && (targets & (SquareBB(pos.State->EPSquare + up))) != 0) {
+            const auto epSq = pos.EPSquare();
+            if (epSq != EP_NONE && !noisyMoves) {
+                if (evasions && (targets & (SquareBB(epSq + up))) != 0) {
                     //  When in check, we can only en passant if the pawn being captured is the one giving check
                     return size;
                 }
 
-                u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][pos.State->EPSquare];
+                u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][epSq];
                 while (mask != 0) {
                     i32 from = poplsb(mask);
-                    list[size++].move = Move(from, pos.State->EPSquare, FlagEnPassant);
+                    list[size++].move = Move(from, epSq, FlagEnPassant);
                 }
             }
 

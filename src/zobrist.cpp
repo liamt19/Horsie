@@ -119,8 +119,8 @@ namespace Zobrist {
             hash ^= CastlingRightsHashes[3];
         }
 
-        if (position.State->EPSquare != static_cast<i32>(Square::EP_NONE)) {
-            hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.State->EPSquare)];
+        if (position.EPSquare() != EP_NONE) {
+            hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.EPSquare())];
         }
 
         if (position.ToMove == Color::BLACK) {
