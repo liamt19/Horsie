@@ -190,17 +190,17 @@ namespace Horsie {
             if (nonEvasions) {
                 if (stm == Color::WHITE && (ourKing == static_cast<i32>(Square::E1) || pos.IsChess960)) {
                     if (pos.CanCastle(occ, us, CastlingStatus::WK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::WK)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WK), FlagCastle);
 
                     if (pos.CanCastle(occ, us, CastlingStatus::WQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::WQ)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WQ), FlagCastle);
                 }
                 else if (stm == Color::BLACK && (ourKing == static_cast<i32>(Square::E8) || pos.IsChess960)) {
                     if (pos.CanCastle(occ, us, CastlingStatus::BK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::BK)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::BK), FlagCastle);
 
                     if (pos.CanCastle(occ, us, CastlingStatus::BQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquares[static_cast<i32>(CastlingStatus::BQ)], FlagCastle);
+                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::BQ), FlagCastle);
                 }
             }
 

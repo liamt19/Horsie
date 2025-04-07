@@ -474,7 +474,7 @@ namespace Horsie {
         if (pt == Piece::KING) {
             if (move.IsCastle()) {
                 CastlingStatus thisCr = move.RelevantCastlingRight();
-                i32 rookSq = CastlingRookSquares[static_cast<i32>(thisCr)];
+                i32 rookSq = CastlingRookSquare(thisCr);
 
                 if ((SquareBB(rookSq) & bb.Pieces[ROOK] & bb.Colors[ourColor]) == 0) {
                     //  There isn't a rook on the square that we are trying to castle towards.
@@ -599,11 +599,11 @@ namespace Horsie {
     }
 
     constexpr CastlingStatus Position::GetCastlingForRook(i32 sq) const {
-        CastlingStatus cr = sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WQ)] ? CastlingStatus::WQ
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WK)] ? CastlingStatus::WK
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BQ)] ? CastlingStatus::BQ
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BK)] ? CastlingStatus::BK
-                          :                                                                   CastlingStatus::None;
+        CastlingStatus cr = sq == CastlingRookSquare(CastlingStatus::WQ) ? CastlingStatus::WQ
+                          : sq == CastlingRookSquare(CastlingStatus::WK) ? CastlingStatus::WK
+                          : sq == CastlingRookSquare(CastlingStatus::BQ) ? CastlingStatus::BQ
+                          : sq == CastlingRookSquare(CastlingStatus::BK) ? CastlingStatus::BK
+                          :                                                CastlingStatus::None;
 
         return cr;
     }
@@ -862,16 +862,16 @@ namespace Horsie {
 
         if (State->CastleStatus != CastlingStatus::None) {
             if ((State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::WK])) : 'K');
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WK))) : 'K');
             }
             if ((State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::WQ])) : 'Q');
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WQ))) : 'Q');
             }
             if ((State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::BK])) : 'k');
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BK))) : 'k');
             }
             if ((State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::BQ])) : 'q');
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BQ))) : 'q');
             }
         }
         else {
