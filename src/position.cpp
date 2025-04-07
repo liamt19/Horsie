@@ -388,13 +388,13 @@ namespace Horsie {
     bool Position::IsPseudoLegal(Move move) const {
         const auto [moveFrom, moveTo] = move.Unpack();
 
-        i32 pt = bb.GetPieceAtIndex(moveFrom);
+        const auto pt = bb.GetPieceAtIndex(moveFrom);
         if (pt == Piece::NONE) {
             //  There isn't a piece on the move's "from" square.
             return false;
         }
 
-        i32 pc = bb.GetColorAtIndex(moveFrom);
+        const auto pc = bb.GetColorAtIndex(moveFrom);
         if (pc != ToMove) {
             //  This isn't our piece, so we can't move it.
             return false;
@@ -414,13 +414,13 @@ namespace Horsie {
             u64 empty = ~bb.Occupancy;
             if ((moveTo ^ moveFrom) != 16) {
                 //  This is NOT a pawn double move, so it can only go to a square it attacks or the empty square directly above/below.
-                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0
                     || (empty & SquareBB(moveTo)) != 0;
             }
             else {
                 //  This IS a pawn double move, so it can only go to a square it attacks,
                 //  or the empty square 2 ranks above/below provided the square 1 rank above/below is also empty.
-                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0
                     || ((empty & SquareBB(moveTo - ShiftUpDir(pc))) != 0 && (empty & SquareBB(moveTo)) != 0);
             }
 
@@ -428,7 +428,7 @@ namespace Horsie {
 
         //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
         //  Pieces can only move to squares that they attack, with the one exception of queenside castling
-        return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
+        return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
     }
 
     bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }

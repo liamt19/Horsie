@@ -259,7 +259,7 @@ namespace Horsie {
             }
 
             if (ShouldStop() || ss->Ply >= MaxSearchStackPly - 1) {
-                if (pos.Checked()) {
+                if (pos.InCheck()) {
                     return ScoreDraw;
                 }
                 else {
@@ -277,7 +277,7 @@ namespace Horsie {
         (ss + 1)->KillerMove = Move::Null();
         
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
-        ss->InCheck = pos.Checked();
+        ss->InCheck = pos.InCheck();
         ss->TTHit = TT->Probe(pos.Hash(), tte);
         if (!doSkip) {
             ss->TTPV = isPV || (ss->TTHit && tte->PV());
@@ -773,7 +773,7 @@ namespace Horsie {
         Move bestMove = Move::Null();
 
         const auto us = pos.ToMove;
-        const bool inCheck = pos.Checked();
+        const bool inCheck = pos.InCheck();
         i32 score = -ScoreMate - MaxPly;
         i32 bestScore = -ScoreInfinite;
         i32 futility = -ScoreInfinite;

@@ -268,7 +268,7 @@ namespace Horsie {
                     else
                         adjudicationCounter = 0;
 
-                    bool inCheck = pos.Checked();
+                    bool inCheck = pos.InCheck();
                     bool bmCap = ((bb.GetPieceAtIndex(bestMove.To()) != NONE && !bestMove.IsCastle()) || bestMove.IsEnPassant());
                     bool badScore = std::abs(bestMoveScore) > MaxFilteringScore;
                     if (!(inCheck || bmCap || badScore)) {
@@ -283,7 +283,7 @@ namespace Horsie {
                     pos.MakeMove(bestMove);
 
                     if (!pos.HasLegalMoves()) {
-                        result = !pos.Checked()        ? GameResult::Draw
+                        result = !pos.InCheck()        ? GameResult::Draw
                                : (pos.ToMove == WHITE) ? GameResult::BlackWin 
                                :                         GameResult::WhiteWin;
                         break;
