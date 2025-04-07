@@ -10,6 +10,7 @@
 #include "threadpool.h"
 #include "tt.h"
 #include "util/dbg_hit.h"
+#include "wdl.h"
 
 #include <chrono>
 #include <iostream>
@@ -1042,14 +1043,32 @@ namespace Horsie {
         auto nodes = AssocPool->GetNodeCount();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
         auto durCnt = std::max(1.0, static_cast<double>(duration.count()));
-        i32 nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
+        auto nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
+        auto hashfull = TT->Hashfull();
 
         std::cout << "info depth " << depth;
         std::cout << " seldepth " << rm.Depth;
         std::cout << " time " << durCnt;
-        std::cout << " score " << FormatMoveScore(moveScore);
+        std::cout << " score " << FormatMoveScore(WDL::NormalizeScore(moveScore));
+
+        if (UCI_ShowWDL) {
+            if (moveScore > ScoreWin) {
+                std::cout << " wdl 1000 0 0";
+            }
+            else if (moveScore < -ScoreWin) {
+                std::cout << " wdl 0 0 1000";
+            }
+            else {
+                const auto material = RootPosition.MaterialCount();
+                const auto [win, loss] = WDL::MaterialModel(moveScore, material);
+                int draw = 1000 - win - loss;
+                std::cout << " wdl " << win << " " << draw << " " << loss;
+            }
+        }
+
         std::cout << " nodes " << nodes;
         std::cout << " nps " << nodesPerSec;
+        std::cout << " hashfull " << hashfull;
         std::cout << " pv";
 
         for (i32 j = 0; j < rm.PV.size(); j++) {

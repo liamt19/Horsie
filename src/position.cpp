@@ -585,6 +585,14 @@ namespace Horsie {
         return legals != 0;
     }
 
+    i32 Position::MaterialCount() const {
+        return 9 * popcount(bb.Pieces[QUEEN]) +
+               5 * popcount(bb.Pieces[ROOK]) +
+               3 * popcount(bb.Pieces[BISHOP]) +
+               3 * popcount(bb.Pieces[HORSIE]) +
+               1 * popcount(bb.Pieces[PAWN]);
+    }
+
     void Position::RemoveCastling(CastlingStatus cr) const {
         Zobrist::Castle(State->Hash, State->CastleStatus, cr);
         State->CastleStatus &= ~cr;

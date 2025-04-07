@@ -91,6 +91,8 @@ namespace Horsie {
         bool IsFiftyMoveDraw() const;
         bool HasLegalMoves() const;
 
+        i32 MaterialCount() const;
+
         u64 Perft(i32 depth);
         u64 SplitPerft(i32 depth);
 
