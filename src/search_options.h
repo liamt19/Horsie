@@ -10,6 +10,7 @@ namespace Horsie {
     UCI_OPTION_SPECIAL(MultiPV, 1, 1, 1)
     UCI_OPTION_SPECIAL(MoveOverhead, 25, 1, 5000)
     UCI_OPTION_SPIN(UCI_Chess960, false)
+    UCI_OPTION_SPIN(UCI_ShowWDL, true)
 
     const bool ShallowPruning = true;
     const bool UseSingularExtensions = true;
