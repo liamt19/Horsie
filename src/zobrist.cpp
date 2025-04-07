@@ -106,16 +106,16 @@ namespace Zobrist {
             }
         }
 
-        if ((position.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::WK) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[0];
         }
-        if ((position.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::WQ) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[1];
         }
-        if ((position.State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::BK) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[2];
         }
-        if ((position.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::BQ) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[3];
         }
 
