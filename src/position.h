@@ -53,6 +53,7 @@ namespace Horsie {
         constexpr i32 EPSquare() const { return State->EPSquare; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
         constexpr auto CastleStatus() const { return State->CastleStatus; }
+        constexpr auto accumulator() const { return State->accumulator; }
 
         constexpr bool GivesCheck(i32 pt, i32 sq) const { return (State->CheckSquares[pt] & SquareBB(sq)); }
 

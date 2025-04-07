@@ -141,7 +141,7 @@ namespace Horsie
         }
 
         void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective) {
-            Accumulator& accumulator = *pos.State->accumulator;
+            Accumulator& accumulator = *pos.accumulator();
             Bitboard& bb = pos.bb;
 
             accumulator.Sides[perspective] = g_network->FTBiases;
@@ -172,7 +172,7 @@ namespace Horsie
         }
 
         void RefreshAccumulatorPerspective(Position& pos, i32 perspective) {
-            Accumulator& accumulator = *pos.State->accumulator;
+            Accumulator& accumulator = *pos.accumulator();
             Bitboard& bb = pos.bb;
 
             i32 ourKing = pos.KingSquare(perspective);
@@ -224,7 +224,7 @@ namespace Horsie
         }
 
         i32 GetEvaluation(Position& pos, i32 outputBucket) {
-            Accumulator& accumulator = *pos.State->accumulator;
+            Accumulator& accumulator = *pos.accumulator();
             ProcessUpdates(pos);
 
             auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
@@ -366,7 +366,7 @@ namespace Horsie
         void MakeMoveNN(Position& pos, Move m) {
             Bitboard& bb = pos.bb;
 
-            Accumulator* src = pos.State->accumulator;
+            Accumulator* src = pos.accumulator();
             Accumulator* dst = pos.NextState()->accumulator;
 
             dst->NeedsRefresh[WHITE] = src->NeedsRefresh[WHITE];
@@ -446,7 +446,7 @@ namespace Horsie
         }
 
         void MakeNullMove(Position& pos) {
-            Accumulator* currAcc = pos.State->accumulator;
+            Accumulator* currAcc = pos.accumulator();
             Accumulator* nextAcc = pos.NextState()->accumulator;
 
             currAcc->CopyTo(nextAcc);
