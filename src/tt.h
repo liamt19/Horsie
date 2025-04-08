@@ -87,6 +87,7 @@ namespace Horsie {
         void Initialize(i32 mb);
         bool Probe(u64 hash, TTEntry*& tte) const;
         void Clear();
+        u32 Hashfull() const;
 
         void TTUpdate() {
             Age += TT_AGE_INC;
