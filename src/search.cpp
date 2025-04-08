@@ -556,36 +556,48 @@ namespace Horsie {
             if (UseSingularExtensions
                 && !isRoot
                 && !doSkip
-                && ss->Ply < RootDepth * 2
-                && depth >= (SEMinDepth + (isPV && tte->PV() ? 1 : 0))
                 && m == ttMove
-                && std::abs(ttScore) < ScoreWin
-                && ((tte->Bound() & BoundLower) != 0)
-                && tte->Depth() >= depth - 3) {
-                i32 singleBeta = ttScore - (SENumerator * depth / 10);
-                i32 singleDepth = (depth + SEDepthAdj) / 2;
+                && ss->Ply < RootDepth * 2
+                && std::abs(ttScore) < ScoreWin) {
 
-                ss->Skip = m;
-                score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
-                ss->Skip = Move::Null();
+                const auto SEDepth = SEMinDepth + (isPV && tte->PV());
 
-                if (score < singleBeta) {
-                    bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
-                    bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture * SETripleCapSub));
+                if (depth >= SEDepth
+                    && ((tte->Bound() & BoundLower) != 0)
+                    && tte->Depth() >= depth - 3) {
 
-                    extend = 1 + doubleExt + tripleExt;
+                    i32 singleBeta = ttScore - (SENumerator * depth / 10);
+                    i32 singleDepth = (depth + SEDepthAdj) / 2;
+
+                    ss->Skip = m;
+                    score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
+                    ss->Skip = Move::Null();
+
+                    if (score < singleBeta) {
+                        bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
+                        bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture * SETripleCapSub));
+
+                        extend = 1 + doubleExt + tripleExt;
+                    }
+                    else if (singleBeta >= beta) {
+                        return singleBeta;
+                    }
+                    else if (ttScore >= beta) {
+                        extend = -2 + isPV;
+                    }
+                    else if (cutNode) {
+                        extend = -2;
+                    }
+                    else if (ttScore <= alpha) {
+                        extend = -1;
+                    }
                 }
-                else if (singleBeta >= beta) {
-                    return singleBeta;
-                }
-                else if (ttScore >= beta) {
-                    extend = -2 + (isPV ? 1 : 0);
-                }
-                else if (cutNode) {
-                    extend = -2;
-                }
-                else if (ttScore <= alpha) {
-                    extend = -1;
+                else if (depth < SEDepth
+                         && !ss->InCheck
+                         && eval < alpha - 25
+                         && tte->Bound() & BoundLower) {
+                    
+                    extend = 1;
                 }
             }
 
