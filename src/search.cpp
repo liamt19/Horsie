@@ -588,7 +588,6 @@ namespace Horsie {
                 else if (depth < SEDepth
                          && !ss->InCheck
                          && eval < alpha - 25
-                       //&& tte->Bound() == BoundLower ?
                          && tte->Bound() & BoundLower) {
                     
                     extend = 1;
