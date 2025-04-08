@@ -43,7 +43,7 @@ namespace Horsie
             std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
             const auto dst = reinterpret_cast<std::byte*>(UQNet.get());
 
-#if defined(_MSC_VER)
+#if defined(VS_COMP)
             std::ifstream stream(path, std::ios::binary);
 #else
             std::istringstream stream(std::string(reinterpret_cast<const char*>(gEVALData), gEVALSize));
