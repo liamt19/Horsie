@@ -12,6 +12,7 @@
 #include "util/dbg_hit.h"
 #include "wdl.h"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -124,7 +125,7 @@ namespace Horsie {
 
                 std::stable_sort(RootMoves.begin() + 0, RootMoves.end());
 
-                if (IsMain()) {
+                if (IsMain() && (ShouldStop() || PVIndex == multiPV - 1)) {
                     if (OnDepthFinish) {
                         OnDepthFinish();
                     }
@@ -494,6 +495,12 @@ namespace Horsie {
 
             if (!pos.IsLegal(m)) {
                 continue;
+            }
+
+            if (isRoot && MultiPV != 1) {
+                //  If this move is ordered before PVIndex, it's already been searched.
+                if (std::count(RootMoves.begin() + PVIndex, RootMoves.end(), m) == 0)
+                    continue;
             }
 
             const auto [moveFrom, moveTo] = m.Unpack();
@@ -1034,51 +1041,57 @@ namespace Horsie {
     }
 
     void SearchThread::PrintSearchInfo() const {
-        const RootMove& rm = RootMoves[0];
-
-        bool moveSearched = rm.Score != -ScoreInfinite;
-        i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
-        i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
 
         auto nodes = AssocPool->GetNodeCount();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
         auto durCnt = std::max(1.0, static_cast<double>(duration.count()));
         auto nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
         auto hashfull = TT->Hashfull();
+        
+        const auto mpv = std::min(i32(MultiPV), i32(RootMoves.size()));
+        for (size_t i = 0; i < mpv; i++) {
+            const RootMove& rm = RootMoves[i];
 
-        std::cout << "info depth " << depth;
-        std::cout << " seldepth " << rm.Depth;
-        std::cout << " time " << durCnt;
-        std::cout << " score " << FormatMoveScore(WDL::NormalizeScore(moveScore));
+            bool moveSearched = rm.Score != -ScoreInfinite;
+            i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
+            i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
 
-        if (UCI_ShowWDL) {
-            if (moveScore > ScoreWin) {
-                std::cout << " wdl 1000 0 0";
+            std::cout << "info depth " << depth;
+            std::cout << " seldepth " << rm.Depth;
+            std::cout << " multipv " << (i + 1);
+            std::cout << " time " << durCnt;
+            std::cout << " score " << FormatMoveScore(WDL::NormalizeScore(moveScore));
+
+            if (UCI_ShowWDL) {
+                if (moveScore > ScoreWin) {
+                    std::cout << " wdl 1000 0 0";
+                }
+                else if (moveScore < -ScoreWin) {
+                    std::cout << " wdl 0 0 1000";
+                }
+                else {
+                    const auto material = RootPosition.MaterialCount();
+                    const auto [win, loss] = WDL::MaterialModel(moveScore, material);
+                    int draw = 1000 - win - loss;
+                    std::cout << " wdl " << win << " " << draw << " " << loss;
+                }
             }
-            else if (moveScore < -ScoreWin) {
-                std::cout << " wdl 0 0 1000";
+
+            std::cout << " nodes " << nodes;
+            std::cout << " nps " << nodesPerSec;
+            std::cout << " hashfull " << hashfull;
+            std::cout << " pv";
+
+            for (i32 j = 0; j < rm.PV.size(); j++) {
+                if (rm.PV[j] == Move::Null())
+                    break;
+
+                std::cout << " " << rm.PV[j].SmithNotation(RootPosition.IsChess960);
             }
-            else {
-                const auto material = RootPosition.MaterialCount();
-                const auto [win, loss] = WDL::MaterialModel(moveScore, material);
-                int draw = 1000 - win - loss;
-                std::cout << " wdl " << win << " " << draw << " " << loss;
-            }
+
+            std::cout << std::endl;
         }
 
-        std::cout << " nodes " << nodes;
-        std::cout << " nps " << nodesPerSec;
-        std::cout << " hashfull " << hashfull;
-        std::cout << " pv";
-
-        for (i32 j = 0; j < rm.PV.size(); j++) {
-            if (rm.PV[j] == Move::Null())
-                break;
-
-            std::cout << " " + rm.PV[j].SmithNotation(RootPosition.IsChess960);
-        }
-
-        std::cout << std::endl;
     }
 
     Move SearchThread::OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const {

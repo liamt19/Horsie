@@ -30,6 +30,7 @@ void HandleDisplayPosition(Position& pos);
 void HandlePerftCommand(Position& pos, std::istringstream& is);
 void HandleThreadsCommand(std::istringstream& is);
 void HandleHashCommand(std::istringstream& is);
+void HandleMultiPVCommand(std::istringstream& is);
 void HandleBenchCommand(std::istringstream& is);
 void HandleSetOptionCommand(std::istringstream& is);
 void HandleBenchPerftCommand(Position& pos);
@@ -120,6 +121,9 @@ i32 main(i32 argc, char* argv[]) {
 
         else if (token == "hash")
             HandleHashCommand(is);
+
+        else if (token == "multipv")
+            HandleMultiPVCommand(is);
 
         else if (token == "go") {
             HandleGoCommand(pos, is);
@@ -445,8 +449,19 @@ void HandleHashCommand(std::istringstream& is) {
 
     if (cnt >= Horsie::Hash.MinValue && cnt <= Horsie::Hash.MaxValue) {
         Horsie::Hash = cnt;
-        SearchPool->TTable.Initialize(Horsie::Hash.CurrentValue);
+        SearchPool->TTable.Initialize(Horsie::Hash);
         std::cout << "info string set hash to " << Horsie::Hash.CurrentValue << std::endl;
+    }
+}
+
+void HandleMultiPVCommand(std::istringstream& is) {
+    i32 cnt = 1;
+    if (is && is.peek() != EOF)
+        is >> cnt;
+
+    if (cnt >= Horsie::MultiPV.MinValue && cnt <= Horsie::MultiPV.MaxValue) {
+        Horsie::MultiPV = cnt;
+        std::cout << "info string set multipv to " << Horsie::MultiPV.CurrentValue << std::endl;
     }
 }
 
