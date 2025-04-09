@@ -10,6 +10,7 @@
 #include "threadpool.h"
 #include "tt.h"
 #include "util/dbg_hit.h"
+#include "util/timer.h"
 #include "wdl.h"
 
 #include <algorithm>
@@ -446,7 +447,7 @@ namespace Horsie {
                 pos.UnmakeMove(m);
 
                 if (score >= probBeta) {
-                    tte->Update(pos.Hash(), MakeTTScore((short)score, ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
+                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
                     return score;
                 }
             }
@@ -1054,11 +1055,11 @@ namespace Horsie {
 
     void SearchThread::PrintSearchInfo() const {
 
-        auto nodes = AssocPool->GetNodeCount();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
-        auto durCnt = std::max(1.0, static_cast<double>(duration.count()));
-        auto nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
-        auto hashfull = TT->Hashfull();
+        const auto nodes = AssocPool->GetNodeCount();
+        const auto duration = Timepoint::TimeSince(StartTime);
+        const auto durCnt = std::max(1.0, static_cast<double>(duration));
+        const auto nodesPerSec = static_cast<u64>(nodes / (durCnt / 1000));
+        const auto hashfull = TT->Hashfull();
         
         const auto mpv = std::min(i32(MultiPV), i32(RootMoves.size()));
         for (size_t i = 0; i < mpv; i++) {
@@ -1084,7 +1085,7 @@ namespace Horsie {
                 else {
                     const auto material = RootPosition.MaterialCount();
                     const auto [win, loss] = WDL::MaterialModel(moveScore, material);
-                    int draw = 1000 - win - loss;
+                    const auto draw = 1000 - win - loss;
                     std::cout << " wdl " << win << " " << draw << " " << loss;
                 }
             }

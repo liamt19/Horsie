@@ -117,7 +117,7 @@ namespace Horsie {
 
                     std::swap(bbs[WHITE], bbs[BLACK]);
 
-                    score = (short)-score;
+                    score *= -1;
                     result = static_cast<GameResult>(1 - result);
                 }
 

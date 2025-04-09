@@ -5,6 +5,7 @@
 #include "../movegen.h"
 #include "../position.h"
 #include "../threadpool.h"
+#include "../util/timer.h"
 
 #include <cassert>
 #include <chrono>
@@ -57,7 +58,7 @@ namespace Horsie {
             SetConsoleCursorInfo(hConsole, &cursorInfo);
 #endif
         }
-
+        
         std::atomic<i32> seed(static_cast<i32>(std::chrono::steady_clock::now().time_since_epoch().count()));
         
         thread_local std::mt19937 rng([]{ return std::mt19937(seed.fetch_add(1, std::memory_order_relaxed)); }());
@@ -86,7 +87,7 @@ namespace Horsie {
             while (true) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-                ClearConsoleLines(threads + 2);
+                ClearConsoleLines(static_cast<i32>(threads + 2));
 
                 u64 totalGames = 0;
                 double totalNPS = 0;
@@ -169,7 +170,7 @@ namespace Horsie {
                                 candidates.push_back(legalMoves[j]);
 
                         if (!candidates.empty())
-                            toMake = candidates[RandNext(0, candidates.size())].move;
+                            toMake = candidates[RandNext(0, static_cast<i32>(candidates.size()))].move;
                     }
                     
                     pos.MakeMove(toMake);
@@ -240,7 +241,7 @@ namespace Horsie {
             prelimInfo.MaxNodes = softNodeLimit * 400;
             prelimInfo.MaxDepth = std::clamp(static_cast<i32>(depthLimit), 8, 10);
 
-            std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+            const auto startTime = Timepoint::Now();
 
             for (u64 gameNum = 0; gameNum < gamesToRun; gameNum++) {
                 datapoints.clear();
@@ -304,7 +305,7 @@ namespace Horsie {
                 totalBadPositions += filtered;
                 totalGoodPositions += toWrite;
 
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count();
+                const auto duration = Timepoint::TimeSince(startTime);
                 auto goodPerSec = totalGoodPositions / (static_cast<double>(duration) / 1000);
 
                 gameCounts[threadID] = gameNum;

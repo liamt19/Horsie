@@ -125,12 +125,12 @@ namespace Horsie {
             u64 combo = 0;
             u64 iter = 0;
             u64 edges = 0;
-            for (int sq = 0; sq <= 63; sq++) {
+            for (i32 sq = 0; sq <= 63; sq++) {
                 auto& m = magics[sq];
                 
                 edges = ((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq));
                 m.mask = sliding_attack(pt, static_cast<Square>(sq), 0) & ~edges;
-                m.shift = (int)(64 - popcount(m.mask));
+                m.shift = static_cast<i32>(64 - popcount(m.mask));
                 if (sq == 0) {
                     m.attacks = (u64*)(table + 0);
                 }
@@ -151,12 +151,12 @@ namespace Horsie {
         void InitNormalMagics(Piece pt, u64 table[], Magic magics[]) {
             u64 offset = 0;
 
-            for (int sq = 0; sq <= 63; sq++) {
+            for (i32 sq = 0; sq <= 63; sq++) {
                 auto& m = magics[sq];
 
                 m.number = (pt == BISHOP) ? BishopMagicNumbers[sq] : RookMagicNumbers[sq];
                 m.mask = sliding_attack(pt, static_cast<Square>(sq), 0) & ~(((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq)));
-                m.shift = (int)(64 - popcount(m.mask));
+                m.shift = static_cast<i32>(64 - popcount(m.mask));
                 m.attacks = &table[offset];
 
                 u64 combo = 0;

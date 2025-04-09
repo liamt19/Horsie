@@ -1,7 +1,8 @@
 
+#include "wdl.h"
+
 #include "defs.h"
 #include "util.h"
-#include "wdl.h"
 
 #include <algorithm>
 #include <cmath>

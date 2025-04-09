@@ -27,6 +27,15 @@ struct TunableOption {
         HideTune(hideTune) {
     }
 
+    bool TrySet(i32 newV) {
+        if (newV < MinValue || newV > MaxValue) {
+            return false;
+        }
+
+        CurrentValue = newV;
+        return true;
+    }
+
     operator i32() const { return CurrentValue; }
 
     TunableOption& operator=(i32 newV) {
@@ -35,7 +44,6 @@ struct TunableOption {
         }
 
         CurrentValue = newV;
-
         return *this;
     }
 };

@@ -19,6 +19,7 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include "search_options.h"
 #include "tt.h"
 #include "util/NDArray.h"
+#include "util/timer.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -77,7 +78,7 @@ namespace Horsie {
         HistoryTable History{};
         Util::NDArray<u64, 64, 64> NodeTable{};
 
-        std::chrono::system_clock::time_point StartTime{};
+        Timepoint StartTime{};
 
         std::function<void()> OnDepthFinish;
         std::function<void()> OnSearchFinish;
@@ -117,18 +118,13 @@ namespace Horsie {
         void SetStop(bool flag = true);
         void CheckLimits();
 
-        i64 GetSearchTime() const {
-            auto now = std::chrono::system_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - StartTime);
-            return duration.count();
-        }
-
         void Reset() {
             Nodes = 0;
             PVIndex = RootDepth = SelDepth = CompletedDepth = NMPPly = 0;
         }
 
         Move CurrentMove() const { return RootMoves[PVIndex].move; }
+        auto GetSearchTime() const { return Timepoint::TimeSince(StartTime); }
         bool HardTimeReached() const { return (GetSearchTime() > HardTimeLimit - MoveOverhead); }
 
         inline i32 GetRFPMargin(i32 depth, bool improving) const { return (depth - (improving)) * RFPMargin; }

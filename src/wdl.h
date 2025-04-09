@@ -2,6 +2,8 @@
 
 #include "defs.h"
 
+#include <utility>
+
 namespace Horsie::WDL {
 
     const double EvalNormalization = 231;

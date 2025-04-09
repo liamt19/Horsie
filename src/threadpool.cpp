@@ -6,6 +6,7 @@
 #include "movegen.h"
 #include "types.h"
 #include "util.h"
+#include "util/timer.h"
 
 #include <cassert>
 #include <chrono>
@@ -59,7 +60,7 @@ namespace Horsie {
 
     void SearchThreadPool::StartSearch(Position& rootPosition, const SearchLimits& rootInfo, ThreadSetup& setup) {
         WaitForMain();
-        MainThread()->StartTime = std::chrono::system_clock::now();
+        MainThread()->StartTime = Timepoint::Now();
 
         StartAllThreads();
         SharedInfo = rootInfo;

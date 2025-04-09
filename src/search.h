@@ -30,16 +30,14 @@ namespace Horsie {
             i32 MaxSearchTime = INT32_MAX;
             i32 Increment = 0;
             i32 MovesToGo = 20;
-
             i32 MoveTime = 0;
-            const bool HasMoveTime() const { return MoveTime != 0; }
-
             i32 PlayerTime = 0;
-            const bool HasPlayerTime() const { return PlayerTime != 0; }
 
-            const bool IsInfinite() const { return MaxDepth == Horsie::MaxDepth && MaxSearchTime == INT32_MAX; }
+            constexpr bool HasMoveTime() const { return MoveTime != 0; }
+            constexpr bool HasPlayerTime() const { return PlayerTime != 0; }
+            constexpr bool IsInfinite() const { return MaxDepth == Horsie::MaxDepth && MaxSearchTime == INT32_MAX; }
 
-            const i32 SetTimeLimits() {
+            i32 SetTimeLimits() {
                 i32 softLimit = 0;
 
                 if (HasMoveTime()) {
