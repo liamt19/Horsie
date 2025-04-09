@@ -38,6 +38,7 @@ namespace Horsie::NNUE {
     void LoadNetwork(const std::string& path) {
         SetupNNZ();
 
+        g_network = &net;
         std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
         const auto dst = reinterpret_cast<std::byte*>(UQNet.get());
 
@@ -120,8 +121,6 @@ namespace Horsie::NNUE {
             for (i32 j = 0; j < numRegi; j++)
                 bs[i + j] = regi[order[j]];
         }
-
-        g_network = &net;
     }
 
     static void SetupNNZ() {
@@ -144,12 +143,12 @@ namespace Horsie::NNUE {
     }
 
     void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective) {
-        Accumulator& accumulator = *pos.accumulator();
+        auto accumulator = pos.CurrAccumulator();
         Bitboard& bb = pos.bb;
 
-        accumulator.Sides[perspective] = g_network->FTBiases;
-        accumulator.NeedsRefresh[perspective] = false;
-        accumulator.Computed[perspective] = true;
+        accumulator->Sides[perspective] = g_network->FTBiases;
+        accumulator->NeedsRefresh[perspective] = false;
+        accumulator->Computed[perspective] = true;
 
         i32 ourKing = pos.KingSquare(perspective);
         u64 occ = bb.Occupancy;
@@ -161,31 +160,31 @@ namespace Horsie::NNUE {
 
             i32 idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
 
-            const auto accum = reinterpret_cast<i16*>(&accumulator.Sides[perspective]);
-            const auto weights = &g_network->FTWeights[idx];
+            const auto accum = reinterpret_cast<i16*>(&accumulator->Sides[perspective]);
+            const auto weights = &net.FTWeights[idx];
             Add(accum, accum, weights);
         }
 
-        BucketCache& cache = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-        Bitboard& entryBB = cache.Boards[perspective];
-        Accumulator& entryAcc = cache.accumulator;
+        auto& cache = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
+        auto& entryBB = cache.Boards[perspective];
+        auto& entryAcc = cache.accumulator;
 
-        accumulator.CopyTo(&entryAcc, perspective);
+        accumulator->CopyTo(entryAcc, perspective);
         bb.CopyTo(entryBB);
     }
 
     void RefreshAccumulatorPerspective(Position& pos, i32 perspective) {
-        Accumulator& accumulator = *pos.accumulator();
+        auto accumulator = pos.CurrAccumulator();
         Bitboard& bb = pos.bb;
 
         i32 ourKing = pos.KingSquare(perspective);
 
-        BucketCache& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-        Bitboard& entryBB = rtEntry.Boards[perspective];
-        Accumulator& entryAcc = rtEntry.accumulator;
+        auto& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
+        auto& entryBB = rtEntry.Boards[perspective];
+        auto& entryAcc = rtEntry.accumulator;
 
         auto ourAccumulation = reinterpret_cast<i16*>(&entryAcc.Sides[perspective]);
-        accumulator.NeedsRefresh[perspective] = false;
+        accumulator->NeedsRefresh[perspective] = false;
 
         for (i32 pc = 0; pc < COLOR_NB; pc++) {
             for (i32 pt = 0; pt < PIECE_NB; pt++) {
@@ -199,7 +198,7 @@ namespace Horsie::NNUE {
                     i32 sq = poplsb(added);
                     i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                    const auto weights = &g_network->FTWeights[idx];
+                    const auto weights = &net.FTWeights[idx];
                     Add(ourAccumulation, ourAccumulation, weights);
                 }
 
@@ -207,16 +206,16 @@ namespace Horsie::NNUE {
                     i32 sq = poplsb(removed);
                     i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
-                    const auto weights = &g_network->FTWeights[idx];
+                    const auto weights = &net.FTWeights[idx];
                     Sub(ourAccumulation, ourAccumulation, weights);
                 }
             }
         }
 
-        entryAcc.CopyTo(&accumulator, perspective);
+        entryAcc.CopyTo(accumulator, perspective);
         bb.CopyTo(entryBB);
 
-        accumulator.Computed[perspective] = true;
+        accumulator->Computed[perspective] = true;
     }
 
     i32 GetEvaluation(Position& pos) {
@@ -227,11 +226,11 @@ namespace Horsie::NNUE {
     }
 
     i32 GetEvaluation(Position& pos, i32 outputBucket) {
-        Accumulator& accumulator = *pos.accumulator();
+        auto accumulator = pos.CurrAccumulator();
         ProcessUpdates(pos);
 
-        auto us = Span<i16>(accumulator.Sides[pos.ToMove]);
-        auto them = Span<i16>(accumulator.Sides[Not(pos.ToMove)]);
+        auto us = Span<i16>(accumulator->Sides[pos.ToMove]);
+        auto them = Span<i16>(accumulator->Sides[Not(pos.ToMove)]);
 
         i8 ft_outputs[L1_SIZE];
         float L1Outputs[L2_SIZE];
@@ -369,8 +368,8 @@ namespace Horsie::NNUE {
     void MakeMoveNN(Position& pos, Move m) {
         Bitboard& bb = pos.bb;
 
-        Accumulator* src = pos.accumulator();
-        Accumulator* dst = pos.NextState()->accumulator;
+        Accumulator* src = pos.CurrAccumulator();
+        Accumulator* dst = pos.NextAccumulator();
 
         dst->NeedsRefresh[WHITE] = src->NeedsRefresh[WHITE];
         dst->NeedsRefresh[BLACK] = src->NeedsRefresh[BLACK];
@@ -449,8 +448,8 @@ namespace Horsie::NNUE {
     }
 
     void MakeNullMove(Position& pos) {
-        Accumulator* currAcc = pos.accumulator();
-        Accumulator* nextAcc = pos.NextState()->accumulator;
+        Accumulator* currAcc = pos.CurrAccumulator();
+        Accumulator* nextAcc = pos.NextAccumulator();
 
         currAcc->CopyTo(nextAcc);
 

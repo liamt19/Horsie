@@ -11,7 +11,6 @@
 namespace Horsie::NNUE {
 
     struct alignas(AllocAlignment) Accumulator {
-    public:
         Util::NDArray<i16, 2, L1_SIZE> Sides{};
         std::array<bool, 2> NeedsRefresh = { true, true };
         std::array<bool, 2> Computed = { false, false };
@@ -28,6 +27,22 @@ namespace Horsie::NNUE {
             target->Sides[c] = Sides[c];
             target->NeedsRefresh[c] = NeedsRefresh[c];
         }
+
+        void CopyTo(Accumulator& target) const {
+            target.Sides = Sides;
+            target.NeedsRefresh = NeedsRefresh;
+        }
+
+        void CopyTo(Accumulator& target, const i32 c) const {
+            target.Sides[c] = Sides[c];
+            target.NeedsRefresh[c] = NeedsRefresh[c];
+        }
     };
 
+    struct FinnyTable {
+        Accumulator accumulator;
+        Horsie::Bitboard Boards[2];
+    };
+
+    using BucketCache = std::array<FinnyTable, NNUE::INPUT_BUCKETS * 2>;
 }

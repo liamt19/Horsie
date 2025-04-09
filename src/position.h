@@ -5,10 +5,7 @@
 #include "enums.h"
 #include "move.h"
 #include "nnue/accumulator.h"
-#include "nnue/arch.h"
 #include "types.h"
-
-constexpr i32 StateStackSize = 1024;
 
 namespace Horsie {
 
@@ -18,20 +15,18 @@ namespace Horsie {
         ~Position();
         void LoadFromFEN(const std::string& fen);
 
+        NNUE::BucketCache CachedBuckets;
+        StateInfo* State;
+
         Bitboard bb;
         Color ToMove;
         i32 FullMoves;
         i32 GamePly;
 
-
-        StateInfo* State;
-        std::array<BucketCache, NNUE::INPUT_BUCKETS * 2> CachedBuckets;
-
-        bool UpdateNN;
-
         i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)];
         u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)];
 
+        bool UpdateNN;
         bool IsChess960;
 
         constexpr bool InCheck()       const { return State->Checkers != 0; }
@@ -53,6 +48,9 @@ namespace Horsie {
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
         constexpr auto CastleStatus() const { return State->CastleStatus; }
         constexpr auto accumulator() const { return State->accumulator; }
+
+        constexpr auto CurrAccumulator() const { return State->accumulator; }
+        constexpr auto NextAccumulator() const { return NextState()->accumulator; }
 
         constexpr bool GivesCheck(i32 pt, i32 sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
 
@@ -126,7 +124,8 @@ namespace Horsie {
         }
 
     private:
-
+        static constexpr i32 StateStackSize = 1024; 
+        
         NNUE::Accumulator* _accumulatorBlock;
         StateInfo* _stateBlock;
 
