@@ -50,6 +50,6 @@ namespace Horsie {
 
     struct BucketCache {
         Bitboard Boards[2];
-        Accumulator accumulator;
+        NNUE::Accumulator accumulator;
     };
 }

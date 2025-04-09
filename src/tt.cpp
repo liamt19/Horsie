@@ -14,7 +14,7 @@ namespace Horsie {
 
         auto key = static_cast<u16>(hash);
 
-        for (i32 i = 0; i < EntriesPerCluster; i++) {
+        for (i32 i = 0; i < TTCluster::EntriesPerCluster; i++) {
             //  If the entry's key matches, or the entry is empty, then pick this one.
             if (tte[i].Key == key || tte[i].IsEmpty()) {
                 tte = &tte[i];
@@ -30,7 +30,7 @@ namespace Horsie {
 
         //  Replace the first entry, unless the 2nd or 3rd is a better option.
         TTEntry* replace = tte;
-        for (i32 i = 1; i < EntriesPerCluster; i++) {
+        for (i32 i = 1; i < TTCluster::EntriesPerCluster; i++) {
             if ((replace->RawDepth() - replace->RelAge(Age)) >
                 (tte[i].RawDepth() - tte[i].RelAge(Age))) {
                 replace = &tte[i];
@@ -60,8 +60,7 @@ namespace Horsie {
         std::vector<std::thread> threads{};
 
         for (i32 i = 0; i < numThreads; ++i) {
-            threads.emplace_back([this, clustersPerThread, numThreads, i]
-            {
+            threads.emplace_back([this, clustersPerThread, numThreads, i] {
                 const u64 start = clustersPerThread * static_cast<u64>(i);
                 const u64 length = (i == numThreads - 1) ? ClusterCount - start : clustersPerThread;
 
@@ -80,7 +79,7 @@ namespace Horsie {
         for (size_t i = 0; i < 1000; i++) {
             const auto& cluster = Clusters[i];
 
-            for (size_t j = 0; j < EntriesPerCluster; j++) {
+            for (size_t j = 0; j < TTCluster::EntriesPerCluster; j++) {
                 const auto e = cluster.entries[j];
 
                 if (!e.IsEmpty() && e.Age() == Age)
@@ -88,7 +87,7 @@ namespace Horsie {
             }
         }
 
-        return entries / EntriesPerCluster;
+        return entries / TTCluster::EntriesPerCluster;
     }
 
     void TTEntry::Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, u8 age, bool isPV) {

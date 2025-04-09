@@ -3,8 +3,7 @@
 #include "../defs.h"
 #include "../types.h"
 
-namespace Horsie
-{
+namespace Horsie {
     template <typename T>
     inline auto AlignedAlloc(nuint items, nuint alignment = AllocAlignment) {
         nuint bytes = ((nuint)sizeof(T) * (nuint)items);

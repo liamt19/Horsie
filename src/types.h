@@ -187,6 +187,8 @@ namespace Horsie {
 
     constexpr i32 CoordToIndex(i32 x, i32 y) { return (y * 8) + x; }
 
+    constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * 6) + pt; }
+
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
 
@@ -218,12 +220,11 @@ namespace Horsie {
         return NONE;
     }
 
-    inline i32 MakePiece(i32 pc, i32 pt) {
-        return (pc * 6) + pt;
+
+    namespace NNUE {
+        struct Accumulator; 
     }
 
-
-    struct Accumulator;
     struct StateInfo {
     public:
 
@@ -241,7 +242,7 @@ namespace Horsie {
         i32 PliesFromNull = 0;
         CastlingStatus CastleStatus = CastlingStatus::None;
 
-        Accumulator* accumulator;
+        NNUE::Accumulator* accumulator;
     };
 
     constexpr static i32 StateCopySize = sizeof(StateInfo) - sizeof(u64);

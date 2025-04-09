@@ -1,18 +1,18 @@
 #pragma once
 
 #include "../defs.h"
+#include "../types.h"
+#include "../util/NDArray.h"
 #include "arch.h"
 #include "network_update.h"
 
 #include <array>
 
-constexpr i32 ByteSize = L1_SIZE * sizeof(i16);
+namespace Horsie::NNUE {
 
-namespace Horsie {
-
-    struct alignas(64) Accumulator {
+    struct alignas(AllocAlignment) Accumulator {
     public:
-        std::array<std::array<i16, L1_SIZE>, 2> Sides{};
+        Util::NDArray<i16, 2, L1_SIZE> Sides{};
         std::array<bool, 2> NeedsRefresh = { true, true };
         std::array<bool, 2> Computed = { false, false };
         NetworkUpdate Update{};

@@ -25,7 +25,7 @@ namespace Horsie {
 
 
         StateInfo* State;
-        std::array<BucketCache, INPUT_BUCKETS * 2> CachedBuckets;
+        std::array<BucketCache, NNUE::INPUT_BUCKETS * 2> CachedBuckets;
 
         bool UpdateNN;
 
@@ -127,7 +127,7 @@ namespace Horsie {
 
     private:
 
-        Accumulator* _accumulatorBlock;
+        NNUE::Accumulator* _accumulatorBlock;
         StateInfo* _stateBlock;
 
         StateInfo* _SentinelStart;

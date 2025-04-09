@@ -201,8 +201,7 @@ namespace Horsie {
             }
         }
 
-        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop())
-        {
+        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop()) {
             SetStop();
         }
 

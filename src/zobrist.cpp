@@ -10,7 +10,7 @@
 #include <random>
 #endif
 
-namespace Zobrist {
+namespace Horsie::Zobrist {
 
     u64 ColorPieceSquareHashes[2][6][64];
     u64 CastlingRightsHashes[4];

@@ -4,7 +4,7 @@
 #include "enums.h"
 #include "position.h"
 
-namespace Zobrist {
+namespace Horsie::Zobrist {
 
     extern u64 ColorPieceSquareHashes[2][6][64];
     extern u64 CastlingRightsHashes[4];

@@ -16,9 +16,6 @@
 #include <sstream>
 #include <string>
 
-
-using namespace Horsie::Cuckoo;
-
 namespace Horsie {
 
     Position::Position(const std::string& fen) {
@@ -33,10 +30,10 @@ namespace Horsie {
         _SentinelEnd = &_stateBlock[StateStackSize - 1];
         State = &_stateBlock[0];
 
-        _accumulatorBlock = AlignedAlloc<Accumulator>(StateStackSize);
+        _accumulatorBlock = AlignedAlloc<NNUE::Accumulator>(StateStackSize);
         for (i32 i = 0; i < StateStackSize; i++) {
             (_stateBlock + i)->accumulator = _accumulatorBlock + i;
-            *(_stateBlock + i)->accumulator = Accumulator();
+            *(_stateBlock + i)->accumulator = NNUE::Accumulator();
         }
 
         IsChess960 = false;
@@ -55,7 +52,7 @@ namespace Horsie {
     Move Position::TryFindMove(const std::string& moveStr, bool& found) const {
         Move move = Move::Null();
         found = false;
-
+        
         auto eq_pred = [&](char a, char b) {
             return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
         };
@@ -1005,6 +1002,8 @@ namespace Horsie {
     }
 
     bool Position::HasCycle(i32 ply) const {
+        using namespace Horsie::Cuckoo;
+
         StateInfo* st = State;
         i32 dist = std::min(st->HalfmoveClock, st->PliesFromNull);
 
@@ -1014,11 +1013,8 @@ namespace Horsie {
         const auto HashFromStack = [&](i32 i) { return _SentinelStart[GamePly - i].Hash; };
 
         i32 slot;
-        u64 other = ~(HashFromStack(0) ^ HashFromStack(1));
         for (i32 i = 3; i <= dist; i += 2) {
-            other ^= ~(HashFromStack(i) ^ HashFromStack(i - 1));
-
-            auto diff = st->Hash ^ HashFromStack(i);
+            const auto diff = st->Hash ^ HashFromStack(i);
 
             if (diff != keys[(slot = Hash1(diff))] &&
                 diff != keys[(slot = Hash2(diff))])

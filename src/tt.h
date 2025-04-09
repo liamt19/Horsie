@@ -13,16 +13,6 @@ using uint128_t = unsigned __int128;
 #endif
 
 
-constexpr i32 TT_BOUND_MASK = 0x3;
-constexpr i32 TT_PV_MASK = 0x4;
-constexpr i32 TT_AGE_MASK = 0xF8;
-constexpr i32 TT_AGE_INC = 0x8;
-constexpr i32 TT_AGE_CYCLE = 255 + TT_AGE_INC;
-
-constexpr i32 MinTTClusters = 1000;
-
-constexpr i32 EntriesPerCluster = 3;
-
 namespace Horsie {
 
     enum class TTNodeType {
@@ -63,19 +53,27 @@ namespace Horsie {
         void Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, u8 age, bool isPV = false);
 
         static constexpr i32 DepthNone = -6;
+        static constexpr i32 TT_AGE_INC = 0x8;
 
     private:
+        static constexpr i32 TT_BOUND_MASK = 0x3;
+        static constexpr i32 TT_PV_MASK = 0x4;
+        static constexpr i32 TT_AGE_MASK = 0xF8;
+        static constexpr i32 TT_AGE_CYCLE = 255 + TT_AGE_INC;
+
         static constexpr i32 KeyShift = 64 - (sizeof(u16) * 8);
         static constexpr i32 DepthOffset = -7;
     };
 
 
     struct alignas(32) TTCluster {
-        TTEntry entries[3];
+        static constexpr i32 EntriesPerCluster = 3; 
+        
+        TTEntry entries[EntriesPerCluster];
         char _pad[2];
 
         void Clear() {
-            std::memset(&entries[0], 0, sizeof(TTEntry) * 3);
+            std::memset(&entries[0], 0, sizeof(TTEntry) * EntriesPerCluster);
         }
     };
 
@@ -90,7 +88,7 @@ namespace Horsie {
         u32 Hashfull() const;
 
         void TTUpdate() {
-            Age += TT_AGE_INC;
+            Age += TTEntry::TT_AGE_INC;
         }
 
         TTCluster* GetCluster(u64 hash) const {

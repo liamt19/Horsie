@@ -2,21 +2,11 @@
 
 #include "cuckoo.h"
 #include "defs.h"
-#include "movegen.h"
-#include "nnue/nn.h"
 #include "position.h"
-#include "precomputed.h"
 #include "search.h"
-#include "search_bench.h"
 #include "threadpool.h"
-#include "tt.h"
-#include "zobrist.h"
 
-#include <chrono>
 #include <iostream>
-#include <list>
-#include <thread>
-
 
 namespace Horsie::UCI {
 

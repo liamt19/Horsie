@@ -467,8 +467,7 @@ namespace Horsie::UCI {
             tokens.push_back(token);
         }
 
-        auto findOption = [&tokens](const std::string& opt) -> std::optional<u64>
-        {
+        auto findOption = [&tokens](const std::string& opt) -> std::optional<u64> {
             auto it = std::find_if(tokens.begin(), tokens.end(), [opt](const std::string& str) { return !str.empty() && str.back() == opt.front(); });
 
             if (it != tokens.end()) {

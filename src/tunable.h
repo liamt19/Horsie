@@ -63,8 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const TunableOption& opt) {
 }
 
 inline std::vector<TunableOption>& GetUCIOptions() {
-    static auto opts = []
-    {
+    static auto opts = [] {
         std::vector<TunableOption> opts{};
         opts.reserve(128);
         return opts;
