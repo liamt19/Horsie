@@ -52,7 +52,7 @@ namespace Horsie::NNUE {
     using Network = NetworkBase<i16, i8, float>;
 
 
-    struct NNZTable {
+    struct alignas(64) NNZTable {
         __m128i Entries[256];
     };
 

@@ -225,7 +225,7 @@ namespace Horsie {
         struct Accumulator; 
     }
 
-    struct StateInfo {
+    struct alignas(32) StateInfo {
     public:
 
         u64 CheckSquares[PIECE_NB];

@@ -50,7 +50,7 @@ namespace Horsie {
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
     using CorrectionT = Util::NDArray<i16, 2, 16384>;
 
-    struct HistoryTable {
+    struct alignas(64) HistoryTable {
     public:
         ContinuationHistoryT Continuations[2][2];
         MainHistoryT MainHistory{};

@@ -56,7 +56,7 @@ namespace Horsie {
             }
         };
 
-        struct SearchStackEntry {
+        struct alignas(64) SearchStackEntry {
         public:
             Move* PV;
             PieceToHistory* ContinuationHistory;

@@ -10,11 +10,11 @@
 
 namespace Horsie::NNUE {
 
-    struct alignas(AllocAlignment) Accumulator {
+    struct alignas(64) Accumulator {
         Util::NDArray<i16, 2, L1_SIZE> Sides{};
+        NetworkUpdate Update{};
         std::array<bool, 2> NeedsRefresh = { true, true };
         std::array<bool, 2> Computed = { false, false };
-        NetworkUpdate Update{};
 
         const std::array<i16, L1_SIZE> operator[](const i32 c) { return Sides[c]; }
 
