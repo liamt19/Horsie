@@ -67,7 +67,7 @@ enum Rank : i32 {
     RANK_NB
 };
 
-enum class CastlingStatus {
+enum CastlingStatus : i32 {
     None = 0,
     WK = 1,
     WQ = 2,
@@ -83,6 +83,12 @@ enum class CastlingStatus {
     All = WK | WQ | BK | BQ,
 };
 
+constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
+constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
+constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
+constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l = CastlingStatus(i32(l) & i32(r)); }
+constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l = CastlingStatus(i32(l) | i32(r)); }
+
 enum Direction : i32 {
     NORTH = 8,
     EAST = 1,
@@ -94,32 +100,3 @@ enum Direction : i32 {
     SOUTH_WEST = SOUTH + WEST,
     NORTH_WEST = NORTH + WEST
 };
-
-enum TTNodeType {
-    Invalid,
-    /// <summary>
-    /// Upper Bound
-    /// </summary>
-    Beta,
-    /// <summary>
-    /// Lower bound
-    /// </summary>
-    Alpha,
-    Exact = Beta | Alpha
-};
-
-
-constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
-constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
-
-constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) {
-    l = CastlingStatus(i32(l) & i32(r));
-    return l;
-}
-
-constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) {
-    l = CastlingStatus(i32(l) | i32(r));
-    return l;
-}
-
-constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
