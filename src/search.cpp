@@ -61,8 +61,6 @@ namespace Horsie {
 
         NNUE::ResetCaches(RootPosition);
 
-        NodeTable = {};
-
         i32 multiPV = std::min(i32(MultiPV), i32(RootMoves.size()));
 
         std::vector<i32> searchScores(MaxPly);
@@ -174,9 +172,8 @@ namespace Horsie {
                 //  Base values taken from Clarity
                 double multFactor = 1.0;
                 if (RootDepth > 7) {
-                    const auto [bmFrom, bmTo] = RootMoves[0].move.Unpack();
 
-                    double nodeTM = (1.5 - NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes)) * 1.75;
+                    double nodeTM = (1.5 - RootMoves[0].Nodes / static_cast<double>(Nodes)) * 1.75;
                     double bmStability = StabilityCoefficients[std::min(stability, StabilityMax)];
 
                     double scoreStability = searchScores[searchScores.size() - 4]
@@ -675,10 +672,6 @@ namespace Horsie {
 
             pos.UnmakeMove(m);
 
-            if (isRoot) {
-                NodeTable[moveFrom][moveTo] += Nodes - prevNodes;
-            }
-
             if (ShouldStop()) {
                 return ScoreDraw;
             }
@@ -694,6 +687,7 @@ namespace Horsie {
 
                 RootMove& rm = RootMoves[rmIndex];
                 rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
+                rm.Nodes += (Nodes - prevNodes);
 
                 if (playedMoves == 1 || score > alpha) {
                     rm.Score = score;

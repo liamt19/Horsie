@@ -98,6 +98,7 @@ namespace Horsie {
                 move = m;
                 Score = PreviousScore = AverageScore = -ScoreInfinite;
                 Depth = 0;
+                Nodes = 0;
             }
             bool operator==(const Move& m) const { return PV[0] == m; }
             bool operator<(const RootMove& m) const { return m.Score != Score ? m.Score < Score : m.PreviousScore < PreviousScore; }
@@ -107,6 +108,7 @@ namespace Horsie {
             i32 PreviousScore;
             i32 AverageScore;
             i32 Depth;
+            u64 Nodes;
 
             std::vector<Horsie::Move> PV;
         };

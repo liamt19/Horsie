@@ -148,7 +148,7 @@ namespace Horsie {
 
             //  Obey node limit exactly when single-threaded, or check it wrt. CheckupFrequency otherwise
             if ((Horsie::Threads == 1 && Nodes >= HardNodeLimit)
-                || (Nodes & CheckupFrequency) == CheckupFrequency && AssocPool->GetNodeCount() >= HardNodeLimit) {
+                || ((Nodes & CheckupFrequency) == CheckupFrequency && AssocPool->GetNodeCount() >= HardNodeLimit)) {
                 AssocPool->StopAllThreads();
             }
         }

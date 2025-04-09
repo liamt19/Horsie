@@ -76,7 +76,6 @@ namespace Horsie {
         TranspositionTable* TT{};
         Position RootPosition;
         HistoryTable History{};
-        Util::NDArray<u64, 64, 64> NodeTable{};
 
         Timepoint StartTime{};
 
