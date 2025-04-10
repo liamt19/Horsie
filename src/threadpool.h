@@ -45,14 +45,14 @@ namespace Horsie {
         void WakeUp();
         void WaitForThreadFinished();
 
-        std::unique_ptr<SearchThread> worker;
+        std::unique_ptr<SearchThread> Worker;
 
     private:
-        std::mutex _Mutex;
-        std::condition_variable _SearchCond;
+        std::mutex Mut;
+        std::condition_variable CondVar;
+        std::thread SysThread;
         bool Quit = false;
-        bool searching = true;
-        std::thread _SysThread;
+        bool Active = true;
     };
 
     class SearchThread {
@@ -145,19 +145,19 @@ namespace Horsie {
             Resize(n);
         }
 
-        constexpr SearchThread* MainThread() const { return Threads.front()->worker.get(); }
+        constexpr SearchThread* MainThread() const { return Threads.front()->Worker.get(); }
         constexpr Thread* MainThreadBase() const { return Threads.front(); }
 
         void StopAllThreads() { 
             for (i32 i = 1; i < Threads.size(); i++)
-                Threads[i]->worker->SetStop(true);
+                Threads[i]->Worker->SetStop(true);
 
             MainThread()->SetStop(true);
         }
 
         void StartAllThreads() {
             for (i32 i = 1; i < Threads.size(); i++)
-                Threads[i]->worker->SetStop(false);
+                Threads[i]->Worker->SetStop(false);
 
             MainThread()->SetStop(false);
         }
@@ -175,7 +175,7 @@ namespace Horsie {
         u64 GetNodeCount() const {
             u64 sum = 0;
             for (auto& td : Threads) {
-                sum += td->worker.get()->Nodes;
+                sum += td->Worker.get()->Nodes;
             }
             return sum;
         }

@@ -39,7 +39,7 @@ namespace Horsie {
 
         for (i32 i = 0; i < newThreadCount; i++) {
             auto td = new Thread(i);
-            auto worker = td->worker.get();
+            auto worker = td->Worker.get();
             worker->ThreadIdx = i;
             worker->AssocPool = this;
             worker->TT = &TTable;
@@ -74,7 +74,7 @@ namespace Horsie {
         i32 size = Generate<GenLegal>(rootPosition, &rms[0], 0);
 
         for (auto t : Threads) {
-            auto td = t->worker.get();
+            auto td = t->Worker.get();
             td->Reset();
 
             td->RootMoves.clear();
@@ -120,18 +120,18 @@ namespace Horsie {
 
     void SearchThreadPool::Clear() const {
         for (i32 i = 0; i < Threads.size(); i++)
-            Threads[i]->worker.get()->History.Clear();
+            Threads[i]->Worker.get()->History.Clear();
 
         MainThread()->Nodes = 0;
     }
 
-	bool SearchThread::ShouldStop() const {
+    bool SearchThread::ShouldStop() const {
         return StopSearching.load(std::memory_order::relaxed);
-	}
+    }
 
-	void SearchThread::SetStop(bool flag) {
+    void SearchThread::SetStop(bool flag) {
         StopSearching.store(flag, std::memory_order::relaxed);
-	}
+    }
 
     void SearchThread::CheckLimits() {
         if (IsDatagen) {
@@ -154,46 +154,46 @@ namespace Horsie {
         }
     }
 
-	Thread::Thread(i32 n) {
-		worker = std::make_unique<SearchThread>();
-		_SysThread = std::thread(&Thread::IdleLoop, this);
-	}
+    Thread::Thread(i32 n) {
+        Worker = std::make_unique<SearchThread>();
+        SysThread = std::thread(&Thread::IdleLoop, this);
+    }
 
     Thread::~Thread() {
         Quit = true;
         WakeUp();
-        _SysThread.join();
+        SysThread.join();
     }
 
     void Thread::WakeUp() {
-        _Mutex.lock();
-        searching = true;
-        _Mutex.unlock();
-        _SearchCond.notify_one();
+        Mut.lock();
+        Active = true;
+        Mut.unlock();
+        CondVar.notify_one();
     }
 
     void Thread::WaitForThreadFinished() {
-        std::unique_lock<std::mutex> lk(_Mutex);
-        _SearchCond.wait(lk, [&] { return !searching; });
+        std::unique_lock<std::mutex> lk(Mut);
+        CondVar.wait(lk, [&] { return !Active; });
     }
 
     void Thread::IdleLoop() {
         while (true) {
-            std::unique_lock<std::mutex> lk(_Mutex);
-            searching = false;
-            _SearchCond.notify_one();
-            _SearchCond.wait(lk, [&] { return searching; });
+            std::unique_lock<std::mutex> lk(Mut);
+            Active = false;
+            CondVar.notify_one();
+            CondVar.wait(lk, [&] { return Active; });
 
             if (Quit)
                 return;
 
             lk.unlock();
 
-            if (worker->IsMain()) {
-                worker->MainThreadSearch();
+            if (Worker->IsMain()) {
+                Worker->MainThreadSearch();
             }
             else {
-                worker->Search(worker->AssocPool->SharedInfo);
+                Worker->Search(Worker->AssocPool->SharedInfo);
             }
         }
     }
