@@ -10,8 +10,10 @@
 #include "threadpool.h"
 #include "tt.h"
 #include "util/dbg_hit.h"
+#include "util/timer.h"
 #include "wdl.h"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -58,8 +60,6 @@ namespace Horsie {
         }
 
         NNUE::ResetCaches(RootPosition);
-
-        NodeTable = {};
 
         i32 multiPV = std::min(i32(MultiPV), i32(RootMoves.size()));
 
@@ -124,7 +124,7 @@ namespace Horsie {
 
                 std::stable_sort(RootMoves.begin() + 0, RootMoves.end());
 
-                if (IsMain()) {
+                if (IsMain() && (ShouldStop() || PVIndex == multiPV - 1)) {
                     if (OnDepthFinish) {
                         OnDepthFinish();
                     }
@@ -172,9 +172,8 @@ namespace Horsie {
                 //  Base values taken from Clarity
                 double multFactor = 1.0;
                 if (RootDepth > 7) {
-                    const auto [bmFrom, bmTo] = RootMoves[0].move.Unpack();
 
-                    double nodeTM = (1.5 - NodeTable[bmFrom][bmTo] / static_cast<double>(Nodes)) * 1.75;
+                    double nodeTM = (1.5 - RootMoves[0].Nodes / static_cast<double>(Nodes)) * 1.75;
                     double bmStability = StabilityCoefficients[std::min(stability, StabilityMax)];
 
                     double scoreStability = searchScores[searchScores.size() - 4]
@@ -199,8 +198,7 @@ namespace Horsie {
             }
         }
 
-        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop())
-        {
+        if (IsMain() && RootDepth >= MaxDepth && Nodes != HardNodeLimit && !ShouldStop()) {
             SetStop();
         }
 
@@ -259,7 +257,7 @@ namespace Horsie {
             }
 
             if (ShouldStop() || ss->Ply >= MaxSearchStackPly - 1) {
-                if (pos.Checked()) {
+                if (pos.InCheck()) {
                     return ScoreDraw;
                 }
                 else {
@@ -277,7 +275,7 @@ namespace Horsie {
         (ss + 1)->KillerMove = Move::Null();
         
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
-        ss->InCheck = pos.Checked();
+        ss->InCheck = pos.InCheck();
         ss->TTHit = TT->Probe(pos.Hash(), tte);
         if (!doSkip) {
             ss->TTPV = isPV || (ss->TTHit && tte->PV());
@@ -445,7 +443,7 @@ namespace Horsie {
                 pos.UnmakeMove(m);
 
                 if (score >= probBeta) {
-                    tte->Update(pos.Hash(), MakeTTScore((short)score, ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
+                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
                     return score;
                 }
             }
@@ -494,6 +492,12 @@ namespace Horsie {
 
             if (!pos.IsLegal(m)) {
                 continue;
+            }
+
+            if (isRoot && MultiPV != 1) {
+                //  If this move is ordered before PVIndex, it's already been searched.
+                if (std::count(RootMoves.begin() + PVIndex, RootMoves.end(), m) == 0)
+                    continue;
             }
 
             const auto [moveFrom, moveTo] = m.Unpack();
@@ -668,10 +672,6 @@ namespace Horsie {
 
             pos.UnmakeMove(m);
 
-            if (isRoot) {
-                NodeTable[moveFrom][moveTo] += Nodes - prevNodes;
-            }
-
             if (ShouldStop()) {
                 return ScoreDraw;
             }
@@ -687,6 +687,7 @@ namespace Horsie {
 
                 RootMove& rm = RootMoves[rmIndex];
                 rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
+                rm.Nodes += (Nodes - prevNodes);
 
                 if (playedMoves == 1 || score > alpha) {
                     rm.Score = score;
@@ -785,7 +786,7 @@ namespace Horsie {
         Move bestMove = Move::Null();
 
         const auto us = pos.ToMove;
-        const bool inCheck = pos.Checked();
+        const bool inCheck = pos.InCheck();
         i32 score = -ScoreMate - MaxPly;
         i32 bestScore = -ScoreInfinite;
         i32 futility = -ScoreInfinite;
@@ -1046,51 +1047,57 @@ namespace Horsie {
     }
 
     void SearchThread::PrintSearchInfo() const {
-        const RootMove& rm = RootMoves[0];
 
-        bool moveSearched = rm.Score != -ScoreInfinite;
-        i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
-        i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+        const auto nodes = AssocPool->GetNodeCount();
+        const auto duration = Timepoint::TimeSince(StartTime);
+        const auto durCnt = std::max(1.0, static_cast<double>(duration));
+        const auto nodesPerSec = static_cast<u64>(nodes / (durCnt / 1000));
+        const auto hashfull = TT->Hashfull();
+        
+        const auto mpv = std::min(i32(MultiPV), i32(RootMoves.size()));
+        for (size_t i = 0; i < mpv; i++) {
+            const RootMove& rm = RootMoves[i];
 
-        auto nodes = AssocPool->GetNodeCount();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - StartTime);
-        auto durCnt = std::max(1.0, static_cast<double>(duration.count()));
-        auto nodesPerSec = static_cast<i32>(nodes / (durCnt / 1000));
-        auto hashfull = TT->Hashfull();
+            bool moveSearched = rm.Score != -ScoreInfinite;
+            i32 depth = moveSearched ? RootDepth : std::max(1, RootDepth - 1);
+            i32 moveScore = moveSearched ? rm.Score : rm.PreviousScore;
 
-        std::cout << "info depth " << depth;
-        std::cout << " seldepth " << rm.Depth;
-        std::cout << " time " << durCnt;
-        std::cout << " score " << FormatMoveScore(WDL::NormalizeScore(moveScore));
+            std::cout << "info depth " << depth;
+            std::cout << " seldepth " << rm.Depth;
+            std::cout << " multipv " << (i + 1);
+            std::cout << " time " << durCnt;
+            std::cout << " score " << FormatMoveScore(WDL::NormalizeScore(moveScore));
 
-        if (UCI_ShowWDL) {
-            if (moveScore > ScoreWin) {
-                std::cout << " wdl 1000 0 0";
+            if (UCI_ShowWDL) {
+                if (moveScore > ScoreWin) {
+                    std::cout << " wdl 1000 0 0";
+                }
+                else if (moveScore < -ScoreWin) {
+                    std::cout << " wdl 0 0 1000";
+                }
+                else {
+                    const auto material = RootPosition.MaterialCount();
+                    const auto [win, loss] = WDL::MaterialModel(moveScore, material);
+                    const auto draw = 1000 - win - loss;
+                    std::cout << " wdl " << win << " " << draw << " " << loss;
+                }
             }
-            else if (moveScore < -ScoreWin) {
-                std::cout << " wdl 0 0 1000";
+
+            std::cout << " nodes " << nodes;
+            std::cout << " nps " << nodesPerSec;
+            std::cout << " hashfull " << hashfull;
+            std::cout << " pv";
+
+            for (i32 j = 0; j < rm.PV.size(); j++) {
+                if (rm.PV[j] == Move::Null())
+                    break;
+
+                std::cout << " " << rm.PV[j].SmithNotation(RootPosition.IsChess960);
             }
-            else {
-                const auto material = RootPosition.MaterialCount();
-                const auto [win, loss] = WDL::MaterialModel(moveScore, material);
-                int draw = 1000 - win - loss;
-                std::cout << " wdl " << win << " " << draw << " " << loss;
-            }
+
+            std::cout << std::endl;
         }
 
-        std::cout << " nodes " << nodes;
-        std::cout << " nps " << nodesPerSec;
-        std::cout << " hashfull " << hashfull;
-        std::cout << " pv";
-
-        for (i32 j = 0; j < rm.PV.size(); j++) {
-            if (rm.PV[j] == Move::Null())
-                break;
-
-            std::cout << " " + rm.PV[j].SmithNotation(RootPosition.IsChess960);
-        }
-
-        std::cout << std::endl;
     }
 
     Move SearchThread::OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const {

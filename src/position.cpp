@@ -16,9 +16,6 @@
 #include <sstream>
 #include <string>
 
-
-using namespace Horsie::Cuckoo;
-
 namespace Horsie {
 
     Position::Position(const std::string& fen) {
@@ -33,10 +30,10 @@ namespace Horsie {
         _SentinelEnd = &_stateBlock[StateStackSize - 1];
         State = &_stateBlock[0];
 
-        _accumulatorBlock = AlignedAlloc<Accumulator>(StateStackSize);
+        _accumulatorBlock = AlignedAlloc<NNUE::Accumulator>(StateStackSize);
         for (i32 i = 0; i < StateStackSize; i++) {
             (_stateBlock + i)->accumulator = _accumulatorBlock + i;
-            *(_stateBlock + i)->accumulator = Accumulator();
+            *(_stateBlock + i)->accumulator = NNUE::Accumulator();
         }
 
         IsChess960 = false;
@@ -55,7 +52,7 @@ namespace Horsie {
     Move Position::TryFindMove(const std::string& moveStr, bool& found) const {
         Move move = Move::Null();
         found = false;
-
+        
         auto eq_pred = [&](char a, char b) {
             return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
         };
@@ -388,13 +385,13 @@ namespace Horsie {
     bool Position::IsPseudoLegal(Move move) const {
         const auto [moveFrom, moveTo] = move.Unpack();
 
-        i32 pt = bb.GetPieceAtIndex(moveFrom);
+        const auto pt = bb.GetPieceAtIndex(moveFrom);
         if (pt == Piece::NONE) {
             //  There isn't a piece on the move's "from" square.
             return false;
         }
 
-        i32 pc = bb.GetColorAtIndex(moveFrom);
+        const auto pc = bb.GetColorAtIndex(moveFrom);
         if (pc != ToMove) {
             //  This isn't our piece, so we can't move it.
             return false;
@@ -414,13 +411,13 @@ namespace Horsie {
             u64 empty = ~bb.Occupancy;
             if ((moveTo ^ moveFrom) != 16) {
                 //  This is NOT a pawn double move, so it can only go to a square it attacks or the empty square directly above/below.
-                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0
                     || (empty & SquareBB(moveTo)) != 0;
             }
             else {
                 //  This IS a pawn double move, so it can only go to a square it attacks,
                 //  or the empty square 2 ranks above/below provided the square 1 rank above/below is also empty.
-                return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0
+                return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0
                     || ((empty & SquareBB(moveTo - ShiftUpDir(pc))) != 0 && (empty & SquareBB(moveTo)) != 0);
             }
 
@@ -428,7 +425,7 @@ namespace Horsie {
 
         //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
         //  Pieces can only move to squares that they attack, with the one exception of queenside castling
-        return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
+        return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
     }
 
     bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }
@@ -474,7 +471,7 @@ namespace Horsie {
         if (pt == Piece::KING) {
             if (move.IsCastle()) {
                 CastlingStatus thisCr = move.RelevantCastlingRight();
-                i32 rookSq = CastlingRookSquares[static_cast<i32>(thisCr)];
+                i32 rookSq = CastlingRookSquare(thisCr);
 
                 if ((SquareBB(rookSq) & bb.Pieces[ROOK] & bb.Colors[ourColor]) == 0) {
                     //  There isn't a rook on the square that we are trying to castle towards.
@@ -599,11 +596,11 @@ namespace Horsie {
     }
 
     constexpr CastlingStatus Position::GetCastlingForRook(i32 sq) const {
-        CastlingStatus cr = sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WQ)] ? CastlingStatus::WQ
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::WK)] ? CastlingStatus::WK
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BQ)] ? CastlingStatus::BQ
-                          : sq == CastlingRookSquares[static_cast<i32>(CastlingStatus::BK)] ? CastlingStatus::BK
-                          :                                                                   CastlingStatus::None;
+        CastlingStatus cr = sq == CastlingRookSquare(CastlingStatus::WQ) ? CastlingStatus::WQ
+                          : sq == CastlingRookSquare(CastlingStatus::WK) ? CastlingStatus::WK
+                          : sq == CastlingRookSquare(CastlingStatus::BQ) ? CastlingStatus::BQ
+                          : sq == CastlingRookSquare(CastlingStatus::BK) ? CastlingStatus::BK
+                          :                                                CastlingStatus::None;
 
         return cr;
     }
@@ -862,16 +859,16 @@ namespace Horsie {
 
         if (State->CastleStatus != CastlingStatus::None) {
             if ((State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::WK])) : 'K');
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WK))) : 'K');
             }
             if ((State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::WQ])) : 'Q');
+                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WQ))) : 'Q');
             }
             if ((State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::BK])) : 'k');
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BK))) : 'k');
             }
             if ((State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(i32)CastlingStatus::BQ])) : 'q');
+                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BQ))) : 'q');
             }
         }
         else {
@@ -1005,6 +1002,8 @@ namespace Horsie {
     }
 
     bool Position::HasCycle(i32 ply) const {
+        using namespace Horsie::Cuckoo;
+
         StateInfo* st = State;
         i32 dist = std::min(st->HalfmoveClock, st->PliesFromNull);
 
@@ -1014,11 +1013,8 @@ namespace Horsie {
         const auto HashFromStack = [&](i32 i) { return _SentinelStart[GamePly - i].Hash; };
 
         i32 slot;
-        u64 other = ~(HashFromStack(0) ^ HashFromStack(1));
         for (i32 i = 3; i <= dist; i += 2) {
-            other ^= ~(HashFromStack(i) ^ HashFromStack(i - 1));
-
-            auto diff = st->Hash ^ HashFromStack(i);
+            const auto diff = st->Hash ^ HashFromStack(i);
 
             if (diff != keys[(slot = Hash1(diff))] &&
                 diff != keys[(slot = Hash2(diff))])

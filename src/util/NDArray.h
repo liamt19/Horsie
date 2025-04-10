@@ -4,10 +4,8 @@
 
 #include <array>
 
-namespace Horsie::Util
-{
-    namespace ThingsIStoleFromStormphrax
-    {
+namespace Horsie::Util {
+    namespace ThingsIStoleFromStormphrax {
         template <typename T, nuint N, nuint... Ns>
         struct NDArrayImpl {
             using Type = std::array<typename NDArrayImpl<T, Ns...>::Type, N>;

@@ -19,6 +19,7 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include "search_options.h"
 #include "tt.h"
 #include "util/NDArray.h"
+#include "util/timer.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -44,14 +45,14 @@ namespace Horsie {
         void WakeUp();
         void WaitForThreadFinished();
 
-        std::unique_ptr<SearchThread> worker;
+        std::unique_ptr<SearchThread> Worker;
 
     private:
-        std::mutex _Mutex;
-        std::condition_variable _SearchCond;
+        std::mutex Mut;
+        std::condition_variable CondVar;
+        std::thread SysThread;
         bool Quit = false;
-        bool searching = true;
-        std::thread _SysThread;
+        bool Active = true;
     };
 
     class SearchThread {
@@ -75,9 +76,8 @@ namespace Horsie {
         TranspositionTable* TT{};
         Position RootPosition;
         HistoryTable History{};
-        Util::NDArray<u64, 64, 64> NodeTable{};
 
-        std::chrono::system_clock::time_point StartTime{};
+        Timepoint StartTime{};
 
         std::function<void()> OnDepthFinish;
         std::function<void()> OnSearchFinish;
@@ -117,18 +117,13 @@ namespace Horsie {
         void SetStop(bool flag = true);
         void CheckLimits();
 
-        i64 GetSearchTime() const {
-            auto now = std::chrono::system_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - StartTime);
-            return duration.count();
-        }
-
         void Reset() {
             Nodes = 0;
             PVIndex = RootDepth = SelDepth = CompletedDepth = NMPPly = 0;
         }
 
         Move CurrentMove() const { return RootMoves[PVIndex].move; }
+        auto GetSearchTime() const { return Timepoint::TimeSince(StartTime); }
         bool HardTimeReached() const { return (GetSearchTime() > HardTimeLimit - MoveOverhead); }
 
         inline i32 GetRFPMargin(i32 depth, bool improving) const { return (depth - (improving)) * RFPMargin; }
@@ -150,19 +145,19 @@ namespace Horsie {
             Resize(n);
         }
 
-        constexpr SearchThread* MainThread() const { return Threads.front()->worker.get(); }
+        constexpr SearchThread* MainThread() const { return Threads.front()->Worker.get(); }
         constexpr Thread* MainThreadBase() const { return Threads.front(); }
 
         void StopAllThreads() { 
             for (i32 i = 1; i < Threads.size(); i++)
-                Threads[i]->worker->SetStop(true);
+                Threads[i]->Worker->SetStop(true);
 
             MainThread()->SetStop(true);
         }
 
         void StartAllThreads() {
             for (i32 i = 1; i < Threads.size(); i++)
-                Threads[i]->worker->SetStop(false);
+                Threads[i]->Worker->SetStop(false);
 
             MainThread()->SetStop(false);
         }
@@ -180,7 +175,7 @@ namespace Horsie {
         u64 GetNodeCount() const {
             u64 sum = 0;
             for (auto& td : Threads) {
-                sum += td->worker.get()->Nodes;
+                sum += td->Worker.get()->Nodes;
             }
             return sum;
         }

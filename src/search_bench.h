@@ -6,6 +6,7 @@
 #include "threadpool.h"
 #include "util.h"
 #include "util/dbg_hit.h"
+#include "util/timer.h"
 
 #include <chrono>
 #include <iostream>
@@ -14,7 +15,7 @@ using namespace Horsie::Search;
 
 namespace Horsie {
 
-    void DoBench(SearchThreadPool& SearchPool, i32 depth = 12, bool openBench = false) {
+    inline void DoBench(SearchThreadPool& SearchPool, i32 depth = 12, bool openBench = false) {
         Position pos = Position(InitialFEN);
         SearchThread* thread = SearchPool.MainThread();
 
@@ -32,7 +33,7 @@ namespace Horsie {
         SearchPool.TTable.Clear();
         SearchPool.Clear();
 
-        auto before = std::chrono::system_clock::now();
+        const auto startTime = Timepoint::Now();
         for (std::string fen : BenchFENs) {
             pos.LoadFromFEN(fen);
 
@@ -50,13 +51,10 @@ namespace Horsie {
             SearchPool.Clear();
         }
 
-        auto now = std::chrono::system_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - before);
-
-        auto dur = duration.count();
-        auto durSeconds = duration.count() / 1000;
-        auto durMillis = duration.count() % 1000;
-        auto nps = static_cast<u64>((totalNodes / (static_cast<double>(dur) / 1000)));
+        const auto duration = Timepoint::TimeSince(startTime);
+        const auto durSeconds = duration / 1000;
+        const auto durMillis = duration % 1000;
+        const auto nps = static_cast<u64>((totalNodes / (static_cast<double>(duration) / 1000)));
 
         if (openBench) {
             std::cout << "info string " << durSeconds << "." << durMillis << " seconds" << std::endl;

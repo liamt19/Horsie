@@ -30,16 +30,14 @@ namespace Horsie {
             i32 MaxSearchTime = INT32_MAX;
             i32 Increment = 0;
             i32 MovesToGo = 20;
-
             i32 MoveTime = 0;
-            const bool HasMoveTime() const { return MoveTime != 0; }
-
             i32 PlayerTime = 0;
-            const bool HasPlayerTime() const { return PlayerTime != 0; }
 
-            const bool IsInfinite() const { return MaxDepth == Horsie::MaxDepth && MaxSearchTime == INT32_MAX; }
+            constexpr bool HasMoveTime() const { return MoveTime != 0; }
+            constexpr bool HasPlayerTime() const { return PlayerTime != 0; }
+            constexpr bool IsInfinite() const { return MaxDepth == Horsie::MaxDepth && MaxSearchTime == INT32_MAX; }
 
-            const i32 SetTimeLimits() {
+            i32 SetTimeLimits() {
                 i32 softLimit = 0;
 
                 if (HasMoveTime()) {
@@ -58,7 +56,7 @@ namespace Horsie {
             }
         };
 
-        struct SearchStackEntry {
+        struct alignas(64) SearchStackEntry {
         public:
             Move* PV;
             PieceToHistory* ContinuationHistory;
@@ -100,6 +98,7 @@ namespace Horsie {
                 move = m;
                 Score = PreviousScore = AverageScore = -ScoreInfinite;
                 Depth = 0;
+                Nodes = 0;
             }
             bool operator==(const Move& m) const { return PV[0] == m; }
             bool operator<(const RootMove& m) const { return m.Score != Score ? m.Score < Score : m.PreviousScore < PreviousScore; }
@@ -109,6 +108,7 @@ namespace Horsie {
             i32 PreviousScore;
             i32 AverageScore;
             i32 Depth;
+            u64 Nodes;
 
             std::vector<Horsie::Move> PV;
         };

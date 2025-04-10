@@ -10,7 +10,7 @@
 #include <random>
 #endif
 
-namespace Zobrist {
+namespace Horsie::Zobrist {
 
     u64 ColorPieceSquareHashes[2][6][64];
     u64 CastlingRightsHashes[4];
@@ -106,21 +106,21 @@ namespace Zobrist {
             }
         }
 
-        if ((position.State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::WK) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[0];
         }
-        if ((position.State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::WQ) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[1];
         }
-        if ((position.State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::BK) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[2];
         }
-        if ((position.State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
+        if ((position.CastleStatus() & CastlingStatus::BQ) != CastlingStatus::None) {
             hash ^= CastlingRightsHashes[3];
         }
 
-        if (position.State->EPSquare != static_cast<i32>(Square::EP_NONE)) {
-            hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.State->EPSquare)];
+        if (position.EPSquare() != EP_NONE) {
+            hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.EPSquare())];
         }
 
         if (position.ToMove == Color::BLACK) {

@@ -23,7 +23,7 @@
 namespace Horsie {
 
     constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    constexpr auto EngVersion = "1.0.19";
+    constexpr auto EngVersion = "1.0.20";
 
     constexpr u64 FileABB = 0x0101010101010101ULL;
     constexpr u64 FileBBB = FileABB << 1;
@@ -187,6 +187,8 @@ namespace Horsie {
 
     constexpr i32 CoordToIndex(i32 x, i32 y) { return (y * 8) + x; }
 
+    constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * 6) + pt; }
+
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
 
@@ -218,13 +220,12 @@ namespace Horsie {
         return NONE;
     }
 
-    inline i32 MakePiece(i32 pc, i32 pt) {
-        return (pc * 6) + pt;
+
+    namespace NNUE {
+        struct Accumulator; 
     }
 
-
-    struct Accumulator;
-    struct StateInfo {
+    struct alignas(32) StateInfo {
     public:
 
         u64 CheckSquares[PIECE_NB];
@@ -241,7 +242,7 @@ namespace Horsie {
         i32 PliesFromNull = 0;
         CastlingStatus CastleStatus = CastlingStatus::None;
 
-        Accumulator* accumulator;
+        NNUE::Accumulator* accumulator;
     };
 
     constexpr static i32 StateCopySize = sizeof(StateInfo) - sizeof(u64);

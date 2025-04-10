@@ -2,7 +2,6 @@
 
 #include "defs.h"
 #include "enums.h"
-#include "nnue/accumulator.h"
 #include "types.h"
 
 namespace Horsie {
@@ -46,10 +45,5 @@ namespace Horsie {
 
             return mask;
         }
-    };
-
-    struct BucketCache {
-        Bitboard Boards[2];
-        Accumulator accumulator;
     };
 }

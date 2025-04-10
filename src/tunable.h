@@ -27,6 +27,15 @@ struct TunableOption {
         HideTune(hideTune) {
     }
 
+    bool TrySet(i32 newV) {
+        if (newV < MinValue || newV > MaxValue) {
+            return false;
+        }
+
+        CurrentValue = newV;
+        return true;
+    }
+
     operator i32() const { return CurrentValue; }
 
     TunableOption& operator=(i32 newV) {
@@ -35,7 +44,6 @@ struct TunableOption {
         }
 
         CurrentValue = newV;
-
         return *this;
     }
 };
@@ -55,8 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const TunableOption& opt) {
 }
 
 inline std::vector<TunableOption>& GetUCIOptions() {
-    static auto opts = []
-    {
+    static auto opts = [] {
         std::vector<TunableOption> opts{};
         opts.reserve(128);
         return opts;
