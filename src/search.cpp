@@ -278,7 +278,7 @@ namespace Horsie {
         ss->InCheck = pos.InCheck();
         ss->TTHit = TT->Probe(pos.Hash(), tte);
         if (!doSkip) {
-            ss->TTPV = isPV || (ss->TTHit && tte->PV());
+            ss->TTPV = ss->TTPV || (ss->TTHit && tte->PV());
         }
 
         const i16 ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
