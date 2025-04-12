@@ -118,6 +118,18 @@ namespace Horsie {
         return ttScore;
     }
 
+    constexpr bool IsWin(i32 score) {
+        return score >= ScoreTTWin;
+    }
+
+    constexpr bool IsLoss(i32 score) {
+        return score <= ScoreTTLoss;
+    }
+
+    constexpr bool IsDecisive(i32 score) {
+        return IsWin(score) || IsLoss(score);
+    }
+
     constexpr bool IsScoreMate(i32 score) {
 #if defined(_MSC_VER)
         auto v = (score < 0 ? -score : score) - ScoreMate;

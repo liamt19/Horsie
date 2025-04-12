@@ -716,6 +716,10 @@ namespace Horsie {
 
                     if (score >= beta) {
                         UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
+
+                        if (!isPV && !IsDecisive(bestScore) && !IsDecisive(alpha) && !IsDecisive(beta))
+                            bestScore = (bestScore * depth + beta) / (depth + 1);
+
                         break;
                     }
 
