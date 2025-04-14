@@ -929,7 +929,7 @@ namespace Horsie {
         if (swap <= 0)
             return true;
 
-        u64 occ = (bb.Occupancy ^ SquareBB(moveFrom) | SquareBB(moveTo));
+        u64 occ = bb.Occupancy ^ SquareBB(moveFrom) ^ SquareBB(moveTo);
 
         u64 attackers = bb.AttackersTo(moveTo, occ);
         u64 stmAttackers;
@@ -941,8 +941,7 @@ namespace Horsie {
             stm = Not(stm);
             attackers &= occ;
 
-            stmAttackers = attackers & bb.Colors[stm];
-            if (stmAttackers == 0) {
+            if ((stmAttackers = attackers & bb.Colors[stm]) == 0) {
                 break;
             }
 
