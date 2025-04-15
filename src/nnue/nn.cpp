@@ -304,7 +304,6 @@ namespace Horsie::NNUE {
             }
 
             const auto sumMul = vec_set1_ps(L1_MUL);
-
             const auto zero = vec_set1_ps(0.0f);
             const auto one = vec_set1_ps(1.0f);
             for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
