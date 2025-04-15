@@ -83,8 +83,10 @@ namespace Horsie::Datagen {
             };
 
             if (stm == BLACK) {
+#if defined(FIX_ME_FOR_CPP20)
                 for (auto& bb : bbs)
                     bb = std::byteswap(bb);
+#endif
 
                 std::swap(bbs[WHITE], bbs[BLACK]);
 
