@@ -359,36 +359,45 @@ namespace Horsie {
         }
 
 
-        if (UseNMP
+        probBeta = beta + (improving ? ProbcutBetaImp : ProbcutBeta);
+        if (UseProbcut
             && !isPV
             && !doSkip
-            && depth >= NMPMinDepth
-            && ss->Ply >= NMPPly
-            && eval >= beta
-            && eval >= ss->StaticEval
-            && (ss - 1)->CurrentMove != Move::Null()
-            && pos.HasNonPawnMaterial(us)) {
+            && std::abs(beta) < ScoreTTWin
+            && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
 
-            const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, static_cast<i32>(NMPEvalMin));
-            ss->CurrentMove = Move::Null();
-            ss->ContinuationHistory = &history->Continuations[0][0][0][0];
+            ScoredMove captures[MoveListSize];
+            i32 numCaps = GenerateQS(pos, captures, 0);
+            AssignProbcutScores(pos, captures, numCaps);
 
-            pos.MakeNullMove();
-            prefetch(TT->GetCluster(pos.Hash()));
-            score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
-            pos.UnmakeNullMove();
-
-            if (score >= beta) {
-
-                if (NMPPly > 0 || depth <= 15) {
-                    return score > ScoreWin ? beta : score;
+            for (i32 i = 0; i < numCaps; i++) {
+                Move m = OrderNextMove(captures, numCaps, i);
+                if (!pos.IsLegal(m) || !pos.SEE_GE(m, std::max(1, probBeta - ss->StaticEval))) {
+                    continue;
                 }
 
-                NMPPly = (3 * (depth - reduction) / 4) + ss->Ply;
-                i32 verification = Negamax<NonPVNode>(pos, ss, beta - 1, beta, depth - reduction, false);
-                NMPPly = 0;
+                prefetch(TT->GetCluster(pos.HashAfter(m)));
 
-                if (verification >= beta) {
+                const auto [moveFrom, moveTo] = m.Unpack();
+                const auto histIdx = MakePiece(us, bb.GetPieceAtIndex(moveFrom));
+
+                ss->CurrentMove = m;
+                ss->ContinuationHistory = &history->Continuations[0][1][histIdx][moveTo];
+                Nodes++;
+
+                pos.MakeMove(m);
+
+                score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1);
+
+                if (score >= probBeta) {
+                    //  Verify at a low depth
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
+                }
+
+                pos.UnmakeMove(m);
+
+                if (score >= probBeta) {
+                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
                     return score;
                 }
             }
