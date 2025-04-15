@@ -32,6 +32,7 @@ namespace Horsie::NNUE {
     inline vec_i16 vec_sub_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_sub_epi16(a, b); }
     inline vec_i16 vec_maddubs_epi16(const vec_i8 a, const vec_i8 b) { return _mm512_maddubs_epi16(a, b); }
     inline vec_i16 vec_mulhi_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_mulhi_epi16(a, b); }
+    inline vec_i16 vec_mulhrs_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_mulhrs_epi16(a, b); }
     inline vec_i16 vec_slli_epi16(const vec_i16 a, const i16 i) { return _mm512_slli_epi16(a, i); }
     inline vec_i16 vec_min_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_min_epi16(a, b); }
     inline vec_i16 vec_max_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_max_epi16(a, b); }
@@ -132,6 +133,7 @@ namespace Horsie::NNUE {
     inline vec_i16 vec_add_epi16(const vec_i16 a, const vec_i16 b) { return _mm_add_epi16(a, b); }
     inline vec_i16 vec_sub_epi16(const vec_i16 a, const vec_i16 b) { return _mm_sub_epi16(a, b); }
     inline vec_i16 vec_mulhi_epi16(const vec_i16 a, const vec_i16 b) { return _mm_mulhi_epi16(a, b); }
+    inline vec_i16 vec_mulhrs_epi16(const vec_i16 a, const vec_i16 b) { return _mm_mulhrs_epi16(a, b); }
     inline vec_i16 vec_slli_epi16(const vec_i16 a, const i16 i) { return _mm_slli_epi16(a, i); }
     inline vec_i16 vec_min_epi16(const vec_i16 a, const vec_i16 b) { return _mm_min_epi16(a, b); }
     inline vec_i16 vec_max_epi16(const vec_i16 a, const vec_i16 b) { return _mm_max_epi16(a, b); }
