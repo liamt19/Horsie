@@ -263,8 +263,8 @@ namespace Horsie::NNUE {
                     const auto clipped1a = vec_min_epi16(input1a, one);
                     const auto clipped1b = vec_min_epi16(input1b, one);
 
-                    const auto producta = vec_mulhi_epi16(vec_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
-                    const auto productb = vec_mulhi_epi16(vec_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+                    const auto producta = vec_mulhrs_epi16(vec_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
+                    const auto productb = vec_mulhrs_epi16(vec_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
 
                     const auto prod = vec_packus_epi16(producta, productb);
                     vec_storeu_epi8(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), prod);

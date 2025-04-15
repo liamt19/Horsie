@@ -79,6 +79,7 @@ namespace Horsie::NNUE {
     inline vec_i16 vec_add_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_add_epi16(a, b); }
     inline vec_i16 vec_sub_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_sub_epi16(a, b); }
     inline vec_i16 vec_mulhi_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_mulhi_epi16(a, b); }
+    inline vec_i16 vec_mulhrs_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_mulhrs_epi16(a, b); }
     inline vec_i16 vec_slli_epi16(const vec_i16 a, const i16 i) { return _mm256_slli_epi16(a, i); }
     inline vec_i16 vec_min_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_min_epi16(a, b); }
     inline vec_i16 vec_max_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_max_epi16(a, b); }
