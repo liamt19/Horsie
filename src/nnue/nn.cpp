@@ -343,11 +343,15 @@ namespace Horsie::NNUE {
 
 
         {
-            auto sums = vec_set1_ps(0.0f);
-            for (int i = 0; i < L3_SIZE; i += F32_CHUNK_SIZE)
-                sums = vec_fmadd_ps(AsVecF(l2Out[i]), AsVecF(net.L3Weights[outputBucket][i]), sums);
+            constexpr auto SUM_COUNT = 64 / sizeof(vec_ps);
+            vec_ps sumVecs[SUM_COUNT]{};
+            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
+                const auto weightVec = vec_loadu_ps(&net.L3Weights[outputBucket][i * F32_CHUNK_SIZE]);
+                const auto inputsVec = vec_loadu_ps(&l2Out[i * F32_CHUNK_SIZE]);
+                sumVecs[i % SUM_COUNT] = vec_fmadd_ps(inputsVec, weightVec, sumVecs[i % SUM_COUNT]);
+            }
 
-            L3Output = vec_hsum_ps(sums) + net.L3Biases[outputBucket];
+            L3Output = net.L3Biases[outputBucket] + vec_hsum_ps(sumVecs);
         }
 
         return static_cast<i32>(L3Output * OutputScale);
