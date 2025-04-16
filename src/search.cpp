@@ -2,8 +2,8 @@
 
 #include "search.h"
 
+#include "eval/eval.h"
 #include "movegen.h"
-#include "nnue/nn.h"
 #include "position.h"
 #include "precomputed.h"
 #include "search_options.h"
@@ -58,8 +58,6 @@ namespace Horsie {
             (ss + i)->PVLength = 0;
             (ss + i)->ContinuationHistory = &History.Continuations[0][0][0][0];
         }
-
-        NNUE::ResetCaches(RootPosition);
 
         i32 multiPV = std::min(i32(MultiPV), i32(RootMoves.size()));
 
@@ -261,7 +259,7 @@ namespace Horsie {
                     return ScoreDraw;
                 }
                 else {
-                    return Horsie::NNUE::GetEvaluation(pos);
+                    return Eval::GetEvaluation(pos);
                 }
             }
 
@@ -302,7 +300,7 @@ namespace Horsie {
             eval = ss->StaticEval;
         }
         else if (ss->TTHit) {
-            rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
+            rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : Eval::GetEvaluation(pos);
 
             eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
@@ -311,7 +309,7 @@ namespace Horsie {
             }
         }
         else {
-            rawEval = NNUE::GetEvaluation(pos);
+            rawEval = Eval::GetEvaluation(pos);
 
             eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
@@ -812,7 +810,7 @@ namespace Horsie {
         }
 
         if (ss->Ply >= MaxSearchStackPly - 1) {
-            return inCheck ? ScoreDraw : NNUE::GetEvaluation(pos);
+            return inCheck ? ScoreDraw : Eval::GetEvaluation(pos);
         }
 
         if (!isPV
@@ -826,7 +824,7 @@ namespace Horsie {
         }
         else {
             if (ss->TTHit) {
-                rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
+                rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : Eval::GetEvaluation(pos);
 
                 eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
@@ -835,7 +833,7 @@ namespace Horsie {
                 }
             }
             else {
-                rawEval = ((ss - 1)->CurrentMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
+                rawEval = ((ss - 1)->CurrentMove == Move::Null()) ? (-(ss - 1)->StaticEval) : Eval::GetEvaluation(pos);
 
                 eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
             }

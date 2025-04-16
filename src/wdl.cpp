@@ -26,9 +26,6 @@ namespace Horsie::WDL {
     }
 
     i32 NormalizeScore(i32 score) {
-        if (score == 0 || score > ScoreTTWin || score < ScoreTTLoss)
-            return score;
-
-        return static_cast<i32>((score * 100) / EvalNormalization);
+        return score;
     }
 }

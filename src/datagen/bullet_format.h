@@ -2,7 +2,6 @@
 
 #include "../bitboard.h"
 #include "../move.h"
-#include "../nnue/nn.h"
 #include "../position.h"
 #include "../threadpool.h"
 #include "bullet_format.h"

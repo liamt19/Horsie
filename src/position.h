@@ -3,8 +3,8 @@
 #include "bitboard.h"
 #include "defs.h"
 #include "enums.h"
+#include "eval/material.h"
 #include "move.h"
-#include "nnue/accumulator.h"
 #include "types.h"
 
 namespace Horsie {
@@ -15,13 +15,14 @@ namespace Horsie {
         ~Position();
         void LoadFromFEN(const std::string& fen);
 
-        NNUE::BucketCache CachedBuckets;
         StateInfo* State;
 
         Bitboard bb;
         Color ToMove;
         i32 FullMoves;
         i32 GamePly;
+
+        Eval::MaterialScore MatScore{};
 
         i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)];
         u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)];
@@ -47,10 +48,6 @@ namespace Horsie {
         constexpr i32 EPSquare() const { return State->EPSquare; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
         constexpr auto CastleStatus() const { return State->CastleStatus; }
-        constexpr auto accumulator() const { return State->accumulator; }
-
-        constexpr auto CurrAccumulator() const { return State->accumulator; }
-        constexpr auto NextAccumulator() const { return NextState()->accumulator; }
 
         constexpr bool GivesCheck(i32 pt, i32 sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
 
@@ -74,13 +71,14 @@ namespace Horsie {
         constexpr CastlingStatus GetCastlingForRook(i32 sq) const;
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 
-        template<bool UpdateNN>
         void MakeMove(Move move);
-        void MakeMove(Move move);
-
         void UnmakeMove(Move move);
         void MakeNullMove();
         void UnmakeNullMove();
+
+        void AddPiece(i32 idx, i32 pc, i32 pt);
+        void RemovePiece(i32 idx, i32 pc, i32 pt);
+        void MoveSimple(i32 from, i32 to, i32 pc, i32 pt);
 
         void DoCastling(i32 ourColor, i32 from, i32 to, bool undo);
 
@@ -123,10 +121,14 @@ namespace Horsie {
             return (pc * 16384) + static_cast<i32>(NonPawnHash(side) % 16384);
         }
 
+        inline auto GetMaterialScore() const {
+            const auto material = MatScore.get();
+            return ToMove == BLACK ? -material : material;
+        }
+
     private:
         static constexpr i32 StateStackSize = 1024; 
-        
-        NNUE::Accumulator* _accumulatorBlock;
+
         StateInfo* _stateBlock;
 
         StateInfo* _SentinelStart;

@@ -1,6 +1,5 @@
 
 #include "cuckoo.h"
-#include "nnue/nn.h"
 #include "precomputed.h"
 #include "uci.h"
 #include "zobrist.h"
@@ -11,7 +10,6 @@ using namespace Horsie;
 
 i32 main(i32 argc, char* argv[]) {
 
-    NNUE::LoadNetwork(std::string(EVALFILE));
     Precomputed::Init();
     Zobrist::Init();
     Cuckoo::Init();

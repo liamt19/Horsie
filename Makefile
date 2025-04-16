@@ -2,22 +2,10 @@
 EXE := horsie
 CXX := clang++
 
-SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/threadpool.cpp src/tt.cpp src/uci.cpp src/wdl.cpp src/zobrist.cpp src/util/dbg_hit.cpp src/nnue/nn.cpp src/datagen/selfplay.cpp src/3rdparty/zstd/zstddeclib.c
+SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/threadpool.cpp src/tt.cpp src/uci.cpp src/wdl.cpp src/zobrist.cpp src/util/dbg_hit.cpp src/eval/material.cpp src/datagen/selfplay.cpp src/3rdparty/zstd/zstddeclib.c
 
 
-ifeq ($(UNAME_S),Darwin)
-	DEFAULT_NET := $(shell cat network.txt)
-else
-	DEFAULT_NET := $(file < network.txt)
-endif
-
-ifndef EVALFILE
-    EVALFILE = $(DEFAULT_NET).bin
-    NO_EVALFILE_SET = true
-endif
-
-
-CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -funroll-loops
+CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -funroll-loops
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 
 
@@ -100,29 +88,21 @@ all: native release
 
 .DEFAULT_GOAL := native
 
-ifdef NO_EVALFILE_SET
-$(EVALFILE):
-	$(info Downloading default network $(DEFAULT_NET).bin)
-	curl -sOL https://github.com/liamt19/lizard-nets/releases/download/$(DEFAULT_NET)/$(DEFAULT_NET).bin
-
-download-net: $(EVALFILE)
-endif
-
-$(EXE): $(EVALFILE) $(SOURCES)
+$(EXE): $(SOURCES)
 	$(call build,NATIVE,native)
 
 native: $(EXE)
 
-avx2-bmi2: $(EVALFILE) $(SOURCES)
+avx2-bmi2: $(SOURCES)
 	$(call build,AVX2_BMI2,avx2-bmi2)
 
-v4: $(EVALFILE) $(SOURCES)
+v4: $(SOURCES)
 	$(call build,V4,v4)
 
-v3: $(EVALFILE) $(SOURCES)
+v3: $(SOURCES)
 	$(call build,V3,v3)
 
-v2: $(EVALFILE) $(SOURCES)
+v2: $(SOURCES)
 	$(call build,V2,v2)
 
 clean:

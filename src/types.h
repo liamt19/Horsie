@@ -242,8 +242,6 @@ namespace Horsie {
         i32 PliesFromNull = 0;
         CastlingStatus CastleStatus = CastlingStatus::None;
 
-        NNUE::Accumulator* accumulator;
     };
 
-    constexpr static i32 StateCopySize = sizeof(StateInfo) - sizeof(u64);
 }

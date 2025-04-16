@@ -3,7 +3,6 @@
 
 #include "cuckoo.h"
 #include "movegen.h"
-#include "nnue/nn.h"
 #include "precomputed.h"
 #include "util.h"
 #include "util/alloc.h"
@@ -30,22 +29,12 @@ namespace Horsie {
         _SentinelEnd = &_stateBlock[StateStackSize - 1];
         State = &_stateBlock[0];
 
-        _accumulatorBlock = AlignedAlloc<NNUE::Accumulator>(StateStackSize);
-        for (i32 i = 0; i < StateStackSize; i++) {
-            (_stateBlock + i)->accumulator = _accumulatorBlock + i;
-            *(_stateBlock + i)->accumulator = NNUE::Accumulator();
-        }
-
         IsChess960 = false;
 
         LoadFromFEN(fen);
-
-        NNUE::RefreshAccumulator(*this);
-        NNUE::ResetCaches(*this);
     }
 
     Position::~Position() {
-        AlignedFree(_accumulatorBlock);
         AlignedFree(_stateBlock);
     }
 
@@ -91,16 +80,7 @@ namespace Horsie {
     }
 
     void Position::MakeMove(Move move) {
-        MakeMove<true>(move);
-    }
-
-    template<bool UpdateNN>
-    void Position::MakeMove(Move move) {
-        std::memcpy(State + 1, State, StateCopySize);
-
-        if (UpdateNN) {
-            NNUE::MakeMoveNN(*this, move);
-        }
+        std::memcpy(State + 1, State, sizeof(StateInfo));
 
         //  Move onto the next state
         State++;
@@ -144,7 +124,7 @@ namespace Horsie {
         State->CapturedPiece = theirPiece;
         if (theirPiece != Piece::NONE) {
             //  Remove their piece, and update the hash
-            bb.RemovePiece(moveTo, theirColor, theirPiece);
+            RemovePiece(moveTo, theirColor, theirPiece);
             UpdateHash(theirColor, theirPiece, moveTo);
 
             if (theirPiece == Piece::ROOK) {
@@ -168,7 +148,8 @@ namespace Horsie {
             if (move.IsEnPassant()) {
                 i32 idxPawn = ((bb.Pieces[Piece::PAWN] & SquareBB(tempEPSquare - 8)) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
 
-                bb.RemovePiece(idxPawn, theirColor, Piece::PAWN);
+                RemovePiece(idxPawn, theirColor, Piece::PAWN);
+
                 UpdateHash(theirColor, Piece::PAWN, idxPawn);
 
                 //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
@@ -189,7 +170,7 @@ namespace Horsie {
         }
 
         if (!move.IsCastle()) {
-            bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
+            MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
 
             UpdateHash(ourColor, ourPiece, moveFrom);
             UpdateHash(ourColor, ourPiece, moveTo);
@@ -197,10 +178,10 @@ namespace Horsie {
 
         if (move.IsPromotion()) {
             //  Get rid of the pawn we just put there
-            bb.RemovePiece(moveTo, ourColor, ourPiece);
+            RemovePiece(moveTo, ourColor, ourPiece);
 
             //  And replace it with the promotion piece
-            bb.AddPiece(moveTo, ourColor, move.PromotionTo());
+            AddPiece(moveTo, ourColor, move.PromotionTo());
 
             UpdateHash(ourColor, ourPiece, moveTo);
             UpdateHash(ourColor, move.PromotionTo(), moveTo);
@@ -226,11 +207,11 @@ namespace Horsie {
 
         if (move.IsPromotion()) {
             //  Remove the promotion piece and replace it with a pawn
-            bb.RemovePiece(moveTo, ourColor, ourPiece);
+            RemovePiece(moveTo, ourColor, ourPiece);
 
             ourPiece = Piece::PAWN;
 
-            bb.AddPiece(moveTo, ourColor, ourPiece);
+            AddPiece(moveTo, ourColor, ourPiece);
         }
         else if (move.IsCastle()) {
             //  Put both pieces back
@@ -239,7 +220,7 @@ namespace Horsie {
 
         if (!move.IsCastle()) {
             //  Put our piece back to the square it came from.
-            bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+            MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
         }
 
         if (State->CapturedPiece != Piece::NONE) {
@@ -248,11 +229,11 @@ namespace Horsie {
                 //  If the move was an en passant, put the captured pawn back
 
                 i32 idxPawn = moveTo + ShiftUpDir(ToMove);
-                bb.AddPiece(idxPawn, theirColor, Piece::PAWN);
+                AddPiece(idxPawn, theirColor, Piece::PAWN);
             }
             else {
                 //  Otherwise it was a capture, so put the captured piece back
-                bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
+                AddPiece(moveTo, theirColor, State->CapturedPiece);
             }
         }
 
@@ -267,8 +248,7 @@ namespace Horsie {
     }
 
     void Position::MakeNullMove() {
-        std::memcpy(State + 1, State, StateCopySize);
-        NNUE::MakeNullMove(*this);
+        std::memcpy(State + 1, State, sizeof(StateInfo));
 
         State++;
 
@@ -292,6 +272,23 @@ namespace Horsie {
         ToMove = Not(ToMove);
     }
 
+    
+    void Position::MoveSimple(i32 from, i32 to, i32 pc, i32 pt) {
+        bb.MoveSimple(from, to, pc, pt);
+        MatScore.subAdd(pt, pc, from, to);
+    }
+
+    void Position::AddPiece(i32 idx, i32 pc, i32 pt) {
+        bb.AddPiece(idx, pc, pt);
+        MatScore.add(pt, pc, idx);
+    }
+
+    void Position::RemovePiece(i32 idx, i32 pc, i32 pt) {
+        bb.RemovePiece(idx, pc, pt);
+        MatScore.sub(pt, pc, idx);
+    }
+
+
     void Position::DoCastling(i32 ourColor, i32 from, i32 to, bool undo = false) {
         const bool kingSide = to > from;
         const auto rfrom = to;
@@ -299,18 +296,18 @@ namespace Horsie {
         const auto kto = (kingSide ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1)) ^ (ourColor * 56);
 
         if (undo) {
-            bb.RemovePiece(kto, ourColor, KING);
-            bb.RemovePiece(rto, ourColor, ROOK);
+            RemovePiece(kto, ourColor, KING);
+            RemovePiece(rto, ourColor, ROOK);
 
-            bb.AddPiece(from, ourColor, KING);
-            bb.AddPiece(rfrom, ourColor, ROOK);
+            AddPiece(from, ourColor, KING);
+            AddPiece(rfrom, ourColor, ROOK);
         }
         else {
-            bb.RemovePiece(from, ourColor, KING);
-            bb.RemovePiece(rfrom, ourColor, ROOK);
+            RemovePiece(from, ourColor, KING);
+            RemovePiece(rfrom, ourColor, ROOK);
 
-            bb.AddPiece(kto, ourColor, KING);
-            bb.AddPiece(rto, ourColor, ROOK);
+            AddPiece(kto, ourColor, KING);
+            AddPiece(rto, ourColor, ROOK);
 
             UpdateHash(ourColor, KING, from);
             UpdateHash(ourColor, ROOK, rfrom);
@@ -636,7 +633,7 @@ namespace Horsie {
         for (i32 i = 0; i < size; i++) {
             Move m = movelist[i].move;
 
-            MakeMove<false>(m);
+            MakeMove(m);
             n += Perft(depth - 1);
             UnmakeMove(m);
         }
@@ -653,7 +650,7 @@ namespace Horsie {
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;
 
-            MakeMove<false>(m);
+            MakeMove(m);
             n = Perft(depth - 1);
             total += n;
             UnmakeMove(m);
@@ -668,10 +665,10 @@ namespace Horsie {
         bb.Reset();
 
         for (i32 sq = static_cast<i32>(Square::A2); sq <= static_cast<i32>(Square::H2); sq++)
-            bb.AddPiece(sq, WHITE, PAWN);
+            AddPiece(sq, WHITE, PAWN);
 
         for (i32 sq = static_cast<i32>(Square::A7); sq <= static_cast<i32>(Square::H7); sq++)
-            bb.AddPiece(sq, BLACK, PAWN);
+            AddPiece(sq, BLACK, PAWN);
 
         IsChess960 = true;
         i32 wBackrank[8] = {};
@@ -723,8 +720,8 @@ namespace Horsie {
         FillWithScharnaglNumber(bIdx, bBackrank);
 
         for (i32 sq = 0; sq < 8; sq++) {
-            bb.AddPiece(static_cast<i32>(Square::A1) + sq, WHITE, wBackrank[sq]);
-            bb.AddPiece(static_cast<i32>(Square::A8) + sq, BLACK, bBackrank[sq]);
+            AddPiece(static_cast<i32>(Square::A1) + sq, WHITE, wBackrank[sq]);
+            AddPiece(static_cast<i32>(Square::A8) + sq, BLACK, bBackrank[sq]);
 
             if (wBackrank[sq] == KING)
                 State->KingSquares[WHITE] = static_cast<i32>(Square::A1) + sq;
@@ -749,7 +746,7 @@ namespace Horsie {
         FullMoves = 1;
 
         State = StartingState();
-        std::memset(State, 0, StateCopySize);
+        std::memset(State, 0, sizeof(StateInfo));
         State->CastleStatus = CastlingStatus::None;
         State->HalfmoveClock = 0;
         State->PliesFromNull = 0;
@@ -773,7 +770,7 @@ namespace Horsie {
                 i32 pc = isupper(token) ? WHITE : BLACK;
                 i32 pt = Piece(idx);
 
-                bb.AddPiece(sq, pc, pt);
+                AddPiece(sq, pc, pt);
                 ++sq;
             }
         }
@@ -814,7 +811,6 @@ namespace Horsie {
 
         State->CapturedPiece = Piece::NONE;
 
-        NNUE::RefreshAccumulator(*this);
     }
 
     std::string Position::GetFEN() const {

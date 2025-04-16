@@ -3,8 +3,8 @@
 
 #include "cuckoo.h"
 #include "datagen/selfplay.h"
+#include "eval/eval.h"
 #include "movegen.h"
-#include "nnue/nn.h"
 #include "position.h"
 #include "precomputed.h"
 #include "search_bench.h"
@@ -289,7 +289,8 @@ namespace Horsie::UCI {
     }
 
     void UCIClient::HandleEvalCommand() {
-        std::cout << "Evaluation: " << NNUE::GetEvaluation(pos) << std::endl << std::endl;
+        const auto ev = Eval::GetEvaluation(pos);
+        std::cout << "Evaluation: " << ev << std::endl << std::endl;
     }
 
     void UCIClient::HandleWaitCommand() {
@@ -371,7 +372,7 @@ namespace Horsie::UCI {
         bool found{};
         Move m = pos.TryFindMove(moveStr, found);
         if (found)
-            pos.MakeMove<true>(m);
+            pos.MakeMove(m);
     }
 
 
