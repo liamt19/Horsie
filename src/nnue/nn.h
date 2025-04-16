@@ -25,13 +25,18 @@ namespace Horsie::NNUE {
     template<typename T>
     using Span = std::span<T>;
 
+    using Util::NDArray;
+
     template <typename T, typename W, typename U>
     struct alignas(64) QuantisedNetworkBase {
         T FTWeights[INPUT_SIZE * L1_SIZE * INPUT_BUCKETS];
         T FTBiases[L1_SIZE];
-        W L1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
+        union {
+            W L1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
+            W L1WeightsAlt[OUTPUT_BUCKETS][L1_SIZE][L2_SIZE];
+        };
         U L1Biases[OUTPUT_BUCKETS][L2_SIZE];
-        U L2Weights[L2_SIZE][OUTPUT_BUCKETS][L3_SIZE];
+        U L2Weights[L2_SIZE * 2][OUTPUT_BUCKETS][L3_SIZE];
         U L2Biases[OUTPUT_BUCKETS][L3_SIZE];
         U L3Weights[L3_SIZE][OUTPUT_BUCKETS];
         U L3Biases[OUTPUT_BUCKETS];
@@ -42,12 +47,21 @@ namespace Horsie::NNUE {
     struct alignas(64) NetworkBase {
         std::array<T, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS> FTWeights;
         std::array<T, L1_SIZE>                              FTBiases;
-        Util::NDArray<W, OUTPUT_BUCKETS, L1_SIZE * L2_SIZE> L1Weights;
-        Util::NDArray<U, OUTPUT_BUCKETS, L2_SIZE>           L1Biases;
-        Util::NDArray<U, OUTPUT_BUCKETS, L2_SIZE * L3_SIZE> L2Weights;
-        Util::NDArray<U, OUTPUT_BUCKETS, L3_SIZE>           L2Biases;
-        Util::NDArray<U, OUTPUT_BUCKETS, L3_SIZE>           L3Weights;
-        std::array<U, OUTPUT_BUCKETS>                       L3Biases;
+
+        union {
+            NDArray<W, OUTPUT_BUCKETS, L1_SIZE * L2_SIZE> L1Weights;
+            NDArray<W, OUTPUT_BUCKETS, L1_SIZE,  L2_SIZE> L1WeightsAlt;
+        };
+        NDArray<U, OUTPUT_BUCKETS, L2_SIZE>           L1Biases;
+
+        union {
+            NDArray<U, OUTPUT_BUCKETS, L2_SIZE * 2 * L3_SIZE> L2Weights;
+            NDArray<U, OUTPUT_BUCKETS, L2_SIZE * 2,  L3_SIZE> L2WeightsAlt;
+        };
+        NDArray<U, OUTPUT_BUCKETS, L3_SIZE> L2Biases;
+
+        NDArray<U, OUTPUT_BUCKETS, L3_SIZE> L3Weights;
+        std::array<U, OUTPUT_BUCKETS>       L3Biases;
     };
     using Network = NetworkBase<i16, i8, float>;
 
@@ -90,16 +104,33 @@ namespace Horsie::NNUE {
     i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective);
 
 
-    constexpr i32 KingBuckets[] = {
-         0,  1,  2,  3, 17, 16, 15, 14,
-         4,  5,  6,  7, 21, 20, 19, 18,
-         8,  9, 10, 11, 25, 24, 23, 22,
-         8,  9, 10, 11, 25, 24, 23, 22,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
+    constexpr i32 BucketScheme[] = {
+        0,  1,  2,  3,
+        4,  5,  6,  7,
+        8,  8,  9,  9,
+        10, 10, 10, 10,
+        11, 11, 11, 11,
+        11, 11, 11, 11,
+        12, 12, 12, 12,
+        12, 12, 12, 12,
     };
+
+    constexpr auto KingBuckets = []{
+        std::array<i32, 64> buckets{};
+        
+        const auto nBuckets = *std::max_element(BucketScheme, &BucketScheme[32]) + 1;
+        for (i32 rank = 0; rank < 8; rank++) {
+            for (i32 file = 0; file < 4; file++) {
+                const auto b = BucketScheme[rank * 4 + file];
+                const auto dst = rank * 8 + file;
+                
+                buckets[dst] = b;
+                buckets[dst ^ 7] = b + nBuckets;
+            }
+        }
+
+        return buckets;
+    }();
 
     constexpr i32 BucketForPerspective(i32 ksq, i32 perspective) {
         return (KingBuckets[(ksq ^ (56 * perspective))]);

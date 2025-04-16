@@ -4,16 +4,16 @@
 #include "simd.h"
 
 namespace Horsie::NNUE {
-    constexpr auto INPUT_BUCKETS = 14;
+    constexpr auto INPUT_BUCKETS = 13;
     constexpr auto INPUT_SIZE = 768;
-    constexpr auto L1_SIZE = 2048;
+    constexpr auto L1_SIZE = 1536;
     constexpr auto L2_SIZE = 16;
     constexpr auto L3_SIZE = 32;
     constexpr auto OUTPUT_BUCKETS = 8;
 
     constexpr auto FT_QUANT = 255;
-    constexpr auto FT_SHIFT = 10;
-    constexpr auto L1_QUANT = 132;
+    constexpr auto FT_SHIFT = 9;
+    constexpr auto L1_QUANT = 128;
     constexpr auto OutputScale = 400;
 
     constexpr auto U8_CHUNK_SIZE = sizeof(vec_i8) / sizeof(u8);
@@ -26,7 +26,7 @@ namespace Horsie::NNUE {
     constexpr auto NNZ_OUTPUTS_PER_CHUNK = NNZ_CHUNK_SIZE / 8;
 
     // 8 for Avx512 and Avx2, 4 for Ssse3 + NEON
-    constexpr auto NNZ_INCREMENT = (NNZ_INPUT_SIMD_WIDTH < 8) ? 4 : 8;
+    constexpr auto NNZ_INCREMENT = 8;
 
 
     constexpr auto L1_CHUNK_PER_32 = sizeof(i32) / sizeof(i8);

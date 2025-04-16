@@ -48,6 +48,10 @@ namespace Horsie::NNUE {
         return _mm512_reduce_add_ps(v[0]);
     }
 
+    inline float vec_hsum_ps(vec_ps vec) {
+        return _mm512_reduce_add_ps(vec);
+    }
+
     inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
         const vec_i16 product16 = vec_maddubs_epi16(vec0, vec1);
         const vec_i32 product32 = vec_madd_epi16(product16, vec_set1_epi16(1));
@@ -96,6 +100,18 @@ namespace Horsie::NNUE {
         const auto sum_128 = _mm_add_ps(_mm256_castps256_ps128(vec), _mm256_extractf128_ps(vec, 1));
         const auto sum_64 = _mm_add_ps(sum_128, _mm_movehl_ps(sum_128, sum_128));
         const auto sum_32 = _mm_add_ss(sum_64, _mm_shuffle_ps(sum_64, sum_64, 1));
+
+        return _mm_cvtss_f32(sum_32);
+    }
+
+    inline float vec_hsum_ps(vec_ps vec) {
+        __m128 sum_128 = _mm_add_ps(_mm256_castps256_ps128(vec), _mm256_extractf128_ps(vec, 1));
+
+        __m128 upper_64 = _mm_movehl_ps(sum_128, sum_128);
+        __m128 sum_64 = _mm_add_ps(sum_128, upper_64);
+
+        __m128 upper_32 = _mm_shuffle_ps(sum_64, sum_64, 1);
+        __m128 sum_32 = _mm_add_ss(sum_64, upper_32);
 
         return _mm_cvtss_f32(sum_32);
     }

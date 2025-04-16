@@ -103,7 +103,7 @@ all: native release
 ifdef NO_EVALFILE_SET
 $(EVALFILE):
 	$(info Downloading default network $(DEFAULT_NET).bin)
-	curl -sOL https://github.com/liamt19/lizard-nets/releases/download/$(DEFAULT_NET)/$(DEFAULT_NET).bin
+	curl -sOL https://github.com/gab8192/Obsidian-nets/releases/download/nets/$(DEFAULT_NET).bin
 
 download-net: $(EVALFILE)
 endif
