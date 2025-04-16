@@ -49,12 +49,6 @@ namespace Horsie::NNUE {
         return _mm512_reduce_add_ps(v[0]);
     }
 
-    inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
-        const vec_i16 product16 = vec_maddubs_epi16(vec0, vec1);
-        const vec_i32 product32 = vec_madd_epi16(product16, vec_set1_epi16(1));
-        return vec_add_epi32(sum, product32);
-    }
-
 #elif defined(AVX256)
 
     using vec_i8 = __m256i;
@@ -100,12 +94,6 @@ namespace Horsie::NNUE {
         const auto sum_32 = _mm_add_ss(sum_64, _mm_shuffle_ps(sum_64, sum_64, 1));
 
         return _mm_cvtss_f32(sum_32);
-    }
-
-    inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
-        const vec_i16 product16 = vec_maddubs_epi16(vec0, vec1);
-        const vec_i32 product32 = vec_madd_epi16(product16, vec_set1_epi16(1));
-        return vec_add_epi32(sum, product32);
     }
 
 #else
@@ -154,12 +142,19 @@ namespace Horsie::NNUE {
         return _mm_cvtss_f32(sum_32);
     }
 
+#endif
+
     inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
         const vec_i16 product16 = vec_maddubs_epi16(vec0, vec1);
         const vec_i32 product32 = vec_madd_epi16(product16, vec_set1_epi16(1));
         return vec_add_epi32(sum, product32);
     }
 
-#endif
+    inline vec_i32 vec_dpbusd_epi32x2(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1, const vec_i8 vec2, const vec_i8 vec3) {
+        const auto p0 = vec_maddubs_epi16(vec0, vec1);
+        const auto p1 = vec_maddubs_epi16(vec2, vec3);
+        const vec_i32 product32 = vec_madd_epi16(vec_add_epi16(p0, p1), vec_set1_epi16(1));
+        return vec_add_epi32(sum, product32);
+    }
 
 }

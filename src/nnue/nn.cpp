@@ -246,9 +246,6 @@ namespace Horsie::NNUE {
 
             i32 offset = 0;
 
-            const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
-            vec_128i baseVec = _mm_setzero_si128();
-
             for (const auto acc : { us, them }) {
                 for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
                     const auto input0a = vec_load_epi16(reinterpret_cast<const vec_i16*>(&acc[i + 0 * I16_CHUNK_SIZE + 0]));
@@ -268,39 +265,65 @@ namespace Horsie::NNUE {
 
                     const auto prod = vec_packus_epi16(producta, productb);
                     vec_storeu_epi8(reinterpret_cast<vec_i8*>(&ft_outputs[offset + i]), prod);
-
-                    const auto nnz_mask = vec_nnz_mask(prod);
-
-                    for (i32 j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++) {
-                        i32 lookup = (nnz_mask >> (j * 8)) & 0xFF;
-                        auto offsets = nnzTable.Entries[lookup];
-                        _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
-
-                        nnzCount += std::popcount(static_cast<u32>(lookup));
-                        baseVec = _mm_add_epi16(baseVec, baseInc);
-                    }
                 }
 
                 offset += L1_PAIR_COUNT;
+            }
+
+
+            vec_128i baseVec = _mm_setzero_si128();
+            const vec_128i baseInc = _mm_set1_epi16(static_cast<u16>(NNZ_INCREMENT));
+
+            const auto prods = reinterpret_cast<vec_i32*>(ft_outputs);
+            for (i32 i = 0; i < L1_SIZE / L1_CHUNK_PER_32 / 16; i++) {
+                
+                uint32_t nnzMask = 0;
+                for (size_t j = 0; j < 16 / I32_CHUNK_SIZE; j++) {
+                    nnzMask |= vec_nnz_mask(prods[i * 16 / I32_CHUNK_SIZE + j]) << (j * I32_CHUNK_SIZE);
+                }
+
+                for (i32 j = 0; j < 16 / 8; j++) {
+                    i32 lookup = (nnzMask >> (j * 8)) & 0xFF;
+                    auto offsets = nnzTable.Entries[lookup];
+                    _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
+
+                    nnzCount += std::popcount(static_cast<u32>(lookup));
+                    baseVec = _mm_add_epi16(baseVec, baseInc);
+                }
             }
         }
 
 
         {
-            const auto inputs = Span<i8>(ft_outputs);
+            const auto inputs = (i32*)(Span<i8>(ft_outputs).data());
             const auto& weights = net.L1Weights[outputBucket];
             const auto& biases = net.L1Biases[outputBucket];
             const auto outputs = L1Outputs;
 
             vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
 
-            const auto inputs32 = (i32*)(inputs.data());
-            for (i32 i = 0; i < nnzCount; i++) {
-                const auto index = nnzIndices[i];
-                const auto input32 = vec_set1_epi32(inputs32[index]);
-                const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
+            i32 nnzI = 0;
+            for (; nnzI < nnzCount - 1; nnzI += 2) {
+                const auto i0 = nnzIndices[nnzI + 0];
+                const auto i1 = nnzIndices[nnzI + 1];
+
+                const auto inp0 = vec_set1_epi32(inputs[i0]);
+                const auto inp1 = vec_set1_epi32(inputs[i1]);
+
+                const auto w0 = reinterpret_cast<const vec_i8*>(&weights[i0 * L1_CHUNK_PER_32 * L2_SIZE]);
+                const auto w1 = reinterpret_cast<const vec_i8*>(&weights[i1 * L1_CHUNK_PER_32 * L2_SIZE]);
+
+                for (i32 k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++) {
+                    sums[k] = vec_dpbusd_epi32x2(sums[k], inp0, w0[k], inp1, w1[k]);
+                }
+            }
+
+            for (; nnzI < nnzCount; nnzI++) {
+                const auto i0 = nnzIndices[nnzI];
+                const auto inp0 = vec_set1_epi32(inputs[i0]);
+                const auto w0 = reinterpret_cast<const vec_i8*>(&weights[i0 * L1_CHUNK_PER_32 * L2_SIZE]);
                 for (i32 k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
-                    sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
+                    sums[k] = vec_dpbusd_epi32(sums[k], inp0, w0[k]);
             }
 
             const auto sumMul = vec_set1_ps(L1_MUL);
