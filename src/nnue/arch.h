@@ -14,7 +14,7 @@ namespace Horsie::NNUE {
     constexpr auto FT_QUANT = 255;
     constexpr auto FT_SHIFT = 9;
     constexpr auto L1_QUANT = 128;
-    constexpr auto OutputScale = 200;
+    constexpr auto OutputScale = 400;
 
     constexpr auto U8_CHUNK_SIZE = sizeof(vec_i8) / sizeof(u8);
     constexpr auto I16_CHUNK_SIZE = sizeof(vec_i16) / sizeof(i16);
