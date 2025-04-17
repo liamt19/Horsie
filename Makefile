@@ -12,7 +12,7 @@ else
 endif
 
 ifndef EVALFILE
-    EVALFILE = $(DEFAULT_NET).bin
+    EVALFILE = $(DEFAULT_NET).nnue
     NO_EVALFILE_SET = true
 endif
 
@@ -102,9 +102,8 @@ all: native release
 
 ifdef NO_EVALFILE_SET
 $(EVALFILE):
-	$(info Downloading default network $(DEFAULT_NET).bin)
-	curl -sOL https://github.com/liamt19/lizard-nets/releases/download/$(DEFAULT_NET)/$(DEFAULT_NET).bin
-
+	$(info Downloading default network $(DEFAULT_NET).nnue)
+	curl -sOL https://github.com/aronpetko/integral-networks/releases/download/$(DEFAULT_NET)/$(DEFAULT_NET).nnue
 download-net: $(EVALFILE)
 endif
 

@@ -4,17 +4,17 @@
 #include "simd.h"
 
 namespace Horsie::NNUE {
-    constexpr auto INPUT_BUCKETS = 14;
+    constexpr auto INPUT_BUCKETS = 12;
     constexpr auto INPUT_SIZE = 768;
-    constexpr auto L1_SIZE = 2048;
+    constexpr auto L1_SIZE = 1536;
     constexpr auto L2_SIZE = 16;
     constexpr auto L3_SIZE = 32;
     constexpr auto OUTPUT_BUCKETS = 8;
 
     constexpr auto FT_QUANT = 255;
-    constexpr auto FT_SHIFT = 10;
-    constexpr auto L1_QUANT = 132;
-    constexpr auto OutputScale = 400;
+    constexpr auto FT_SHIFT = 9;
+    constexpr auto L1_QUANT = 128;
+    constexpr auto OutputScale = 200;
 
     constexpr auto U8_CHUNK_SIZE = sizeof(vec_i8) / sizeof(u8);
     constexpr auto I16_CHUNK_SIZE = sizeof(vec_i16) / sizeof(i16);

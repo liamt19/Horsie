@@ -55,40 +55,26 @@ namespace Horsie::NNUE {
             stream.read(reinterpret_cast<char*>(dst), sizeof(QuantisedNetwork));
         }
 
-        auto& tempL1 = UQNet->L1Weights;
+        std::memcpy(&net, dst, sizeof(Network));
 
-        for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
-            net.FTWeights[i] = UQNet->FTWeights[i];
+        for (int b = 0; b < OUTPUT_BUCKETS; b++) {
+            for (int l1 = 0; l1 < L1_SIZE; l1++) {
+                for (int l2 = 0; l2 < L2_SIZE; l2++) {
+                    net.L1WeightsAlt[b][l1][l2] = UQNet->L1WeightsAlt[b][l2][l1];
+                }
+            }
+        }
 
-        for (size_t i = 0; i < L1_SIZE; i++)
-            net.FTBiases[i] = UQNet->FTBiases[i];
-
-        PermuteFT(Span<i16>(net.FTWeights), Span<i16>(net.FTBiases));
-        PermuteL1(tempL1);
-
-        for (i32 bucket = 0; bucket < OUTPUT_BUCKETS; bucket++) {
-
-            for (i32 i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
+        const auto tmp = std::make_shared<Network>(net);
+        for (i32 b = 0; b < OUTPUT_BUCKETS; b++) {
+            for (i32 i = 0; i < L1_SIZE; i += 4)
                 for (i32 j = 0; j < L2_SIZE; ++j)
-                    for (i32 k = 0; k < L1_CHUNK_PER_32; ++k)
-                        net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
-                        + j * L1_CHUNK_PER_32
-                        + k] = tempL1[i * L1_CHUNK_PER_32 + k][bucket][j];
+                    for (i32 k = 0; k < 4; ++k)
+                        net.L1Weights[b][i * L2_SIZE + j * 4 + k] = tmp->L1WeightsAlt[b][i + k][j];
 
-            for (i32 i = 0; i < L2_SIZE; ++i)
-                net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
-
-            for (i32 i = 0; i < L2_SIZE; ++i)
-                for (i32 j = 0; j < L3_SIZE; ++j)
-                    net.L2Weights[bucket][i * L3_SIZE + j] = UQNet->L2Weights[i][bucket][j];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L2Biases[bucket][i] = UQNet->L2Biases[bucket][i];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L3Weights[bucket][i] = UQNet->L3Weights[i][bucket];
-
-            net.L3Biases[bucket] = UQNet->L3Biases[bucket];
+            for (i32 l2 = 0; l2 < L2_SIZE; ++l2)
+                for (i32 l3 = 0; l3 < L3_SIZE; ++l3)
+                    net.L2WeightsAlt[b][l2][l3] = UQNet->L2WeightsAlt[b][l3][l2];
         }
 
         auto ws = reinterpret_cast<__m128i*>(&net.FTWeights);
@@ -225,7 +211,7 @@ namespace Horsie::NNUE {
         return GetEvaluation(pos, outputBucket);
     }
 
-    i32 GetEvaluation(Position& pos, i32 outputBucket) {
+    i32 GetEvaluation(Position& pos, i32 bucket) {
         auto accumulator = pos.CurrAccumulator();
         ProcessUpdates(pos);
 
@@ -233,12 +219,19 @@ namespace Horsie::NNUE {
         auto them = Span<i16>(accumulator->Sides[Not(pos.ToMove)]);
 
         i8 ft_outputs[L1_SIZE];
-        float L1Outputs[L2_SIZE];
-        float L2Outputs[L3_SIZE];
+
+        float l1_output[L2_SIZE]{};
+        i32 l1_sums[L2_SIZE]{};
+
+        float l2_output[L3_SIZE]{};
+        float l2_sums[L3_SIZE]{};
+
         float L3Output = 0;
 
         i32 nnzCount = 0;
         u16 nnzIndices[L1_SIZE / L1_CHUNK_PER_32];
+
+        const auto sumMul = vec_set1_ps(L1_MUL);
 
         {
             const auto zero = vec_setzero_epi16();
@@ -286,80 +279,65 @@ namespace Horsie::NNUE {
         }
 
 
+        const auto zero = vec_set1_ps(0.0f);
+        const auto one = vec_set1_ps(1.0f);
+
         {
-            const auto inputs = Span<i8>(ft_outputs);
-            const auto& weights = net.L1Weights[outputBucket];
-            const auto& biases = net.L1Biases[outputBucket];
-            const auto outputs = L1Outputs;
-
-            vec_i32 sums[L2_SIZE / I32_CHUNK_SIZE]{};
-
-            const auto inputs32 = (i32*)(inputs.data());
             for (i32 i = 0; i < nnzCount; i++) {
-                const auto index = nnzIndices[i];
-                const auto input32 = vec_set1_epi32(inputs32[index]);
-                const auto weight = reinterpret_cast<const vec_i8*>(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
-                for (i32 k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
-                    sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
+                const auto idx = nnzIndices[i] * 4;
+                const auto feature_vector = vec_set1_epi32(*reinterpret_cast<i32*>(&ft_outputs[idx]));
+                for (i32 j = 0; j < L2_SIZE; j += I32_CHUNK_SIZE) {
+                    const auto weight = *reinterpret_cast<const vec_i8*>(&net.L1WeightsAlt[bucket][idx + j / 4]);
+
+                    auto& features = *reinterpret_cast<vec_i32*>(&l1_sums[j]);
+                    features = vec_dpbusd_epi32(features, feature_vector, weight);
+                }
             }
 
-            const auto sumMul = vec_set1_ps(L1_MUL);
+            for (i32 i = 0; i < L2_SIZE; i += F32_CHUNK_SIZE) {
+                const auto bias_vector = *reinterpret_cast<vec_ps*>(&net.L1Biases[bucket][i]);
+                const auto float_vector = vec_cvtepi32_ps(*reinterpret_cast<vec_i32*>(&l1_sums[i]));
+                const auto casted_sum = vec_fmadd_ps(float_vector, sumMul, bias_vector);
 
-            const auto zero = vec_set1_ps(0.0f);
-            const auto one = vec_set1_ps(1.0f);
-            for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
-                const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
-                const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
-                const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
+                auto& features = *reinterpret_cast<vec_ps*>(&l1_output[i]);
+                features = vec_min_ps(vec_max_ps(casted_sum, zero), one);
             }
         }
 
 
         {
-            const auto inputs = L1Outputs;
-            const auto& weights = net.L2Weights[outputBucket];
-            const auto& biases = net.L2Biases[outputBucket];
-            const auto outputs = L2Outputs;
-
-            vec_ps sumVecs[L3_SIZE / F32_CHUNK_SIZE];
-
-            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
-                sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+            std::memcpy(l2_sums, &net.L2Biases[bucket], sizeof(l2_sums));
 
             for (i32 i = 0; i < L2_SIZE; ++i) {
-                const auto inputVec = vec_set1_ps(inputs[i]);
-                const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_SIZE]);
-                for (i32 j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
-                    sumVecs[j] = vec_fmadd_ps(inputVec, weight[j], sumVecs[j]);
+                const auto l1_vector = vec_set1_ps(l1_output[i]);
+                for (i32 j = 0; j < L3_SIZE; j += F32_CHUNK_SIZE) {
+                    const auto weight_vector = *reinterpret_cast<const vec_ps*>(&net.L2WeightsAlt[bucket][i][j]);
+
+                    auto& features = *reinterpret_cast<vec_ps*>(&l2_sums[j]);
+                    features = vec_fmadd_ps(l1_vector, weight_vector, features);
+                }
             }
 
-            const auto zero = vec_set1_ps(0.0f);
-            const auto one = vec_set1_ps(1.0f);
-            for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
-                const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
+            for (i32 i = 0; i < L3_SIZE; i += F32_CHUNK_SIZE) {
+                const auto& sum_vector = *reinterpret_cast<vec_ps*>(&l2_sums[i]);
+
+                auto& features = *reinterpret_cast<vec_ps*>(&l2_output[i]);
+                features = vec_min_ps(vec_max_ps(sum_vector, zero), one);
             }
         }
 
 
         {
-            const auto& inputs = L2Outputs;
-            const auto& weights = net.L3Weights[outputBucket];
-            const auto bias = net.L3Biases[outputBucket];
-
             constexpr auto SUM_COUNT = 64 / sizeof(vec_ps);
             vec_ps sumVecs[SUM_COUNT]{};
 
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++) {
-                const auto weightVec = vec_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
-                const auto inputsVec = vec_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
+                const auto weightVec = vec_loadu_ps(&net.L3Weights[bucket][i * F32_CHUNK_SIZE]);
+                const auto inputsVec = vec_loadu_ps(&l2_output[i * F32_CHUNK_SIZE]);
                 sumVecs[i % SUM_COUNT] = vec_fmadd_ps(inputsVec, weightVec, sumVecs[i % SUM_COUNT]);
             }
 
-            L3Output = bias + vec_hsum_ps(sumVecs);
+            L3Output = net.L3Biases[bucket] + vec_hsum_ps(sumVecs);
         }
 
         return static_cast<i32>(L3Output * OutputScale);
