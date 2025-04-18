@@ -73,7 +73,7 @@ namespace Horsie::Zobrist {
         hash ^= BlackHash;
     }
 
-    u64 GetHash(Horsie::Position& position, u64* pawnHash, u64* nonPawnHash) {
+    u64 GetHash(Horsie::Position& position, u64* pawnHash, u64* majorHash, u64* nonPawnHash) {
         u64 hash = 0;
 
         Horsie::Bitboard& bb = position.bb;
@@ -90,6 +90,10 @@ namespace Horsie::Zobrist {
             }
             else {
                 *nonPawnHash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
+
+                if (pt == ROOK || pt == QUEEN) {
+                    *majorHash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
+                }
             }
         }
 
@@ -103,6 +107,10 @@ namespace Horsie::Zobrist {
             }
             else {
                 *nonPawnHash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
+                
+                if (pt == ROOK || pt == QUEEN) {
+                    *majorHash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
+                }
             }
         }
 

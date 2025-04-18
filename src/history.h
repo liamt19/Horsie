@@ -43,12 +43,27 @@ namespace Horsie {
     template<typename T, i32 D, i32 Size>
     struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
+    struct CorrectionEntry {
+        i16 value{};
+
+        inline auto update(i32 bonus) -> void {
+            value += bonus - value * std::abs(bonus) / Limit;
+        }
+
+        [[nodiscard]] inline operator i32() const {
+            return value;
+        }
+
+        static constexpr i32 Limit = 1024;
+        static constexpr i32 MaxBonus = Limit / 4;
+    };
+
     using MainHistoryT = Stats<i16, 16384, 2, 64 * 64>;
     using CaptureHistoryT = Stats<i16, 16384, 2, 6, 64, 6>;
     using PlyHistoryT = Stats<i16, LowPlyClamp, LowPlyCount, 64 * 64>;
     using PieceToHistory = Stats<i16, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
-    using CorrectionT = Util::NDArray<i16, 2, 16384>;
+    using CorrectionT = Util::NDArray<CorrectionEntry, 2, 16384>;
 
     struct alignas(64) HistoryTable {
     public:
@@ -58,6 +73,8 @@ namespace Horsie {
         PlyHistoryT PlyHistory{};
         CorrectionT PawnCorrection{};
         CorrectionT NonPawnCorrection{};
+        CorrectionT MajorCorrection{};
+        Util::NDArray<CorrectionEntry, 2, 6, 64, 6, 64> ContCorrection{};
 
         void Clear() {
             MainHistory.Fill(0);
@@ -65,6 +82,8 @@ namespace Horsie {
             PlyHistory.Fill(0);
             std::memset(&PawnCorrection, 0, sizeof(PawnCorrection));
             std::memset(&NonPawnCorrection, 0, sizeof(NonPawnCorrection));
+            std::memset(&MajorCorrection, 0, sizeof(MajorCorrection));
+            std::memset(&ContCorrection, 0, sizeof(ContCorrection));
 
             for (size_t i = 0; i < 2; i++) {
                 for (size_t j = 0; j < 2; j++) {

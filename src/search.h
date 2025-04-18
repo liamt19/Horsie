@@ -66,6 +66,7 @@ namespace Horsie {
             Move KillerMove;
             Move CurrentMove;
             Move Skip;
+            u8 MovedPiece;
             bool InCheck;
             bool TTPV;
             bool TTHit;
@@ -89,6 +90,7 @@ namespace Horsie {
                 InCheck = false;
                 TTPV = false;
                 TTHit = false;
+                MovedPiece = Piece::NONE;
             }
         };
 

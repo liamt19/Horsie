@@ -225,7 +225,7 @@ namespace Horsie {
         struct Accumulator; 
     }
 
-    struct alignas(32) StateInfo {
+    struct StateInfo {
     public:
 
         u64 CheckSquares[PIECE_NB];
@@ -235,6 +235,7 @@ namespace Horsie {
         u64 Checkers = 0;
         u64 Hash = 0;
         u64 PawnHash = 0;
+        u64 MajorHash = 0;
         u64 NonPawnHash[2];
         i32 HalfmoveClock = 0;
         i32 EPSquare = EP_NONE;

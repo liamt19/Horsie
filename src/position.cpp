@@ -326,8 +326,9 @@ namespace Horsie {
         SetCheckInfo();
 
         State->PawnHash = 0;
+        State->MajorHash = 0;
         State->NonPawnHash[WHITE] = State->NonPawnHash[BLACK] = 0;
-        State->Hash = Zobrist::GetHash(*this, &State->PawnHash, &State->NonPawnHash[WHITE]);
+        State->Hash = Zobrist::GetHash(*this, &State->PawnHash, &State->MajorHash, &State->NonPawnHash[WHITE]);
         State->NonPawnHash[BLACK] = State->NonPawnHash[WHITE];
     }
 
@@ -610,8 +611,13 @@ namespace Horsie {
 
         if (pt == PAWN)
             Zobrist::ToggleSquare(State->PawnHash, pc, pt, sq);
-        else
+        else {
             Zobrist::ToggleSquare(State->NonPawnHash[pc], pc, pt, sq);
+
+            if (pt == ROOK || pt == QUEEN) {
+                Zobrist::ToggleSquare(State->MajorHash, pc, pt, sq);
+            }
+        }
     }
 
 

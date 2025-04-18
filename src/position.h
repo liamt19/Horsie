@@ -42,6 +42,7 @@ namespace Horsie {
         constexpr u64 Checkers() const { return State->Checkers; }
         constexpr u64 Hash() const { return State->Hash; }
         constexpr u64 PawnHash() const { return State->PawnHash; }
+        constexpr u64 MajorHash() const { return State->MajorHash; }
         constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
         constexpr i32 HalfmoveClock() const { return State->HalfmoveClock; }
         constexpr i32 EPSquare() const { return State->EPSquare; }
@@ -117,6 +118,10 @@ namespace Horsie {
 
         inline i32 PawnCorrectionIndex(i32 pc) const {
             return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);
+        }
+
+        inline i32 MajorCorrectionIndex(i32 pc) const {
+            return (pc * 16384) + static_cast<i32>(MajorHash() % 16384);
         }
 
         inline i32 NonPawnCorrectionIndex(i32 pc, i32 side) const {
