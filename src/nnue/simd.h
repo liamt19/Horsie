@@ -7,7 +7,7 @@ namespace Horsie::NNUE {
 
     using vec_128i = __m128i;
 
-#if defined(AVX512)
+#if defined(AVX512) and defined(NO)
 
     using vec_i8 = __m512i;
     using vec_i16 = __m512i;

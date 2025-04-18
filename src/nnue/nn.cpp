@@ -47,54 +47,23 @@ namespace Horsie::NNUE {
 #else
         std::istringstream stream(std::string(reinterpret_cast<const char*>(gEVALData), gEVALSize));
 #endif
+        stream.seekg(64, std::ios::beg);
 
         if (IsCompressed(stream)) {
+            stream.seekg(64, std::ios::beg);
             LoadZSTD(stream, dst);
         }
         else {
             stream.read(reinterpret_cast<char*>(dst), sizeof(QuantisedNetwork));
         }
 
-        auto& tempL1 = UQNet->L1Weights;
+        std::memcpy(&net, dst, sizeof(Network));
 
-        for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
-            net.FTWeights[i] = UQNet->FTWeights[i];
-
-        for (size_t i = 0; i < L1_SIZE; i++)
-            net.FTBiases[i] = UQNet->FTBiases[i];
-
-        PermuteFT(Span<i16>(net.FTWeights), Span<i16>(net.FTBiases));
-        PermuteL1(tempL1);
-
-        for (i32 bucket = 0; bucket < OUTPUT_BUCKETS; bucket++) {
-
-            for (i32 i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
-                for (i32 j = 0; j < L2_SIZE; ++j)
-                    for (i32 k = 0; k < L1_CHUNK_PER_32; ++k)
-                        net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
-                        + j * L1_CHUNK_PER_32
-                        + k] = tempL1[i * L1_CHUNK_PER_32 + k][bucket][j];
-
-            for (i32 i = 0; i < L2_SIZE; ++i)
-                net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
-
-            for (i32 i = 0; i < L2_SIZE; ++i)
-                for (i32 j = 0; j < L3_SIZE; ++j)
-                    net.L2Weights[bucket][i * L3_SIZE + j] = UQNet->L2Weights[i][bucket][j];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L2Biases[bucket][i] = UQNet->L2Biases[bucket][i];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L3Weights[bucket][i] = UQNet->L3Weights[i][bucket];
-
-            net.L3Biases[bucket] = UQNet->L3Biases[bucket];
-        }
 
         auto ws = reinterpret_cast<__m128i*>(&net.FTWeights);
         auto bs = reinterpret_cast<__m128i*>(&net.FTBiases);
         const i32 numChunks = sizeof(__m128i) / sizeof(i16);
-#if defined(AVX512)
+#if defined(AVX512) and defined(NO)
         const i32 numRegi = 8;
         constexpr i32 order[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
 #elif defined(AVX256)
@@ -306,11 +275,10 @@ namespace Horsie::NNUE {
             const auto sumMul = vec_set1_ps(L1_MUL);
 
             const auto zero = vec_set1_ps(0.0f);
-            const auto one = vec_set1_ps(1.0f);
             for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
                 const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
                 const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
-                const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
+                const auto clipped = vec_max_ps(sumPs, zero);
                 const auto squared = vec_mul_ps(clipped, clipped);
                 vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
             }
@@ -336,9 +304,8 @@ namespace Horsie::NNUE {
             }
 
             const auto zero = vec_set1_ps(0.0f);
-            const auto one = vec_set1_ps(1.0f);
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
-                const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
+                const auto clipped = vec_max_ps(sumVecs[i], zero);
                 const auto squared = vec_mul_ps(clipped, clipped);
                 vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
             }
