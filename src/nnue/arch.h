@@ -17,7 +17,7 @@ namespace Horsie::NNUE {
     constexpr auto FT_SHIFT = 10;
     
     constexpr auto L1_MULT = [] {
-        const i32 L1_QUANT[8] = { 133, 130, 155, 159, 185, 156, 155, 126 };
+        const i32 L1_QUANT[8] = { 110, 116, 127, 148, 156, 117, 93, 109 };
         std::array<float, 8> arr{};
         for (size_t i = 0; i < 8; i++) {
             arr[i] = (1 << FT_SHIFT) / static_cast<float>(FT_QUANT * FT_QUANT * L1_QUANT[0]);
