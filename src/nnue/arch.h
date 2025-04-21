@@ -13,7 +13,7 @@ namespace Horsie::NNUE {
 
     constexpr auto FT_QUANT = 255;
     constexpr auto FT_SHIFT = 10;
-    const i32 L1_QUANT[8] = {153, 174, 169, 130, 148, 128, 119, 140};
+    const i32 L1_QUANT[8] = { 133, 130, 155, 159, 185, 156, 155, 126 };
     
     constexpr auto OutputScale = 400;
 
