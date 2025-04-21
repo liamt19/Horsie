@@ -20,7 +20,7 @@ namespace Horsie::NNUE {
         const i32 L1_QUANT[8] = { 110, 116, 127, 148, 156, 117, 93, 109 };
         std::array<float, 8> arr{};
         for (size_t i = 0; i < 8; i++) {
-            arr[i] = (1 << FT_SHIFT) / static_cast<float>(FT_QUANT * FT_QUANT * L1_QUANT[0]);
+            arr[i] = (1 << FT_SHIFT) / static_cast<float>(FT_QUANT * FT_QUANT * L1_QUANT[i]);
         }
         return arr;
     }();
