@@ -303,6 +303,7 @@ namespace Horsie::NNUE {
                     sums[k] = vec_dpbusd_epi32(sums[k], input32, weight[k]);
             }
 
+            auto L1_MUL = (1 << FT_SHIFT) / static_cast<float>(FT_QUANT * FT_QUANT * L1_QUANT[outputBucket]);
             const auto sumMul = vec_set1_ps(L1_MUL);
 
             const auto zero = vec_set1_ps(0.0f);
