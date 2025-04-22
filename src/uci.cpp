@@ -403,7 +403,7 @@ namespace Horsie::UCI {
 
 
     void UCIClient::HandlePrintActivations() {
-#if defined(PERM_COUNT)
+#if defined(COUNT_FOR_PERMUTATIONS)
         std::ofstream file("perm.txt");
         for (size_t i = 0; i < NNZCounts.size(); ++i) {
             file << i << " " << NNZCounts[i] << "\n";

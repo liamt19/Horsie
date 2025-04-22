@@ -39,8 +39,8 @@ namespace Horsie::NNUE {
         SetupNNZ();
 
         g_network = &net;
-        std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
-        const auto dst = reinterpret_cast<std::byte*>(UQNet.get());
+        std::unique_ptr<RawNetwork> raw = std::make_unique<RawNetwork>();
+        const auto dst = reinterpret_cast<std::byte*>(raw.get());
 
 #if defined(VS_COMP)
         std::ifstream stream(path, std::ios::binary);
@@ -52,43 +52,27 @@ namespace Horsie::NNUE {
             LoadZSTD(stream, dst);
         }
         else {
-            stream.read(reinterpret_cast<char*>(dst), sizeof(QuantisedNetwork));
+            stream.read(reinterpret_cast<char*>(dst), sizeof(RawNetwork));
         }
 
-        auto& tempL1 = UQNet->L1Weights;
-
-        for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
-            net.FTWeights[i] = UQNet->FTWeights[i];
-
-        for (size_t i = 0; i < L1_SIZE; i++)
-            net.FTBiases[i] = UQNet->FTBiases[i];
+        std::memcpy(&net, dst, sizeof(Network));
+        auto& tempL1 = raw->L1Weights;
 
         PermuteFT(Span<i16>(net.FTWeights), Span<i16>(net.FTBiases));
         PermuteL1(tempL1);
 
         for (i32 bucket = 0; bucket < OUTPUT_BUCKETS; bucket++) {
 
-            for (i32 i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
+            for (i32 i = 0; i < L1_SIZE; i += 4)
                 for (i32 j = 0; j < L2_SIZE; ++j)
-                    for (i32 k = 0; k < L1_CHUNK_PER_32; ++k)
-                        net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
-                        + j * L1_CHUNK_PER_32
-                        + k] = tempL1[i * L1_CHUNK_PER_32 + k][bucket][j];
-
-            for (i32 i = 0; i < L2_SIZE; ++i)
-                net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
+                    for (i32 k = 0; k < 4; ++k)
+                        net.L1Weights[bucket][i * L2_SIZE
+                                            + j * 4
+                                            + k] = tempL1[bucket][j][i + k];
 
             for (i32 i = 0; i < L2_SIZE; ++i)
                 for (i32 j = 0; j < L3_SIZE; ++j)
-                    net.L2Weights[bucket][i * L3_SIZE + j] = UQNet->L2Weights[i][bucket][j];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L2Biases[bucket][i] = UQNet->L2Biases[bucket][i];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L3Weights[bucket][i] = UQNet->L3Weights[i][bucket];
-
-            net.L3Biases[bucket] = UQNet->L3Biases[bucket];
+                    net.L2Weights[bucket][i * L3_SIZE + j] = raw->L2Weights[bucket][j][i];
         }
 
         auto ws = reinterpret_cast<__m128i*>(&net.FTWeights);
@@ -286,6 +270,14 @@ namespace Horsie::NNUE {
         }
 
 
+#if defined(COUNT_FOR_PERMUTATIONS)
+        EvalCalls++;
+        ActivationCount += static_cast<u64>(nnzCount);
+        for (i32 i = 0; i < L1_SIZE; i++)
+            NNZCounts[i] += (ft_outputs[i] ? 1UL : 0);
+#endif
+
+
         {
             const auto inputs = Span<i8>(ft_outputs);
             const auto& weights = net.L1Weights[outputBucket];
@@ -339,8 +331,7 @@ namespace Horsie::NNUE {
             const auto one = vec_set1_ps(1.0f);
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i) {
                 const auto clipped = vec_min_ps(vec_max_ps(sumVecs[i], zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
+                vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], clipped);
             }
         }
 
@@ -591,7 +582,7 @@ namespace Horsie::NNUE {
 
         auto m_dStream = ZSTD_createDStream();
 
-        size_t n = sizeof(QuantisedNetwork);
+        size_t n = sizeof(RawNetwork);
         while (n > 0) {
             while (m_pos >= m_end && (m_input.pos < m_input.size || !m_stream.fail())) {
 
@@ -684,8 +675,8 @@ namespace Horsie::NNUE {
         }
     }
 
-    static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]) {
-        auto temp = new i8[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
+    static void PermuteL1(i8 l1Weights[OUTPUT_BUCKETS][L2_SIZE][L1_SIZE]) {
+        auto temp = new i8[OUTPUT_BUCKETS][L2_SIZE][L1_SIZE];
         std::memcpy(temp, l1Weights, N_L1W);
 
         for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++) {
@@ -693,8 +684,8 @@ namespace Horsie::NNUE {
 
             for (i32 b = 0; b < OUTPUT_BUCKETS; b++) {
                 for (i32 l2 = 0; l2 < L2_SIZE; l2++) {
-                    l1Weights[dst][b][l2] = temp[src][b][l2];
-                    l1Weights[dst + L1_PAIR_COUNT][b][l2] = temp[src + L1_PAIR_COUNT][b][l2];
+                    l1Weights[b][l2][dst] = temp[b][l2][src];
+                    l1Weights[b][l2][dst + L1_PAIR_COUNT] = temp[b][l2][src + L1_PAIR_COUNT];
                 }
             }
         }
