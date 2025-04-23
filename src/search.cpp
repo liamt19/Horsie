@@ -119,7 +119,7 @@ namespace Horsie {
                     else
                         break;
 
-                    window += window / 2;
+                    window *= 1.40;
                 }
 
                 std::stable_sort(RootMoves.begin() + 0, RootMoves.end());
