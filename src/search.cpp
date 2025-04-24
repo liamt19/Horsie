@@ -240,6 +240,7 @@ namespace Horsie {
 
         const bool doSkip = ss->Skip != Move::Null();
         bool improving = false;
+        bool oppWorsening = false;
         TTEntry _tte{};
         TTEntry* tte = &_tte;
 
@@ -321,6 +322,8 @@ namespace Horsie {
         if (ss->Ply >= 2) {
             improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
+            
+            oppWorsening = ss->StaticEval > -(ss - 1)->StaticEval;
         }
 
         if (!(ss - 1)->InCheck 
@@ -342,7 +345,12 @@ namespace Horsie {
             && (eval >= beta)
             && (eval - GetRFPMargin(depth, improving)) >= beta) {
             
-            return (eval + beta) / 2;
+            const auto margin = depth * 50
+                              - improving * 65
+                              - oppWorsening * 20;
+
+            if (eval - std::max(margin, 10) >= beta)
+                return (eval + beta) / 2;
         }
 
 
