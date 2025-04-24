@@ -932,8 +932,8 @@ namespace Horsie {
             return MakeMateScore(ss->Ply);
 
         TTNodeType bound = (bestScore >= beta) ? TTNodeType::Alpha : TTNodeType::Beta;
-
-        tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(bestScore), ss->Ply), bound, 0, bestMove, rawEval, TT->Age, ttPV);
+        i32 ttDepth = inCheck ? 1 : 0;
+        tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(bestScore), ss->Ply), bound, ttDepth, bestMove, rawEval, TT->Age, ttPV);
 
         return bestScore;
     }
