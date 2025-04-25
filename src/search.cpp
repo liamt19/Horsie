@@ -273,6 +273,7 @@ namespace Horsie {
         }
 
         (ss + 1)->KillerMove = Move::Null();
+        (ss + 2)->ProbcutLeaves = 0;
         
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
         ss->InCheck = pos.InCheck();
@@ -414,6 +415,8 @@ namespace Horsie {
             ScoredMove captures[MoveListSize];
             i32 numCaps = GenerateQS(pos, captures, 0);
             AssignProbcutScores(pos, captures, numCaps);
+
+            ss->ProbcutLeaves += (numCaps > 0);
 
             for (i32 i = 0; i < numCaps; i++) {
                 Move m = OrderNextMove(captures, numCaps, i);
@@ -624,6 +627,7 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
+                R += ((ss + 1)->ProbcutLeaves > 3);
 
                 R -= ss->TTPV;
                 R -= isPV;

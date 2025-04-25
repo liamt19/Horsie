@@ -60,6 +60,7 @@ namespace Horsie {
         public:
             Move* PV;
             PieceToHistory* ContinuationHistory;
+            i16 ProbcutLeaves;
             i16 DoubleExtensions;
             i16 Ply;
             i16 StaticEval;
@@ -76,6 +77,7 @@ namespace Horsie {
                 CurrentMove = Skip = KillerMove = Move::Null();
                 ContinuationHistory = nullptr;
 
+                ProbcutLeaves = 0;
                 Ply = 0;
                 DoubleExtensions = 0;
                 StaticEval = ScoreNone;
