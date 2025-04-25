@@ -283,10 +283,11 @@ namespace Horsie {
 
         const i16 ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         const Move ttMove = isRoot ? CurrentMove() : (ss->TTHit ? tte->BestMove : Move::Null());
+        const i32 ttDepth = ss->TTHit ? tte->Depth() : 0;
 
         if (!isPV
             && !doSkip
-            && tte->Depth() >= depth
+            && ttDepth >= depth
             && ttScore != ScoreNone
             && (ttScore < alpha || cutNode)
             && (tte->Bound() & (ttScore >= beta ? BoundLower : BoundUpper)) != 0) {
@@ -409,7 +410,7 @@ namespace Horsie {
             && !isPV
             && !doSkip
             && std::abs(beta) < ScoreTTWin
-            && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
+            && (!ss->TTHit || ttDepth < depth - 3 || tte->Score() >= probBeta)) {
 
             ScoredMove captures[MoveListSize];
             i32 numCaps = GenerateQS(pos, captures, 0);
@@ -459,7 +460,7 @@ namespace Horsie {
             && !isPV
             && (ttMove != Move::Null() && bb.GetPieceAtIndex(ttMove.To()) != Piece::NONE)
             && ((tte->Bound() & BoundLower) != 0)
-            && tte->Depth() >= depth - 6
+            && ttDepth >= depth - 6
             && ttScore >= probBeta
             && std::abs(ttScore) < ScoreTTWin
             && std::abs(beta) < ScoreTTWin) {
@@ -561,7 +562,7 @@ namespace Horsie {
 
                 if (depth >= SEDepth
                     && ((tte->Bound() & BoundLower) != 0)
-                    && tte->Depth() >= depth - 3) {
+                    && ttDepth >= depth - 3) {
 
                     i32 singleBeta = ttScore - (SENumerator * depth / 10);
                     i32 singleDepth = (depth + SEDepthAdj) / 2;
@@ -622,11 +623,11 @@ namespace Horsie {
                 && legalMoves >= 2
                 && !(isPV && isCapture)) {
 
-                R += (!improving);
-                R += cutNode * 2;
+                R += !improving;
+                R += !ss->TTPV;
+                R += cutNode;
 
-                R -= ss->TTPV;
-                R -= isPV;
+                R -= (ttDepth >= depth);
                 R -= (m == ss->KillerMove);
 
                 i32 histScore = 2 * moveHist +
