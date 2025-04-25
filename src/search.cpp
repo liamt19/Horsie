@@ -627,8 +627,8 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
-                R += ((ss + 1)->ProbcutLeaves > 3);
 
+                R -= ((ss + 1)->ProbcutLeaves == 0);
                 R -= ss->TTPV;
                 R -= isPV;
                 R -= (m == ss->KillerMove);
