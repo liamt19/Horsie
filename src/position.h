@@ -81,7 +81,8 @@ namespace Horsie {
         void MakeNullMove();
         void UnmakeNullMove();
 
-        void DoCastling(i32 ourColor, i32 from, i32 to, bool undo);
+        template<bool undo>
+        void DoCastling(Move move);
 
         void SetState();
         void SetCheckInfo();

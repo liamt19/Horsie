@@ -122,7 +122,7 @@ namespace Horsie {
             if (move.IsCastle()) {
                 //  Move our rook and update the hash
                 theirPiece = Piece::NONE;
-                DoCastling(ourColor, moveFrom, moveTo, false);
+                DoCastling<false>(move);
                 State->KingSquares[ourColor] = move.CastlingKingSquare();
             }
             else {
@@ -228,7 +228,7 @@ namespace Horsie {
         }
         else if (move.IsCastle()) {
             //  Put both pieces back
-            DoCastling(ourColor, moveFrom, moveTo, true);
+            DoCastling<true>(move);
         }
 
         if (!move.IsCastle()) {
@@ -286,31 +286,35 @@ namespace Horsie {
         ToMove = Not(ToMove);
     }
 
-    void Position::DoCastling(i32 ourColor, i32 from, i32 to, bool undo = false) {
-        const bool kingSide = to > from;
-        const auto rfrom = to;
-        const auto rto = (kingSide ? static_cast<i32>(Square::F1) : static_cast<i32>(Square::D1)) ^ (ourColor * 56);
-        const auto kto = (kingSide ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1)) ^ (ourColor * 56);
+    template<bool undo>
+    void Position::DoCastling(Move move) {
+        const auto [from, to] = move.Unpack();
+        const auto rto = move.CastlingRookSquare();
+        const auto kto = move.CastlingKingSquare();
 
         if (undo) {
-            bb.RemovePiece(kto, ourColor, KING);
-            bb.RemovePiece(rto, ourColor, ROOK);
+            const auto c = Not(ToMove);
 
-            bb.AddPiece(from, ourColor, KING);
-            bb.AddPiece(rfrom, ourColor, ROOK);
+            bb.RemovePiece(kto, c, KING);
+            bb.RemovePiece(rto, c, ROOK);
+
+            bb.AddPiece(from, c, KING);
+            bb.AddPiece(to, c, ROOK);
         }
         else {
-            bb.RemovePiece(from, ourColor, KING);
-            bb.RemovePiece(rfrom, ourColor, ROOK);
+            const auto c = ToMove;
 
-            bb.AddPiece(kto, ourColor, KING);
-            bb.AddPiece(rto, ourColor, ROOK);
+            bb.RemovePiece(from, c, KING);
+            bb.RemovePiece(to, c, ROOK);
 
-            UpdateHash(ourColor, KING, from);
-            UpdateHash(ourColor, ROOK, rfrom);
+            bb.AddPiece(kto, c, KING);
+            bb.AddPiece(rto, c, ROOK);
 
-            UpdateHash(ourColor, KING, kto);
-            UpdateHash(ourColor, ROOK, rto);
+            UpdateHash(c, KING, from);
+            UpdateHash(c, ROOK, to);
+
+            UpdateHash(c, KING, kto);
+            UpdateHash(c, ROOK, rto);
         }
     }
 
@@ -357,7 +361,7 @@ namespace Horsie {
         u64 hash = State->Hash;
 
         const auto [moveFrom, moveTo] = move.Unpack();
-        i32 us = bb.GetColorAtIndex(moveFrom);
+        const auto us = ToMove;
         i32 ourPiece = bb.GetPieceAtIndex(moveFrom);
 
         if (bb.GetPieceAtIndex(moveTo) != Piece::NONE) {
@@ -472,7 +476,7 @@ namespace Horsie {
                     return false;
                 }
 
-                i32 kingTo = (moveTo > moveFrom ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1)) ^ (ourColor * 56);
+                i32 kingTo = move.CastlingKingSquare();
                 u64 them = bb.Colors[theirColor];
                 i32 dir = (moveFrom < kingTo) ? -1 : 1;
                 for (i32 sq = kingTo; sq != moveFrom; sq += dir) {
