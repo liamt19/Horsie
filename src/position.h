@@ -15,7 +15,7 @@ namespace Horsie {
         ~Position();
         void LoadFromFEN(const std::string& fen);
 
-        NNUE::BucketCache CachedBuckets;
+        NNUE::BucketCache CachedBuckets{};
         StateInfo* State;
 
         Bitboard bb{};
@@ -23,10 +23,9 @@ namespace Horsie {
         i32 FullMoves;
         i32 GamePly;
 
-        i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)];
-        u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)];
+        i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)]{};
+        u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)]{};
 
-        bool UpdateNN;
         bool IsChess960;
 
         constexpr bool InCheck()       const { return State->Checkers != 0; }

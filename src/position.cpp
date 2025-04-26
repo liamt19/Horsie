@@ -851,23 +851,20 @@ namespace Horsie {
 
         fen << (ToMove == Color::WHITE ? " w " : " b ");
 
-        if (State->CastleStatus != CastlingStatus::None) {
-            if ((State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WK))) : 'K');
-            }
-            if ((State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WQ))) : 'Q');
-            }
-            if ((State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BK))) : 'k');
-            }
-            if ((State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
-                fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BQ))) : 'q');
-            }
-        }
-        else {
+        if (HasCastlingRight(CastlingStatus::WK))
+            fen << (IsChess960 ? char('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WK))) : 'K');
+
+        if (HasCastlingRight(CastlingStatus::WQ))
+            fen << (IsChess960 ? char('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WQ))) : 'Q');
+
+        if (HasCastlingRight(CastlingStatus::BK))
+            fen << (IsChess960 ? char('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BK))) : 'k');
+
+        if (HasCastlingRight(CastlingStatus::BQ))
+            fen << (IsChess960 ? char('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BQ))) : 'q');
+
+        if (!HasCastlingRight(All))
             fen << "-";
-        }
 
         if (State->EPSquare != EP_NONE) {
             fen << " " << IndexToString(State->EPSquare);
