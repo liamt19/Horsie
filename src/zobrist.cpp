@@ -12,9 +12,9 @@
 
 namespace Horsie::Zobrist {
 
-    u64 ColorPieceSquareHashes[2][6][64];
-    u64 CastlingRightsHashes[4];
-    u64 EnPassantFileHashes[8];
+    u64 PSQHashes[2][6][64];
+    u64 CRHashes[4];
+    u64 EPHashes[8];
     u64 BlackHash;
 
     void Init() {
@@ -22,13 +22,13 @@ namespace Horsie::Zobrist {
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
                 for (i32 k = 0; k < 64; k++)
-                    ColorPieceSquareHashes[i][j][k] = LizardPSQT[i][j][k];
+                    PSQHashes[i][j][k] = LizardPSQT[i][j][k];
 
         for (i32 i = 0; i < 4; i++)
-            CastlingRightsHashes[i] = LizardCR[i];
+            CRHashes[i] = LizardCR[i];
 
         for (i32 i = 0; i < 8; i++)
-            EnPassantFileHashes[i] = LizardEP[i];
+            EPHashes[i] = LizardEP[i];
 
         BlackHash = LizardBH;
 #else
@@ -38,13 +38,13 @@ namespace Horsie::Zobrist {
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
                 for (i32 k = 0; k < 64; k++)
-                    ColorPieceSquareHashes[i][j][k] = dis(rng);
+                    PSQHashes[i][j][k] = dis(rng);
 
         for (i32 i = 0; i < 4; i++)
-            CastlingRightsHashes[i] = dis(rng);
+            CRHashes[i] = dis(rng);
 
         for (i32 i = 0; i < 8; i++)
-            EnPassantFileHashes[i] = dis(rng);
+            EPHashes[i] = dis(rng);
 
         BlackHash = dis(rng);
 #endif
@@ -53,80 +53,71 @@ namespace Horsie::Zobrist {
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove) {
         u64 change = static_cast<u64>(prev & toRemove);
         while (change != 0) {
-            hash ^= CastlingRightsHashes[poplsb(change)];
+            hash ^= CRHashes[poplsb(change)];
         }
     }
 
     void Move(u64& hash, i32 from, i32 to, i32 color, i32 pt) {
-        hash ^= ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to];
+        hash ^= PSQHashes[color][pt][from] ^ PSQHashes[color][pt][to];
     }
 
     void ToggleSquare(u64& hash, i32 color, i32 pt, i32 idx) {
-        hash ^= ColorPieceSquareHashes[color][pt][idx];
+        hash ^= PSQHashes[color][pt][idx];
     }
 
     void EnPassant(u64& hash, i32 file) {
-        hash ^= EnPassantFileHashes[file];
+        hash ^= EPHashes[file];
     }
 
     void ChangeToMove(u64& hash) {
         hash ^= BlackHash;
     }
 
-    u64 GetHash(Horsie::Position& position, u64* pawnHash, u64* nonPawnHash) {
-        u64 hash = 0;
+    void SetHashes(Horsie::Position& pos) {
+        const auto state = pos.State;
+        const auto& bb = pos.bb;
 
-        Horsie::Bitboard& bb = position.bb;
-        u64 white = bb.Colors[Color::WHITE];
-        u64 black = bb.Colors[Color::BLACK];
+        u64 hash = 0, pawnHash = 0, nonPawnHash = 0;
 
-        while (white != 0) {
-            i32 idx = poplsb(white);
-            i32 pt = bb.GetPieceAtIndex(idx);
-            hash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
+        for (i32 pc = 0; pc < 2; pc++) {
+            u64 pieces = bb.Colors[pc];
 
-            if (pt == PAWN) {
-                *pawnHash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
-            }
-            else {
-                *nonPawnHash ^= ColorPieceSquareHashes[Color::WHITE][pt][idx];
-            }
-        }
+            while (pieces != 0) {
+                i32 idx = poplsb(pieces);
+                i32 pt = bb.GetPieceAtIndex(idx);
+                hash ^= PSQHashes[pc][pt][idx];
 
-        while (black != 0) {
-            i32 idx = poplsb(black);
-            i32 pt = bb.GetPieceAtIndex(idx);
-            hash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
-
-            if (pt == PAWN) {
-                *pawnHash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
-            }
-            else {
-                *nonPawnHash ^= ColorPieceSquareHashes[Color::BLACK][pt][idx];
+                if (pt == PAWN) {
+                    pawnHash ^= PSQHashes[pc][pt][idx];
+                }
+                else {
+                    nonPawnHash ^= PSQHashes[pc][pt][idx];
+                }
             }
         }
+        
+        if (pos.HasCastlingRight(CastlingStatus::WK))
+            hash ^= CRHashes[0];
 
-        if ((position.CastleStatus() & CastlingStatus::WK) != CastlingStatus::None) {
-            hash ^= CastlingRightsHashes[0];
-        }
-        if ((position.CastleStatus() & CastlingStatus::WQ) != CastlingStatus::None) {
-            hash ^= CastlingRightsHashes[1];
-        }
-        if ((position.CastleStatus() & CastlingStatus::BK) != CastlingStatus::None) {
-            hash ^= CastlingRightsHashes[2];
-        }
-        if ((position.CastleStatus() & CastlingStatus::BQ) != CastlingStatus::None) {
-            hash ^= CastlingRightsHashes[3];
+        if (pos.HasCastlingRight(CastlingStatus::WQ))
+            hash ^= CRHashes[1];
+
+        if (pos.HasCastlingRight(CastlingStatus::BK))
+            hash ^= CRHashes[2];
+
+        if (pos.HasCastlingRight(CastlingStatus::BQ))
+            hash ^= CRHashes[3];
+
+        if (pos.EPSquare() != EP_NONE) {
+            hash ^= EPHashes[GetIndexFile(pos.EPSquare())];
         }
 
-        if (position.EPSquare() != EP_NONE) {
-            hash ^= EnPassantFileHashes[Horsie::GetIndexFile(position.EPSquare())];
-        }
-
-        if (position.ToMove == Color::BLACK) {
+        if (pos.ToMove == Color::BLACK) {
             hash ^= BlackHash;
         }
 
-        return hash;
+        state->Hash = hash;
+        state->PawnHash = pawnHash;
+        state->NonPawnHash[WHITE] = state->NonPawnHash[BLACK] = nonPawnHash;
     }
 }

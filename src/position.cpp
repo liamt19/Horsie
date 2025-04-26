@@ -319,10 +319,7 @@ namespace Horsie {
 
         SetCheckInfo();
 
-        State->PawnHash = 0;
-        State->NonPawnHash[WHITE] = State->NonPawnHash[BLACK] = 0;
-        State->Hash = Zobrist::GetHash(*this, &State->PawnHash, &State->NonPawnHash[WHITE]);
-        State->NonPawnHash[BLACK] = State->NonPawnHash[WHITE];
+        Zobrist::SetHashes(*this);
     }
 
     void Position::SetCheckInfo() {
@@ -339,22 +336,19 @@ namespace Horsie {
         State->CheckSquares[KING] = 0;
     }
 
-    void Position::SetCastlingStatus(i32 c, i32 rfrom) {
+    void Position::SetCastlingStatus(Color c, i32 rfrom) {
         const auto kfrom = bb.KingIndex(c);
         const auto cr = (c == WHITE && kfrom < rfrom) ? CastlingStatus::WK
                       : (c == BLACK && kfrom < rfrom) ? CastlingStatus::BK
                       : (c == WHITE)                  ? CastlingStatus::WQ
                       :                                 CastlingStatus::BQ;
 
-        CastlingRookSquares[static_cast<i32>(cr)] = rfrom;
+        CastlingRookSquares[cr] = rfrom;
 
-        auto kto = ((cr & CastlingStatus::Kingside) != CastlingStatus::None) ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1);
-        auto rto = ((cr & CastlingStatus::Kingside) != CastlingStatus::None) ? static_cast<i32>(Square::F1) : static_cast<i32>(Square::D1);
+        auto kto = OrientSquare((cr & CastlingStatus::Kingside) ? Square::G1 : Square::C1, c);
+        auto rto = OrientSquare((cr & CastlingStatus::Kingside) ? Square::F1 : Square::D1, c);
 
-        kto ^= (56 * c);
-        rto ^= (56 * c);
-
-        CastlingRookPaths[static_cast<i32>(cr)] = (LineBB[rfrom][static_cast<i32>(rto)] | LineBB[kfrom][static_cast<i32>(kto)]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
+        CastlingRookPaths[cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
 
         State->CastleStatus |= cr;
     }
@@ -776,18 +770,18 @@ namespace Horsie {
         ss >> token;
         while ((ss >> token) && !isspace(token)) {
             i32 rsq = SQUARE_NB;
-            i32 color = isupper(token) ? WHITE : BLACK;
+            Color color = isupper(token) ? WHITE : BLACK;
             char upper = toupper(token);
 
             if (upper == 'K') {
-                for (rsq = (static_cast<i32>(Square::H1) ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; --rsq) {}
+                for (rsq = OrientSquare(Square::H1, color); bb.GetPieceAtIndex(rsq) != ROOK; --rsq) {}
             }
             else if (upper == 'Q') {
-                for (rsq = (static_cast<i32>(Square::A1) ^ (56 * color)); bb.GetPieceAtIndex(rsq) != ROOK; ++rsq) {}
+                for (rsq = OrientSquare(Square::A1, color); bb.GetPieceAtIndex(rsq) != ROOK; ++rsq) {}
             }
             else if (upper >= 'A' && upper <= 'H') {
                 IsChess960 = true;
-                rsq = CoordToIndex(static_cast<i32>(upper) - 'A', (0 ^ (color * 7)));
+                rsq = MakeIndex(static_cast<i32>(upper) - 'A', (0 ^ (color * 7)));
             }
             else
                 continue;
@@ -796,7 +790,7 @@ namespace Horsie {
         }
 
         if (((ss >> col) && (col >= 'a' && col <= 'h')) && ((ss >> row) && (row == (ToMove == WHITE ? '6' : '3')))) {
-            State->EPSquare = CoordToIndex(File(col - 'a'), Rank(row - '1'));
+            State->EPSquare = MakeIndex(File(col - 'a'), Rank(row - '1'));
         }
 
         ss >> std::skipws >> State->HalfmoveClock >> FullMoves;
@@ -817,7 +811,7 @@ namespace Horsie {
         for (i32 y = 7; y >= 0; y--) {
             i32 i = 0;
             for (i32 x = 0; x <= 7; x++) {
-                i32 index = CoordToIndex(x, y);
+                i32 index = MakeIndex(x, y);
 
                 i32 pt = bb.GetPieceAtIndex(index);
                 if (pt != Piece::NONE) {
@@ -883,7 +877,7 @@ namespace Horsie {
 
         for (Rank r = RANK_8; r >= RANK_1; --r) {
             for (File f = FILE_A; f <= FILE_H; ++f) {
-                i32 sq = CoordToIndex(f, r);
+                i32 sq = MakeIndex(f, r);
                 i32 pt = pos.bb.GetPieceAtIndex(sq);
                 os << " | ";
                 if (pt != Piece::NONE) {

@@ -5,7 +5,7 @@
 
 namespace Horsie {
     template <typename T>
-    inline auto AlignedAlloc(nuint items, nuint alignment = AllocAlignment) {
+    inline auto AlignedAlloc(nuint items, nuint alignment = 64) {
         nuint bytes = ((nuint)sizeof(T) * (nuint)items);
 
 #if defined(_MSC_VER) || defined(_WIN32)

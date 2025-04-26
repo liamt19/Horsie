@@ -52,27 +52,19 @@ namespace Horsie {
         constexpr explicit operator bool() const { return data != 0; }
 
         constexpr i32 CastlingKingSquare() const {
-            if (From() < Square::A2) {
-                return (To() > From()) ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1);
-            }
-
-            return (To() > From()) ? static_cast<i32>(Square::G8) : static_cast<i32>(Square::C8);
+            const bool flip = (From() >= Square::A2);
+            return OrientSquare(To() > From() ? Square::G1 : Square::C1, flip);
         }
 
         constexpr i32 CastlingRookSquare() const {
-            if (From() < Square::A2) {
-                return (To() > From()) ? static_cast<i32>(Square::F1) : static_cast<i32>(Square::D1);
-            }
-
-            return (To() > From()) ? static_cast<i32>(Square::F8) : static_cast<i32>(Square::D8);
+            const bool flip = (From() >= Square::A2);
+            return OrientSquare(To() > From() ? Square::F1 : Square::D1, flip);
         }
 
         constexpr CastlingStatus RelevantCastlingRight() const {
-            if (From() < Square::A2) {
-                return (To() > From()) ? CastlingStatus::WK : CastlingStatus::WQ;
-            }
-
-            return (To() > From()) ? CastlingStatus::BK : CastlingStatus::BQ;
+            const auto col = (From() < Square::A2) ? CastlingStatus::White : CastlingStatus::Black;
+            const auto side = (To() > From()) ? CastlingStatus::Kingside : CastlingStatus::Queenside;
+            return col & side;
         }
 
         std::string ToString(const Bitboard& bb) const {
@@ -126,9 +118,8 @@ namespace Horsie {
         }
 
         constexpr std::string SmithNotation(bool is960) const {
-            i32 fx, fy, tx, ty = 0;
-            IndexToCoord(From(), fx, fy);
-            IndexToCoord(To(), tx, ty);
+            auto [fx, fy] = UnpackIndex(From());
+            auto [tx, ty] = UnpackIndex(To());
 
             if (IsCastle() && !is960) {
                 tx = (tx > fx) ? File::FILE_G : File::FILE_C;

@@ -35,6 +35,16 @@ namespace Horsie {
 
         void InitPextMagics(Piece pt, u64 table[], Magic magics[]);
         void InitNormalMagics(Piece pt, u64 table[], Magic magics[]);
+
+        constexpr bool DirectionOK(Square sq, Direction dir) {
+            if (sq + dir < Square::A1 || sq + dir > Square::H8) {
+                return false;
+            }
+
+            i32 rankDistance = std::abs(GetIndexRank((i32)sq) - GetIndexRank((i32)sq + dir));
+            i32 fileDistance = std::abs(GetIndexFile((i32)sq) - GetIndexFile((i32)sq + dir));
+            return std::max(rankDistance, fileDistance) <= 2;
+        }
     }
 
     void Precomputed::Init() {

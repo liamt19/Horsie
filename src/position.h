@@ -85,7 +85,7 @@ namespace Horsie {
 
         void SetState();
         void SetCheckInfo();
-        void SetCastlingStatus(i32 c, i32 rfrom);
+        void SetCastlingStatus(Color c, i32 rfrom);
 
         u64 HashAfter(Move move) const;
 

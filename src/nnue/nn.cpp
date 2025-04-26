@@ -379,7 +379,7 @@ namespace Horsie::NNUE {
         wUpdate.Clear();
         bUpdate.Clear();
 
-        if (ourPiece == KING && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)])) {
+        if (ourPiece == KING && (BucketForPerspective(moveFrom, us) != BucketForPerspective(moveTo, us))) {
             //  We will need to fully refresh our perspective, but we can still do theirs.
             dst->NeedsRefresh[us] = true;
 

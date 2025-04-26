@@ -6,9 +6,9 @@
 
 namespace Horsie::Zobrist {
 
-    extern u64 ColorPieceSquareHashes[2][6][64];
-    extern u64 CastlingRightsHashes[4];
-    extern u64 EnPassantFileHashes[8];
+    extern u64 PSQHashes[2][6][64];
+    extern u64 CRHashes[4];
+    extern u64 EPHashes[8];
     extern u64 BlackHash;
     const i32 DefaultSeed = 0xBEEF;
 
@@ -18,7 +18,7 @@ namespace Horsie::Zobrist {
     void ToggleSquare(u64& hash, i32 color, i32 pt, i32 idx);
     void EnPassant(u64& hash, i32 file);
     void ChangeToMove(u64& hash);
-    u64 GetHash(Horsie::Position& position, u64* pawnHash, u64* nonPawnHash);
+    void SetHashes(Horsie::Position& pos);
 
     constexpr u64 LizardPSQT[2][6][64] = {
         0x27821F7EED8D1FFF, 0xE0824EFAA0C38DA9, 0xE7DC348AFABD489F, 0xB00E27C557631971, 0x75BF80FE4CD651C2, 0x78CFCD9EAB04E1BE, 0xF06DACBD88A5BCE3, 0xF456B708F108A0A5,
