@@ -626,7 +626,10 @@ namespace Horsie {
                 R += !improving;
                 R += (cutNode * 2);
 
-                R -= ss->TTPV;
+                if (ss->TTPV) {
+                    R -= 1 + isPV;
+                }
+
                 R -= (ttDepth >= depth);
                 R -= (m == ss->KillerMove);
 
