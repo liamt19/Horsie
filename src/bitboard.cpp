@@ -16,8 +16,8 @@ namespace Horsie {
     }
 
     void Bitboard::CopyTo(Bitboard& other) const {
-        std::memcpy(other.Pieces, Pieces, sizeof(u64) * PIECE_NB);
-        std::memcpy(other.Colors, Colors, sizeof(u64) * COLOR_NB);
+        std::memcpy(other.Pieces, Pieces, sizeof(Pieces));
+        std::memcpy(other.Colors, Colors, sizeof(Colors));
     }
 
     void Bitboard::Reset() {

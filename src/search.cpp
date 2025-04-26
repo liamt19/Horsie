@@ -1006,7 +1006,7 @@ namespace Horsie {
     }
 
     i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
-        rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
+        rawEval = static_cast<i16>(rawEval * (200 - pos.HalfmoveClock()) / 200);
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;

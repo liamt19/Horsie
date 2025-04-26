@@ -22,18 +22,13 @@ namespace Horsie {
         GamePly = 0;
         FullMoves = 1;
 
-        bb = Bitboard();
+        InitialState = &BoardStates.front();
+        State = InitialState;
 
-        _stateBlock = AlignedAlloc<StateInfo>(StateStackSize);
-
-        _SentinelStart = &_stateBlock[0];
-        _SentinelEnd = &_stateBlock[StateStackSize - 1];
-        State = &_stateBlock[0];
-
-        _accumulatorBlock = AlignedAlloc<NNUE::Accumulator>(StateStackSize);
+        AccumulatorBlock = AlignedAlloc<NNUE::Accumulator>(StateStackSize);
         for (i32 i = 0; i < StateStackSize; i++) {
-            (_stateBlock + i)->accumulator = _accumulatorBlock + i;
-            *(_stateBlock + i)->accumulator = NNUE::Accumulator();
+            BoardStates[i].accumulator = &AccumulatorBlock[i];
+            *(BoardStates[i].accumulator) = NNUE::Accumulator{};
         }
 
         IsChess960 = false;
@@ -45,8 +40,7 @@ namespace Horsie {
     }
 
     Position::~Position() {
-        AlignedFree(_accumulatorBlock);
-        AlignedFree(_stateBlock);
+        AlignedFree(AccumulatorBlock);
     }
 
     Move Position::TryFindMove(const std::string& moveStr, bool& found) const {
@@ -563,7 +557,7 @@ namespace Horsie {
                 }
             }
 
-            if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart) {
+            if ((temp - 1) == InitialState || (temp - 2) == InitialState) {
                 break;
             }
 
@@ -1010,7 +1004,7 @@ namespace Horsie {
         if (dist < 3)
             return false;
 
-        const auto HashFromStack = [&](i32 i) { return _SentinelStart[GamePly - i].Hash; };
+        const auto HashFromStack = [&](i32 i) { return InitialState[GamePly - i].Hash; };
 
         i32 slot;
         for (i32 i = 3; i <= dist; i += 2) {

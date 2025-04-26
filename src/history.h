@@ -9,11 +9,6 @@
 
 namespace Horsie {
 
-    constexpr i32 HistoryClamp = 16384;
-    constexpr i32 LowPlyCount = 4;
-    constexpr i32 LowPlyClamp = 8192;
-
-
     template<typename T, i32 ClampVal>
     class StatsEntry {
         T entry;
@@ -42,6 +37,9 @@ namespace Horsie {
 
     template<typename T, i32 D, i32 Size>
     struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
+
+    constexpr i32 LowPlyCount = 4;
+    constexpr i32 LowPlyClamp = 8192;
 
     using MainHistoryT = Stats<i16, 16384, 2, 64 * 64>;
     using CaptureHistoryT = Stats<i16, 16384, 2, 6, 64, 6>;

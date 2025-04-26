@@ -3,8 +3,7 @@
 #define COUNT_FOR_PERMUTATIONS 1
 #undef COUNT_FOR_PERMUTATIONS
 
-#define NO_WEIGHT_PERMUTING 1
-#undef NO_WEIGHT_PERMUTING
+#define PERMUTE_NET 1
 
 #include "../defs.h"
 #include "../nnue/arch.h"
@@ -26,7 +25,7 @@ namespace Horsie::NNUE {
     using Span = std::span<T>;
 
     template <typename T, typename W, typename U>
-    struct alignas(64) QuantisedNetworkBase {
+    struct alignas(64) RawNetworkBase {
         T FTWeights[INPUT_SIZE * L1_SIZE * INPUT_BUCKETS];
         T FTBiases[L1_SIZE];
         W L1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
@@ -36,7 +35,7 @@ namespace Horsie::NNUE {
         U L3Weights[L3_SIZE][OUTPUT_BUCKETS];
         U L3Biases[OUTPUT_BUCKETS];
     };
-    using QuantisedNetwork = QuantisedNetworkBase<i16, i8, float>;
+    using RawNetwork = RawNetworkBase<i16, i8, float>;
 
     template <typename T, typename W, typename U>
     struct alignas(64) NetworkBase {
@@ -80,26 +79,39 @@ namespace Horsie::NNUE {
 
     i32 GetEvaluation(Position& pos, i32 outputBucket);
     i32 GetEvaluation(Position& pos);
-    static void ActivateFTSparse(Span<i16> us, Span<i16> them, Span<i8> weights, Span<float> biases, Span<float> output);
-    static void ActivateL1Sparse(Span<i8> inputs, Span<i8> weights, Span<float> biases, Span<float> output, Span<u16> nnzIndices, const i32 nnzCount);
-    static void ActivateL2(Span<float> inputs, Span<float> weights, Span<float> biases, Span<float> output);
-    static void ActivateL3(Span<float> inputs, Span<float> weights, const float bias, float& output);
-
 
     std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk);
     i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective);
 
 
-    constexpr i32 KingBuckets[] = {
-         0,  1,  2,  3, 17, 16, 15, 14,
-         4,  5,  6,  7, 21, 20, 19, 18,
-         8,  9, 10, 11, 25, 24, 23, 22,
-         8,  9, 10, 11, 25, 24, 23, 22,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-    };
+    constexpr auto KingBuckets = [] {
+
+        constexpr i32 BucketScheme[] = {
+             0,  1,  2,  3,
+             4,  5,  6,  7,
+             8,  9, 10, 11,
+             8,  9, 10, 11,
+            12, 12, 13, 13,
+            12, 12, 13, 13,
+            12, 12, 13, 13,
+            12, 12, 13, 13,
+        };
+
+        std::array<i32, 64> buckets{};
+        const auto nBuckets = *std::max_element(BucketScheme, &BucketScheme[32]) + 1;
+        for (i32 rank = 0; rank < 8; rank++) {
+            for (i32 file = 0; file < 4; file++) {
+                const auto b = BucketScheme[rank * 4 + file];
+                const auto dst = rank * 8 + file;
+
+                buckets[dst] = b;
+                buckets[dst ^ 7] = b + nBuckets;
+            }
+        }
+
+        return buckets;
+    }();
+
 
     constexpr i32 BucketForPerspective(i32 ksq, i32 perspective) {
         return (KingBuckets[(ksq ^ (56 * perspective))]);
@@ -193,10 +205,10 @@ namespace Horsie::NNUE {
         std::array<i32, L1_PAIR_COUNT> arr{};
 
         for (i32 i = 0; i < L1_PAIR_COUNT; ++i) {
-#if defined(NO_WEIGHT_PERMUTING)
-            arr[i] = i;
-#else
+#if defined(PERMUTE_NET)
             arr[i] = BestPermuteIndices[i];
+#else
+            arr[i] = i;
 #endif
         }
 

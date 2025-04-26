@@ -18,7 +18,7 @@ namespace Horsie {
         NNUE::BucketCache CachedBuckets;
         StateInfo* State;
 
-        Bitboard bb;
+        Bitboard bb{};
         Color ToMove;
         i32 FullMoves;
         i32 GamePly;
@@ -31,7 +31,7 @@ namespace Horsie {
 
         constexpr bool InCheck()       const { return State->Checkers != 0; }
         constexpr bool InDoubleCheck() const { return MoreThanOne(State->Checkers); }
-        constexpr StateInfo* StartingState() const { return _SentinelStart; }
+        constexpr StateInfo* StartingState() { return &BoardStates.front(); }
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
 
@@ -126,11 +126,10 @@ namespace Horsie {
     private:
         static constexpr i32 StateStackSize = 1024; 
         
-        NNUE::Accumulator* _accumulatorBlock;
-        StateInfo* _stateBlock;
+        NNUE::Accumulator* AccumulatorBlock;
+        std::array<StateInfo, StateStackSize> BoardStates{};
 
-        StateInfo* _SentinelStart;
-        StateInfo* _SentinelEnd;
+        StateInfo* InitialState;
     };
 
     std::ostream& operator<<(std::ostream& os, const Position& pos);
