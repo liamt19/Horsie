@@ -193,7 +193,7 @@ namespace Horsie::NNUE {
         accumulator->NeedsRefresh[perspective] = false;
 
         for (Color pc : {Color::WHITE, Color::BLACK}) {
-            for (i32 pt = 0; pt < PIECE_NB; pt++) {
+            for (Piece pt = Piece::PAWN; pt < PIECE_NB; ++pt) {
                 u64 prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
                 u64 curr =      bb.Pieces[pt] &      bb.Colors[pc];
 
@@ -515,7 +515,7 @@ namespace Horsie::NNUE {
         curr->Computed[perspective] = true;
     }
 
-    std::pair<i32, i32> FeatureIndex(Color pc, i32 pt, Square sq, Square wk, Square bk) {
+    std::pair<i32, i32> FeatureIndex(Color pc, Piece pt, Square sq, Square wk, Square bk) {
         const i32 ColorStride = 64 * 6;
         const i32 PieceStride = 64;
 
@@ -539,7 +539,7 @@ namespace Horsie::NNUE {
         return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
     }
 
-    i32 FeatureIndexSingle(Color pc, i32 pt, Square sq, Square kingSq, Color perspective) {
+    i32 FeatureIndexSingle(Color pc, Piece pt, Square sq, Square kingSq, Color perspective) {
         const i32 ColorStride = 64 * 6;
         const i32 PieceStride = 64;
 

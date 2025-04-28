@@ -33,7 +33,7 @@ namespace Horsie {
         Occupancy = 0;
     }
 
-    void Bitboard::AddPiece(Square idx, Color pc, i32 pt) {
+    void Bitboard::AddPiece(Square idx, Color pc, Piece pt) {
         PieceTypes[idx] = pt;
 
         assert((Colors[pc] & SquareBB(idx)) == 0);
@@ -45,7 +45,7 @@ namespace Horsie {
         Occupancy |= SquareBB(idx);
     }
 
-    void Bitboard::RemovePiece(Square idx, Color pc, i32 pt) {
+    void Bitboard::RemovePiece(Square idx, Color pc, Piece pt) {
         PieceTypes[idx] = Piece::NONE;
 
         assert((Colors[pc] & SquareBB(idx)) != 0);
@@ -57,7 +57,7 @@ namespace Horsie {
         Occupancy ^= SquareBB(idx);
     }
 
-    void Bitboard::MoveSimple(Square from, Square to, Color pc, i32 pt) {
+    void Bitboard::MoveSimple(Square from, Square to, Color pc, Piece pt) {
         RemovePiece(from, pc, pt);
         AddPiece(to, pc, pt);
     }
@@ -110,7 +110,7 @@ namespace Horsie {
             | (PawnAttackMasks[BLACK][idx] & Colors[WHITE] & Pieces[PAWN]);
     }
 
-    u64 Bitboard::AttackMask(Square idx, Color pc, i32 pt, u64 occupied) const {
+    u64 Bitboard::AttackMask(Square idx, Color pc, Piece pt, u64 occupied) const {
         switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];
         case HORSIE: return PseudoAttacks[HORSIE][idx];
@@ -131,7 +131,7 @@ namespace Horsie {
     template u64 Bitboard::AttackMask<QUEEN>(Square idx, Color pc, u64 occupied) const;
     template u64 Bitboard::AttackMask<KING>(Square idx, Color pc, u64 occupied) const;
 
-    template<i32 pt>
+    template<Piece pt>
     u64 Bitboard::AttackMask(Square idx, Color pc, u64 occupied) const {
         switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];

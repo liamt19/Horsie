@@ -50,7 +50,7 @@ namespace Horsie {
         };
     }
 
-    inline char PieceToFEN(i32 pt) {
+    inline char PieceToFEN(Piece pt) {
         switch (pt) {
         case PAWN: return 'p';
         case HORSIE: return 'n';
@@ -62,7 +62,7 @@ namespace Horsie {
         };
     }
 
-    constexpr i32 GetPieceValue(i32 pt) {
+    constexpr i32 GetPieceValue(Piece pt) {
         switch (pt) {
         case PAWN: return ValuePawn;
         case HORSIE: return ValueHorsie;
@@ -73,7 +73,7 @@ namespace Horsie {
         }
     }
 
-    constexpr i32 GetSEEValue(i32 pt) {
+    constexpr i32 GetSEEValue(Piece pt) {
         switch (pt) {
         case PAWN: return SEEValuePawn;
         case HORSIE: return SEEValueHorsie;

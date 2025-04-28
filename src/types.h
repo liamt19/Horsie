@@ -158,7 +158,7 @@ namespace Horsie {
 
     constexpr Square MakeIndex(i32 x, i32 y) { return static_cast<Square>((y * 8) + x); }
 
-    constexpr i32 MakePiece(Color pc, i32 pt) { return (pc * 6) + pt; }
+    constexpr i32 MakePiece(Color pc, Piece pt) { return (pc * 6) + pt; }
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
@@ -204,7 +204,7 @@ namespace Horsie {
         u64 NonPawnHash[2];
         i32 HalfmoveClock = 0;
         Square EPSquare = EP_NONE;
-        i32 CapturedPiece = Piece::NONE;
+        Piece CapturedPiece = Piece::NONE;
         i32 PliesFromNull = 0;
         CastlingStatus CastleStatus = CastlingStatus::None;
 

@@ -22,7 +22,7 @@ namespace Horsie::Cuckoo {
     void Init() {
         i32 count = 0;
         for (Color pc : {Color::WHITE, Color::BLACK}) {
-            for (i32 pt = Piece::HORSIE; pt <= Piece::KING; ++pt) {
+            for (Piece pt = Piece::HORSIE; pt <= Piece::KING; ++pt) {
                 for (Square s1 = Square::A1; s1 <= Square::H8; ++s1) {
                     for (Square s2 = s1 + 1; s2 <= Square::H8; ++s2) {
                         if ((attacks_bb(pt, s1, 0) & SquareBB(s2)) != 0) {

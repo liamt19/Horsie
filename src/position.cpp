@@ -362,7 +362,7 @@ namespace Horsie {
 
         const auto [moveFrom, moveTo] = move.Unpack();
         const auto us = ToMove;
-        i32 ourPiece = bb.GetPieceAtIndex(moveFrom);
+        const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
 
         if (bb.GetPieceAtIndex(moveTo) != Piece::NONE) {
             Zobrist::ToggleSquare(hash, Not(us), bb.GetPieceAtIndex(moveTo), moveTo);
@@ -598,7 +598,7 @@ namespace Horsie {
         return cr;
     }
 
-    void Position::UpdateHash(Color pc, i32 pt, Square sq) const {
+    void Position::UpdateHash(Color pc, Piece pt, Square sq) const {
         Zobrist::ToggleSquare(State->Hash, pc, pt, sq);
 
         if (pt == PAWN)
@@ -667,8 +667,8 @@ namespace Horsie {
             bb.AddPiece(sq, BLACK, PAWN);
 
         IsChess960 = true;
-        i32 wBackrank[8] = {};
-        i32 bBackrank[8] = {};
+        Piece wBackrank[8] = {};
+        Piece bBackrank[8] = {};
 
         const std::pair<i32, i32> H5H[] = {
             {0, 0}, {0, 1}, {0, 2}, {0, 3},
@@ -677,8 +677,8 @@ namespace Horsie {
             {3, 3},
         };
 
-        const auto FillWithScharnaglNumber = [&](i32 n, i32 types[8]) {
-            const auto PlaceInSpot = [&](i32 pt, i32 skip) {
+        const auto FillWithScharnaglNumber = [&](i32 n, Piece types[8]) {
+            const auto PlaceInSpot = [&](Piece pt, i32 skip) {
                 i32 skips = 0;
                 for (i32 i = 0; i < 8; i++) {
                     if (types[i] == 0 && skips++ >= skip) {
@@ -818,7 +818,7 @@ namespace Horsie {
             for (i32 x = 0; x <= 7; x++) {
                 Square index = MakeIndex(x, y);
 
-                i32 pt = bb.GetPieceAtIndex(index);
+                auto pt = bb.GetPieceAtIndex(index);
                 if (pt != Piece::NONE) {
 
                     if (i != 0) {
@@ -883,7 +883,7 @@ namespace Horsie {
         for (Rank r = RANK_8; r >= RANK_1; --r) {
             for (File f = FILE_A; f <= FILE_H; ++f) {
                 auto sq = MakeIndex(f, r);
-                i32 pt = pos.bb.GetPieceAtIndex(sq);
+                auto pt = pos.bb.GetPieceAtIndex(sq);
                 os << " | ";
                 if (pt != Piece::NONE) {
                     char c = PieceToChar[pt];

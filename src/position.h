@@ -34,7 +34,7 @@ namespace Horsie {
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
 
-        constexpr u64 CheckSquares(i32 pt) const { return State->CheckSquares[pt]; }
+        constexpr u64 CheckSquares(Piece pt) const { return State->CheckSquares[pt]; }
         constexpr u64 BlockingPieces(Color pc) const { return State->BlockingPieces[pc]; }
         constexpr u64 Pinners(Color pc) const { return State->Pinners[pc]; }
         constexpr Square KingSquare(Color pc) const { return State->KingSquares[pc]; }
@@ -51,7 +51,7 @@ namespace Horsie {
         constexpr auto CurrAccumulator() const { return State->accumulator; }
         constexpr auto NextAccumulator() const { return NextState()->accumulator; }
 
-        constexpr bool GivesCheck(i32 pt, Square sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
+        constexpr bool GivesCheck(Piece pt, Square sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
 
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
@@ -69,7 +69,7 @@ namespace Horsie {
         constexpr bool IsNoisy(Move m) const { return IsCapture(m) || m.IsEnPassant(); }
 
         void RemoveCastling(CastlingStatus cr) const;
-        void UpdateHash(Color pc, i32 pt, Square sq) const;
+        void UpdateHash(Color pc, Piece pt, Square sq) const;
         constexpr CastlingStatus GetCastlingForRook(Square sq) const;
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 
@@ -110,7 +110,7 @@ namespace Horsie {
         bool SEE_GE(Move m, i32 threshold = 1) const;
         bool HasCycle(i32 ply) const;
 
-        template<i32 pt>
+        template<Piece pt>
         constexpr u64 ThreatsBy(Color pc) const {
             return bb.ThreatsBy<pt>(pc);
         }

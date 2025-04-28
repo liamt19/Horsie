@@ -10,7 +10,7 @@ namespace Horsie {
     public:
         u64 Pieces[6];
         u64 Colors[2];
-        i32 PieceTypes[64];
+        Piece PieceTypes[64];
 
         u64 Occupancy = 0;
 
@@ -18,24 +18,24 @@ namespace Horsie {
         ~Bitboard() = default;
 
         constexpr Color GetColorAtIndex(Square idx) const { return ((Colors[Color::WHITE] & SquareBB(idx)) != 0) ? Color::WHITE : Color::BLACK; }
-        constexpr i32 GetPieceAtIndex(Square idx) const { return PieceTypes[idx]; }
+        constexpr Piece GetPieceAtIndex(Square idx) const { return PieceTypes[idx]; }
         constexpr u64 KingMask(Color pc) const { return Colors[pc] & Pieces[Piece::KING]; }
         constexpr bool Occupied(Square idx) const { return PieceTypes[idx] != Piece::NONE; }
 
         void CopyTo(Bitboard& other) const;
         void Reset();
-        void AddPiece(Square idx, Color pc, i32 pt);
-        void RemovePiece(Square idx, Color pc, i32 pt);
-        void MoveSimple(Square from, Square to, Color pc, i32 pt);
+        void AddPiece(Square idx, Color pc, Piece pt);
+        void RemovePiece(Square idx, Color pc, Piece pt);
+        void MoveSimple(Square from, Square to, Color pc, Piece pt);
         Square KingIndex(Color pc) const;
         u64 BlockingPieces(Color pc, u64* pinners) const;
         u64 AttackersTo(Square idx, u64 occupied) const;
-        u64 AttackMask(Square idx, Color pc, i32 pt, u64 occupied) const;
+        u64 AttackMask(Square idx, Color pc, Piece pt, u64 occupied) const;
 
-        template<i32 pt>
+        template<Piece pt>
         u64 AttackMask(Square idx, Color pc, u64 occupied) const;
 
-        template<i32 pt>
+        template<Piece pt>
         inline u64 ThreatsBy(Color pc) const {
             u64 mask{};
             auto pieces = Pieces[pt] & Colors[pc];

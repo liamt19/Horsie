@@ -106,7 +106,7 @@ namespace Horsie {
 
         void UpdatePV(Move* pv, Move move, Move* childPV) const;
 
-        void UpdateContinuations(SearchStackEntry* ss, Color pc, i32 pt, Square sq, i32 bonus) const;
+        void UpdateContinuations(SearchStackEntry* ss, Color pc, Piece pt, Square sq, i32 bonus) const;
         void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, Move* quietMoves, i32 quietCount, Move* captureMoves, i32 captureCount);
 
         std::string Debug_GetMovesPlayed(SearchStackEntry* ss) const;

@@ -60,7 +60,7 @@ namespace Horsie {
         }
     }
 
-    inline u64 attacks_bb(i32 pt, Square s, u64 occ) {
+    inline u64 attacks_bb(Piece pt, Square s, u64 occ) {
         switch (pt) {
         case BISHOP: return GetBishopMoves(s, occ);
         case ROOK: return GetRookMoves(s, occ);

@@ -13,13 +13,13 @@ namespace Horsie {
     namespace {
 
         template <bool noisyMoves>
-        i32 MakePromotionChecks(ScoredMove* list, i32 from, i32 promotionSquare, bool isCapture, i32 size) {
-            list[size++].move = Move(from, promotionSquare, FlagPromoQueen);
+        i32 MakePromotionChecks(ScoredMove* list, Square from, Square promotionSquare, bool isCapture, i32 size) {
+            list[size++].move = Move::Promotion(from, promotionSquare, Piece::QUEEN);
 
             if (!noisyMoves || isCapture) {
-                list[size++].move = Move(from, promotionSquare, FlagPromoHorsie);
-                list[size++].move = Move(from, promotionSquare, FlagPromoRook);
-                list[size++].move = Move(from, promotionSquare, FlagPromoBishop);
+                list[size++].move = Move::Promotion(from, promotionSquare, Piece::HORSIE);
+                list[size++].move = Move::Promotion(from, promotionSquare, Piece::ROOK);
+                list[size++].move = Move::Promotion(from, promotionSquare, Piece::BISHOP);
             }
 
             return size;
@@ -124,14 +124,14 @@ namespace Horsie {
                 u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][epSq];
                 while (mask != 0) {
                     auto from = poplsb(mask);
-                    list[size++].move = Move(from, epSq, FlagEnPassant);
+                    list[size++].move = Move::EnPassant(from, epSq);
                 }
             }
 
             return size;
         }
 
-        i32 GenNormal(const Position& pos, ScoredMove* list, i32 pt, u64 targets, i32 size) {
+        i32 GenNormal(const Position& pos, ScoredMove* list, Piece pt, u64 targets, i32 size) {
             const Color stm = pos.ToMove;
             const Bitboard& bb = pos.bb;
             const u64 occ = bb.Occupancy;
@@ -187,19 +187,13 @@ namespace Horsie {
             }
 
             if (nonEvasions) {
-                if (stm == Color::WHITE && (ourKing == Square::E1 || pos.IsChess960)) {
-                    if (pos.CanCastle(occ, us, CastlingStatus::WK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WK), FlagCastle);
+                const auto stmCr = (stm == Color::WHITE) ? CastlingStatus::White : CastlingStatus::Black;
+                if (pos.HasCastlingRight(stmCr)) {
+                    if (pos.CanCastle(occ, us, stmCr & CastlingStatus::Kingside))
+                        list[size++].move = Move::Castle(ourKing, pos.CastlingRookSquare(stmCr & CastlingStatus::Kingside));
 
-                    if (pos.CanCastle(occ, us, CastlingStatus::WQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WQ), FlagCastle);
-                }
-                else if (stm == Color::BLACK && (ourKing == Square::E8 || pos.IsChess960)) {
-                    if (pos.CanCastle(occ, us, CastlingStatus::BK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::BK), FlagCastle);
-
-                    if (pos.CanCastle(occ, us, CastlingStatus::BQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::BQ), FlagCastle);
+                    if (pos.CanCastle(occ, us, stmCr & CastlingStatus::Queenside))
+                        list[size++].move = Move::Castle(ourKing, pos.CastlingRookSquare(stmCr & CastlingStatus::Queenside));
                 }
             }
 

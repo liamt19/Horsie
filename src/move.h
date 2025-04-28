@@ -14,10 +14,6 @@ constexpr i32 FlagEnPassant    = 0b0001 << 12;
 constexpr i32 FlagCastle	   = 0b0010 << 12;
 constexpr i32 FlagPromotion    = 0b0011 << 12;
 constexpr i32 SpecialFlagsMask = 0b0011 << 12;
-constexpr i32 FlagPromoHorsie = 0b00 << 14 | FlagPromotion;
-constexpr i32 FlagPromoBishop = 0b01 << 14 | FlagPromotion;
-constexpr i32 FlagPromoRook   = 0b10 << 14 | FlagPromotion;
-constexpr i32 FlagPromoQueen  = 0b11 << 14 | FlagPromotion;
 
 namespace Horsie {
 
@@ -29,7 +25,12 @@ namespace Horsie {
     public:
         Move() = default;
         constexpr explicit Move(u16 d) : data(d) {}
-        constexpr Move(i32 from, i32 to, i32 flags = 0) : data((u16)(to | (from << 6) | flags)) {}
+        constexpr Move(Square from, Square to, i32 flags = 0) : data(static_cast<u16>(to) | static_cast<u16>((from << 6) | flags)) {}
+
+        static constexpr Move EnPassant(Square from, Square to) { return Move(from, to, FlagEnPassant); }
+        static constexpr Move Castle(Square from, Square to) { return Move(from, to, FlagCastle); }
+        static constexpr Move Promotion(Square from, Square to, Piece type) { return Move(from, to, ((type - 1) << 14) | FlagPromotion); }
+
 
         constexpr Square To() const { return Square(data & 0x3F); }
         constexpr Square From() const { return Square((data >> 6) & 0x3F); }
@@ -64,7 +65,7 @@ namespace Horsie {
         }
 
         constexpr CastlingStatus RelevantCastlingRight() const {
-            const auto col = (From() < Square::A2) ? CastlingStatus::White : CastlingStatus::Black;
+            const auto col = (From() >= Square::A2) ? CastlingStatus::Black : CastlingStatus::White;
             const auto side = (To() > From()) ? CastlingStatus::Kingside : CastlingStatus::Queenside;
             return col & side;
         }
