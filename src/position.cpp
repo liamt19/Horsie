@@ -51,9 +51,11 @@ namespace Horsie {
             return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
         };
 
-        ScoredMove list[MoveListSize];
-        i32 size = Generate<GenLegal>(*this, list, 0);
-        for (i32 i = 0; i < size; i++) {
+        MoveList list;
+        Generate<GenLegal>(*this, list);
+        const auto size = list.Size();
+
+        for (u32 i = 0; i < size; i++) {
             Move m = list[i].move;
 
             std::string smith = m.SmithNotation(IsChess960);
@@ -70,12 +72,12 @@ namespace Horsie {
         }
 
         std::cout << "No move '" << moveStr << "' found" << std::endl;
-        for (i32 i = 0; i < size; i++) {
+        for (u32 i = 0; i < size; i++) {
             Move m = list[i].move;
             std::cout << m.SmithNotation(IsChess960) << ", ";
         }
         std::cout << std::endl;
-        for (i32 i = 0; i < size; i++) {
+        for (u32 i = 0; i < size; i++) {
             Move m = list[i].move;
             std::cout << m.ToString(bb) << ", ";
         }
@@ -570,9 +572,9 @@ namespace Horsie {
     }
 
     bool Position::HasLegalMoves() const {
-        ScoredMove list[MoveListSize];
-        i32 legals = Generate<GenLegal>(*this, list, 0);
-        return legals != 0;
+        MoveList list;
+        Generate<GenLegal>(*this, list);
+        return list.Size() != 0;
     }
 
     i32 Position::MaterialCount() const {
@@ -616,8 +618,9 @@ namespace Horsie {
         }
 #endif
 
-        ScoredMove movelist[MoveListSize];
-        i32 size = Generate<GenLegal>(*this, &movelist[0], 0);
+        MoveList list;
+        Generate<GenLegal>(*this, list);
+        const auto size = list.Size();
 
 #if defined(BULK_PERFT)
         if (depth == 1) {
@@ -626,8 +629,8 @@ namespace Horsie {
 #endif
 
         u64 n = 0;
-        for (i32 i = 0; i < size; i++) {
-            Move m = movelist[i].move;
+        for (u32 i = 0; i < size; i++) {
+            Move m = list[i].move;
 
             MakeMove<false>(m);
             n += Perft(depth - 1);
@@ -638,12 +641,12 @@ namespace Horsie {
     }
 
     u64 Position::SplitPerft(i32 depth) {
-        ScoredMove movelist[MoveListSize];
-        ScoredMove* list = &movelist[0];
-        i32 size = Generate<GenLegal>(*this, list, 0);
+        MoveList list;
+        Generate<GenLegal>(*this, list);
+        const auto size = list.Size();
 
         u64 n, total = 0;
-        for (i32 i = 0; i < size; i++) {
+        for (u32 i = 0; i < size; i++) {
             Move m = list[i].move;
 
             MakeMove<false>(m);

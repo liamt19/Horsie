@@ -347,19 +347,21 @@ namespace Horsie::UCI {
     }
 
     void UCIClient::HandleListMovesCommand() {
-        ScoredMove pseudos[MoveListSize] = {};
-        i32 pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
+        MoveList pseudos;
+        Generate<GenNonEvasions>(pos, pseudos);
+        const auto pseudoSize = pseudos.Size();
 
         std::cout << "Pseudo: ";
-        for (size_t i = 0; i < pseudoSize; i++)
+        for (u32 i = 0; i < pseudoSize; i++)
             std::cout << Move::ToString(pseudos[i].move) << " ";
         std::cout << std::endl;
 
-        ScoredMove legals[MoveListSize] = {};
-        i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+        MoveList legals;
+        Generate<GenLegal>(pos, legals);
+        const auto legalsSize = legals.Size();
 
         std::cout << "Legal: ";
-        for (size_t i = 0; i < legalsSize; i++) {
+        for (u32 i = 0; i < legalsSize; i++) {
             std::cout << Move::ToString(legals[i].move) << " ";
         }
         std::cout << std::endl;

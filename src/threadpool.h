@@ -14,6 +14,7 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include "defs.h"
 #include "history.h"
 #include "move.h"
+#include "movegen.h"
 #include "position.h"
 #include "search.h"
 #include "search_options.h"
@@ -99,10 +100,10 @@ namespace Horsie {
         void UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth);
         i16 AdjustEval(Position& pos, i32 us, i16 rawEval) const;
 
-        void AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const;
-        void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
-        void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
-        Move OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const;
+        void AssignProbcutScores(Position& pos, MoveList& list) const;
+        void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, MoveList& list, Move ttMove) const;
+        void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, MoveList& list, Move ttMove) const;
+        Move OrderNextMove(MoveList& list, u32 listIndex) const;
 
         void UpdatePV(Move* pv, Move move, Move* childPV) const;
 

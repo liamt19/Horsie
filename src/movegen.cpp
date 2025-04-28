@@ -13,21 +13,19 @@ namespace Horsie {
     namespace {
 
         template <bool noisyMoves>
-        i32 MakePromotionChecks(ScoredMove* list, Square from, Square promotionSquare, bool isCapture, i32 size) {
-            list[size++].move = Move::Promotion(from, promotionSquare, Piece::QUEEN);
+        void MakePromotionChecks(MoveList& list, Square from, Square promotionSquare, bool isCapture) {
+            list.Add(Move::Promotion(from, promotionSquare, Piece::QUEEN));
 
             if (!noisyMoves || isCapture) {
-                list[size++].move = Move::Promotion(from, promotionSquare, Piece::HORSIE);
-                list[size++].move = Move::Promotion(from, promotionSquare, Piece::ROOK);
-                list[size++].move = Move::Promotion(from, promotionSquare, Piece::BISHOP);
+                list.Add(Move::Promotion(from, promotionSquare, Piece::HORSIE));
+                list.Add(Move::Promotion(from, promotionSquare, Piece::ROOK));
+                list.Add(Move::Promotion(from, promotionSquare, Piece::BISHOP));
             }
-
-            return size;
         }
 
 
         template <MoveGenType GenType>
-        i32 GenPawns(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+        void GenPawns(const Position& pos, MoveList& list, u64 targets) {
             constexpr bool noisyMoves = GenType == GenNoisy;
             constexpr bool evasions = GenType == GenEvasions;
             constexpr bool nonEvasions = GenType == GenNonEvasions;
@@ -66,12 +64,12 @@ namespace Horsie {
 
                 while (moves != 0) {
                     auto to = poplsb(moves);
-                    list[size++].move = Move(to - up, to);
+                    list.Add(Move(to - up, to));
                 }
 
                 while (twoMoves != 0) {
                     auto to = poplsb(twoMoves);
-                    list[size++].move = Move(to - up - up, to);
+                    list.Add(Move(to - up - up, to));
                 }
             }
 
@@ -87,17 +85,17 @@ namespace Horsie {
 
                 while (promotions != 0) {
                     auto to = poplsb(promotions);
-                    size = MakePromotionChecks<noisyMoves>(list, to - up, to, false, size);
+                    MakePromotionChecks<noisyMoves>(list, to - up, to, false);
                 }
 
                 while (promotionCapturesL != 0) {
                     auto to = poplsb(promotionCapturesL);
-                    size = MakePromotionChecks<noisyMoves>(list, to - up - Direction::WEST, to, true, size);
+                    MakePromotionChecks<noisyMoves>(list, to - up - Direction::WEST, to, true);
                 }
 
                 while (promotionCapturesR != 0) {
                     auto to = poplsb(promotionCapturesR);
-                    size = MakePromotionChecks<noisyMoves>(list, to - up - Direction::EAST, to, true, size);
+                    MakePromotionChecks<noisyMoves>(list, to - up - Direction::EAST, to, true);
                 }
             }
 
@@ -106,32 +104,31 @@ namespace Horsie {
 
             while (capturesL != 0) {
                 auto to = poplsb(capturesL);
-                list[size++].move = Move(to - up - Direction::WEST, to);
+                list.Add(Move(to - up - Direction::WEST, to));
             }
 
             while (capturesR != 0) {
                 auto to = poplsb(capturesR);
-                list[size++].move = Move(to - up - Direction::EAST, to);
+                list.Add(Move(to - up - Direction::EAST, to));
             }
 
             const auto epSq = pos.EPSquare();
             if (epSq != EP_NONE && !noisyMoves) {
                 if (evasions && (targets & (SquareBB(epSq + up))) != 0) {
                     //  When in check, we can only en passant if the pawn being captured is the one giving check
-                    return size;
+                    return;
                 }
 
                 u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][epSq];
                 while (mask != 0) {
                     auto from = poplsb(mask);
-                    list[size++].move = Move::EnPassant(from, epSq);
+                    list.Add(Move::EnPassant(from, epSq));
                 }
             }
 
-            return size;
         }
 
-        i32 GenNormal(const Position& pos, ScoredMove* list, Piece pt, u64 targets, i32 size) {
+        void GenNormal(const Position& pos, MoveList& list, Piece pt, u64 targets) {
             const Color stm = pos.ToMove;
             const Bitboard& bb = pos.bb;
             const u64 occ = bb.Occupancy;
@@ -143,15 +140,13 @@ namespace Horsie {
 
                 while (moves != 0) {
                     auto to = poplsb(moves);
-                    list[size++].move = Move(idx, to);
+                    list.Add(Move(idx, to));
                 }
             }
-
-            return size;
         }
 
         template <MoveGenType GenType>
-        i32 GenAll(const Position& pos, ScoredMove* list, i32 size) {
+        void GenAll(const Position& pos, MoveList& list) {
             constexpr bool noisyMoves = GenType == GenNoisy;
             constexpr bool evasions = GenType == GenEvasions;
             constexpr bool nonEvasions = GenType == GenNonEvasions;
@@ -173,75 +168,72 @@ namespace Horsie {
                         : noisyMoves  ?  them
                         :               ~occ;
 
-                size = GenPawns<GenType>(pos, list, targets, size);
-                size = GenNormal(pos, list, HORSIE, targets, size);
-                size = GenNormal(pos, list, BISHOP, targets, size);
-                size = GenNormal(pos, list, ROOK, targets, size);
-                size = GenNormal(pos, list, QUEEN, targets, size);
+                GenPawns<GenType>(pos, list, targets);
+                GenNormal(pos, list, HORSIE, targets);
+                GenNormal(pos, list, BISHOP, targets);
+                GenNormal(pos, list, ROOK, targets);
+                GenNormal(pos, list, QUEEN, targets);
             }
 
             u64 moves = PseudoAttacks[KING][ourKing] & (evasions ? ~us : targets);
             while (moves != 0) {
                 auto to = poplsb(moves);
-                list[size++].move = Move(ourKing, to);
+                list.Add(Move(ourKing, to));
             }
 
             if (nonEvasions) {
                 const auto stmCr = (stm == Color::WHITE) ? CastlingStatus::White : CastlingStatus::Black;
                 if (pos.HasCastlingRight(stmCr)) {
                     if (pos.CanCastle(occ, us, stmCr & CastlingStatus::Kingside))
-                        list[size++].move = Move::Castle(ourKing, pos.CastlingRookSquare(stmCr & CastlingStatus::Kingside));
+                        list.Add(Move::Castle(ourKing, pos.CastlingRookSquare(stmCr & CastlingStatus::Kingside)));
 
                     if (pos.CanCastle(occ, us, stmCr & CastlingStatus::Queenside))
-                        list[size++].move = Move::Castle(ourKing, pos.CastlingRookSquare(stmCr & CastlingStatus::Queenside));
+                        list.Add(Move::Castle(ourKing, pos.CastlingRookSquare(stmCr & CastlingStatus::Queenside)));
                 }
             }
 
-            return size;
         }
 
     }
 
     template <MoveGenType GenType>
-    i32 Generate(const Position& pos, ScoredMove* moveList, i32 size) {
-        return pos.Checkers() ? GenAll<GenEvasions>(pos, moveList, 0) :
-                                GenAll<GenNonEvasions>(pos, moveList, 0);
+    void Generate(const Position& pos, MoveList& list) {
+        pos.Checkers() ? GenAll<GenEvasions>(pos, list) : GenAll<GenNonEvasions>(pos, list);
     }
 
-    i32 GenerateQS(const Position& pos, ScoredMove* moveList, i32 size) {
-        return pos.Checkers() ? GenAll<GenEvasions>(pos, moveList, 0) :
-                                GenAll<GenNoisy>(pos, moveList, 0);
+    void GenerateQS(const Position& pos, MoveList& list) {
+        pos.Checkers() ? GenAll<GenEvasions>(pos, list) : GenAll<GenNoisy>(pos, list);
     }
 
-    template i32 Generate<PseudoLegal>(const Position&, ScoredMove*, i32);
-    template i32 Generate<GenNoisy>(const Position&, ScoredMove*, i32);
-    template i32 Generate<GenEvasions>(const Position&, ScoredMove*, i32);
-    template i32 Generate<GenNonEvasions>(const Position&, ScoredMove*, i32);
+    template void Generate<PseudoLegal>(const Position&, MoveList&);
+    template void Generate<GenNoisy>(const Position&, MoveList&);
+    template void Generate<GenEvasions>(const Position&, MoveList&);
+    template void Generate<GenNonEvasions>(const Position&, MoveList&);
 
     template<>
-    i32 Generate<GenLegal>(const Position& pos, ScoredMove* moveList, i32 size) {
-        i32 numMoves = pos.Checkers() ? Generate<GenEvasions>(pos, moveList, 0) :
-                                        Generate<GenNonEvasions>(pos, moveList, 0);
+    void Generate<GenLegal>(const Position& pos, MoveList& list) {
+        list.Clear();
+        Generate<PseudoLegal>(pos, list);
 
         const auto stm = pos.ToMove;
         const auto ourKing   = pos.KingSquare(stm);
         const auto theirKing = pos.KingSquare(Not(stm));
         u64 pinned = pos.BlockingPieces(stm);
 
-        ScoredMove* curr = moveList;
-        ScoredMove* end = moveList + numMoves;
+        u32 curr = 0;
+        u32 end = list.Size();
 
         while (curr != end) {
-            if (!pos.IsLegal(curr->move, ourKing, theirKing, pinned)) {
-                *curr = *--end;
-                numMoves--;
+            if (!pos.IsLegal(list[curr].move, ourKing, theirKing, pinned)) {
+                end--;
+                list.Swap(curr, end);
             }
             else {
-                ++curr;
+                curr++;
             }
         }
 
-        return numMoves;
+        list.Resize(curr);
     }
 }
 

@@ -70,8 +70,9 @@ namespace Horsie {
             rootFEN = rootPosition.GetFEN();
         }
 
-        ScoredMove rms[MoveListSize] = {};
-        i32 size = Generate<GenLegal>(rootPosition, &rms[0], 0);
+        MoveList rms;
+        Generate<GenLegal>(rootPosition, rms);
+        const auto size = rms.Size();
 
         for (auto t : Threads) {
             auto td = t->Worker.get();
@@ -80,7 +81,7 @@ namespace Horsie {
             td->RootMoves.clear();
             td->RootMoves.shrink_to_fit();
             td->RootMoves.reserve(size);
-            for (i32 j = 0; j < size; j++) {
+            for (u32 j = 0; j < size; j++) {
                 td->RootMoves.push_back(RootMove(rms[j].move));
             }
 

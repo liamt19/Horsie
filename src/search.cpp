@@ -411,12 +411,13 @@ namespace Horsie {
             && std::abs(beta) < ScoreTTWin
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
 
-            ScoredMove captures[MoveListSize];
-            i32 numCaps = GenerateQS(pos, captures, 0);
-            AssignProbcutScores(pos, captures, numCaps);
+            MoveList captures;
+            GenerateQS(pos, captures);
+            const auto numCaps = captures.Size();
+            AssignProbcutScores(pos, captures);
 
-            for (i32 i = 0; i < numCaps; i++) {
-                Move m = OrderNextMove(captures, numCaps, i);
+            for (u32 i = 0; i < numCaps; i++) {
+                Move m = OrderNextMove(captures, i);
                 if (!pos.IsLegal(m) || !pos.SEE_GE(m, std::max(1, probBeta - ss->StaticEval))) {
                     //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
                     continue;
@@ -478,12 +479,13 @@ namespace Horsie {
 
         bool skipQuiets = false;
 
-        ScoredMove list[MoveListSize];
-        i32 size = Generate<PseudoLegal>(pos, list, 0);
-        AssignScores(pos, ss, *history, list, size, ttMove);
+        MoveList list;
+        Generate<PseudoLegal>(pos, list);
+        const auto size = list.Size();
+        AssignScores(pos, ss, *history, list, ttMove);
 
-        for (i32 i = 0; i < size; i++) {
-            Move m = OrderNextMove(list, size, i);
+        for (u32 i = 0; i < size; i++) {
+            Move m = OrderNextMove(list, i);
 
             if (m == ss->Skip) {
                 didSkip = true;
@@ -859,12 +861,13 @@ namespace Horsie {
         i32 legalMoves = 0;
         i32 quietEvasions = 0;
 
-        ScoredMove list[MoveListSize];
-        i32 size = GenerateQS(pos, list, 0);
-        AssignQuiescenceScores(pos, ss, *history, list, size, ttMove);
+        MoveList list;
+        GenerateQS(pos, list);
+        const auto size = list.Size();
+        AssignQuiescenceScores(pos, ss, *history, list, ttMove);
 
-        for (i32 i = 0; i < size; i++) {
-            Move m = OrderNextMove(list, size, i);
+        for (u32 i = 0; i < size; i++) {
+            Move m = OrderNextMove(list, i);
 
             if (!pos.IsLegal(m)) {
                 continue;
@@ -1100,25 +1103,28 @@ namespace Horsie {
 
     }
 
-    Move SearchThread::OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const {
+    Move SearchThread::OrderNextMove(MoveList& list, u32 listIndex) const {
         i32 max = INT32_MIN;
         i32 maxIndex = listIndex;
+        const auto size = list.Size();
 
-        for (i32 i = listIndex; i < size; i++) {
-            if (moves[i].score > max) {
-                max = moves[i].score;
+        for (u32 i = listIndex; i < size; i++) {
+            if (list[i].score > max) {
+                max = list[i].score;
                 maxIndex = i;
             }
         }
 
-        std::swap(moves[maxIndex], moves[listIndex]);
+        list.Swap(maxIndex, listIndex);
 
-        return moves[listIndex].move;
+        return list[listIndex].move;
     }
 
-    void SearchThread::AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const {
+    void SearchThread::AssignProbcutScores(Position& pos, MoveList& list) const {
         Bitboard& bb = pos.bb;
-        for (i32 i = 0; i < size; i++) {
+        const auto size = list.Size();
+
+        for (u32 i = 0; i < size; i++) {
             Move m = list[i].move;
 
             list[i].score = m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To());
@@ -1128,11 +1134,12 @@ namespace Horsie {
         }
     }
 
-    void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
+    void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, MoveList& list, Move ttMove) const {
         Bitboard& bb = pos.bb;
+        const auto size = list.Size();
         const auto pc = pos.ToMove;
 
-        for (i32 i = 0; i < size; i++) {
+        for (u32 i = 0; i < size; i++) {
             Move m = list[i].move;
             const auto [moveFrom, moveTo] = m.Unpack();
             const auto pt = bb.GetPieceAtIndex(moveFrom);
@@ -1165,15 +1172,16 @@ namespace Horsie {
         }
     }
 
-    void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
+    void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, MoveList& list, Move ttMove) const {
         Bitboard& bb = pos.bb;
+        const auto size = list.Size();
         const auto pc = pos.ToMove;
 
         const auto pawnThreats = pos.ThreatsBy<PAWN>(Not(pc));
         const auto minorThreats = pos.ThreatsBy<HORSIE>(Not(pc)) | pos.ThreatsBy<BISHOP>(Not(pc)) | pawnThreats;
         const auto rookThreats = pos.ThreatsBy<ROOK>(Not(pc)) | minorThreats;
 
-        for (i32 i = 0; i < size; i++) {
+        for (u32 i = 0; i < size; i++) {
             Move m = list[i].move;
             const auto [moveFrom, moveTo] = m.Unpack();
             const auto pt = bb.GetPieceAtIndex(moveFrom);

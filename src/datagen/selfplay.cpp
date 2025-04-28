@@ -127,7 +127,7 @@ namespace Horsie::Datagen {
             return p;
         }();
 
-        ScoredMove legalMoves[MoveListSize];
+        MoveList legalMoves;
 
         while (true) {
             thread->SetStop(false);
@@ -144,7 +144,8 @@ namespace Horsie::Datagen {
 
             i32 randMoveCount = RandNext(MinOpeningPly, MaxOpeningPly + 1);
             for (i32 i = 0; i < randMoveCount; i++) {
-                i32 size = Generate<GenLegal>(pos, legalMoves, 0);
+                Generate<GenLegal>(pos, legalMoves);
+                const auto size = legalMoves.Size();
                     
                 if (size == 0)
                     goto Retry;
@@ -163,7 +164,7 @@ namespace Horsie::Datagen {
                 while (toMake == Move::Null()) {
                     std::vector<ScoredMove> candidates = {};
                     i32 rPt = GetRandPt();
-                    for (i32 j = 0; j < size; j++)
+                    for (u32 j = 0; j < size; j++)
                         if (pos.bb.GetPieceAtIndex(legalMoves[j].move.From()) == rPt)
                             candidates.push_back(legalMoves[j]);
 
@@ -327,14 +328,15 @@ namespace Horsie::Datagen {
     void DGSetupThread(Position& pos, SearchThread& td) {
         td.Reset();
 
-        ScoredMove rms[MoveListSize] = {};
-        i32 size = Generate<GenLegal>(pos, &rms[0], 0);
+        MoveList rms;
+        Generate<GenLegal>(pos, rms);
+        const auto size = rms.Size();
 
         td.RootMoves.clear();
         td.RootMoves.shrink_to_fit();
         td.RootMoves.reserve(size);
 
-        for (i32 j = 0; j < size; j++) {
+        for (u32 j = 0; j < size; j++) {
             td.RootMoves.push_back(RootMove(rms[j].move));
         }
 
