@@ -32,7 +32,7 @@ namespace Horsie {
     extern Magic RookMagics[SQUARE_NB];
     extern Magic BishopMagics[SQUARE_NB];
 
-    inline u64 GetRookMoves(i32 s, u64 occ) {
+    inline u64 GetRookMoves(Square s, u64 occ) {
         const auto& m = RookMagics[s];
         
         if (UsePext)
@@ -41,7 +41,7 @@ namespace Horsie {
         return m.attacks[((occ & m.mask) * m.number) >> m.shift];
     }
 
-    inline u64 GetBishopMoves(i32 s, u64 occ) {
+    inline u64 GetBishopMoves(Square s, u64 occ) {
         const auto& m = BishopMagics[s];
 
         if (UsePext)
@@ -51,21 +51,21 @@ namespace Horsie {
     }
 
     template<Piece Pt>
-    inline u64 attacks_bb(i32 s, u64 occ) {
+    inline u64 attacks_bb(Square s, u64 occ) {
         switch (Pt) {
         case BISHOP: return GetBishopMoves(s, occ);
         case ROOK: return GetRookMoves(s, occ);
         case QUEEN: return GetBishopMoves(s, occ) | GetRookMoves(s, occ);
-        default: return PseudoAttacks[Pt][(i32)s];
+        default: return PseudoAttacks[Pt][s];
         }
     }
 
-    inline u64 attacks_bb(i32 pt, i32 s, u64 occ) {
+    inline u64 attacks_bb(i32 pt, Square s, u64 occ) {
         switch (pt) {
         case BISHOP: return GetBishopMoves(s, occ);
         case ROOK: return GetRookMoves(s, occ);
         case QUEEN: return GetBishopMoves(s, occ) | GetRookMoves(s, occ);
-        default: return PseudoAttacks[pt][(i32)s];
+        default: return PseudoAttacks[pt][s];
         }
     }
 

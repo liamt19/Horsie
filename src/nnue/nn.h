@@ -67,21 +67,21 @@ namespace Horsie::NNUE {
 
 
     void RefreshAccumulator(Position& pos);
-    void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective);
-    void RefreshAccumulatorPerspective(Position& pos, i32 perspective);
+    void RefreshAccumulatorPerspectiveFull(Position& pos, Color perspective);
+    void RefreshAccumulatorPerspective(Position& pos, Color perspective);
 
 
     void MakeMoveNN(Position& pos, Move m);
     void MakeNullMove(Position& pos);
-    void UpdateSingle(Accumulator* prev, Accumulator* curr, i32 perspective);
+    void UpdateSingle(Accumulator* prev, Accumulator* curr, Color perspective);
     void ProcessUpdates(Position& pos);
 
 
     i32 GetEvaluation(Position& pos, i32 outputBucket);
     i32 GetEvaluation(Position& pos);
 
-    std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, Square sq, Square wk, Square bk);
-    i32 FeatureIndexSingle(i32 pc, i32 pt, Square sq, Square kingSq, i32 perspective);
+    std::pair<i32, i32> FeatureIndex(Color pc, i32 pt, Square sq, Square wk, Square bk);
+    i32 FeatureIndexSingle(Color pc, i32 pt, Square sq, Square kingSq, Color perspective);
 
 
     constexpr auto KingBuckets = [] {
@@ -113,7 +113,7 @@ namespace Horsie::NNUE {
     }();
 
 
-    constexpr i32 BucketForPerspective(i32 ksq, i32 perspective) {
+    constexpr i32 BucketForPerspective(Square ksq, Color perspective) {
         return (KingBuckets[(ksq ^ (56 * perspective))]);
     }
 

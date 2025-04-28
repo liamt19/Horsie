@@ -40,7 +40,7 @@ namespace Horsie {
     struct NetworkUpdate {
         PerspectiveUpdate Perspectives[2];
 
-        PerspectiveUpdate& operator[](const i32 c) { return Perspectives[c]; }
+        PerspectiveUpdate& operator[](Color c) { return Perspectives[c]; }
     };
 
 }

@@ -148,7 +148,7 @@ namespace Horsie::NNUE {
         RefreshAccumulatorPerspectiveFull(pos, BLACK);
     }
 
-    void RefreshAccumulatorPerspectiveFull(Position& pos, i32 perspective) {
+    void RefreshAccumulatorPerspectiveFull(Position& pos, Color perspective) {
         auto accumulator = pos.CurrAccumulator();
         Bitboard& bb = pos.bb;
 
@@ -161,8 +161,8 @@ namespace Horsie::NNUE {
         while (occ != 0) {
             auto pieceIdx = poplsb(occ);
 
-            i32 pt = bb.GetPieceAtIndex(pieceIdx);
-            i32 pc = bb.GetColorAtIndex(pieceIdx);
+            auto pt = bb.GetPieceAtIndex(pieceIdx);
+            auto pc = bb.GetColorAtIndex(pieceIdx);
 
             i32 idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
 
@@ -179,7 +179,7 @@ namespace Horsie::NNUE {
         bb.CopyTo(entryBB);
     }
 
-    void RefreshAccumulatorPerspective(Position& pos, i32 perspective) {
+    void RefreshAccumulatorPerspective(Position& pos, Color perspective) {
         auto accumulator = pos.CurrAccumulator();
         Bitboard& bb = pos.bb;
 
@@ -192,12 +192,12 @@ namespace Horsie::NNUE {
         auto ourAccumulation = reinterpret_cast<i16*>(&entryAcc.Sides[perspective]);
         accumulator->NeedsRefresh[perspective] = false;
 
-        for (i32 pc = 0; pc < COLOR_NB; pc++) {
+        for (Color pc : {Color::WHITE, Color::BLACK}) {
             for (i32 pt = 0; pt < PIECE_NB; pt++) {
                 u64 prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
-                u64 curr = bb.Pieces[pt] & bb.Colors[pc];
+                u64 curr =      bb.Pieces[pt] &      bb.Colors[pc];
 
-                u64 added = curr & ~prev;
+                u64 added   = curr & ~prev;
                 u64 removed = prev & ~curr;
 
                 while (added != 0) {
@@ -450,7 +450,7 @@ namespace Horsie::NNUE {
 
     void ProcessUpdates(Position& pos) {
         StateInfo* st = pos.State;
-        for (i32 perspective = 0; perspective < 2; perspective++) {
+        for (Color perspective : {Color::WHITE, Color::BLACK}) {
             //  If the current state is correct for our perspective, no work is needed
             if (st->accumulator->Computed[perspective])
                 continue;
@@ -482,7 +482,7 @@ namespace Horsie::NNUE {
         }
     }
 
-    void UpdateSingle(Accumulator* prev, Accumulator* curr, i32 perspective) {
+    void UpdateSingle(Accumulator* prev, Accumulator* curr, Color perspective) {
         auto FeatureWeights = reinterpret_cast<const i16*>(&g_network->FTWeights[0]);
         const auto& updates = curr->Update[perspective];
 
@@ -515,7 +515,7 @@ namespace Horsie::NNUE {
         curr->Computed[perspective] = true;
     }
 
-    std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, Square sq, Square wk, Square bk) {
+    std::pair<i32, i32> FeatureIndex(Color pc, i32 pt, Square sq, Square wk, Square bk) {
         const i32 ColorStride = 64 * 6;
         const i32 PieceStride = 64;
 
@@ -539,7 +539,7 @@ namespace Horsie::NNUE {
         return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
     }
 
-    i32 FeatureIndexSingle(i32 pc, i32 pt, Square sq, Square kingSq, i32 perspective) {
+    i32 FeatureIndexSingle(Color pc, i32 pt, Square sq, Square kingSq, Color perspective) {
         const i32 ColorStride = 64 * 6;
         const i32 PieceStride = 64;
 

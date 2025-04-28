@@ -46,7 +46,8 @@ namespace Horsie {
         FILE_F,
         FILE_G,
         FILE_H,
-        FILE_NB
+
+        FILE_NB = 8
     };
 
     enum Rank : i32 {
@@ -58,7 +59,8 @@ namespace Horsie {
         RANK_6,
         RANK_7,
         RANK_8,
-        RANK_NB
+
+        RANK_NB = 8
     };
 
     enum CastlingStatus : i32 {

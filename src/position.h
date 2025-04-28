@@ -35,13 +35,13 @@ namespace Horsie {
         constexpr StateInfo* NextState() const { return State + 1; }
 
         constexpr u64 CheckSquares(i32 pt) const { return State->CheckSquares[pt]; }
-        constexpr u64 BlockingPieces(i32 pc) const { return State->BlockingPieces[pc]; }
-        constexpr u64 Pinners(i32 pc) const { return State->Pinners[pc]; }
-        constexpr Square KingSquare(i32 pc) const { return State->KingSquares[pc]; }
+        constexpr u64 BlockingPieces(Color pc) const { return State->BlockingPieces[pc]; }
+        constexpr u64 Pinners(Color pc) const { return State->Pinners[pc]; }
+        constexpr Square KingSquare(Color pc) const { return State->KingSquares[pc]; }
         constexpr u64 Checkers() const { return State->Checkers; }
         constexpr u64 Hash() const { return State->Hash; }
         constexpr u64 PawnHash() const { return State->PawnHash; }
-        constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
+        constexpr u64 NonPawnHash(Color pc) const { return State->NonPawnHash[pc]; }
         constexpr i32 HalfmoveClock() const { return State->HalfmoveClock; }
         constexpr Square EPSquare() const { return State->EPSquare; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
@@ -63,13 +63,13 @@ namespace Horsie {
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
         constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPath(cr)); }
         constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquare(cr)) & ourOcc); }
-        constexpr bool HasNonPawnMaterial(i32 pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
+        constexpr bool HasNonPawnMaterial(Color pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
 
         constexpr bool IsCapture(Move m) const { return bb.GetPieceAtIndex(m.To()) != Piece::NONE && !m.IsCastle(); }
         constexpr bool IsNoisy(Move m) const { return IsCapture(m) || m.IsEnPassant(); }
 
         void RemoveCastling(CastlingStatus cr) const;
-        void UpdateHash(i32 pc, i32 pt, Square sq) const;
+        void UpdateHash(Color pc, i32 pt, Square sq) const;
         constexpr CastlingStatus GetCastlingForRook(Square sq) const;
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 
@@ -111,15 +111,15 @@ namespace Horsie {
         bool HasCycle(i32 ply) const;
 
         template<i32 pt>
-        constexpr u64 ThreatsBy(i32 pc) const {
+        constexpr u64 ThreatsBy(Color pc) const {
             return bb.ThreatsBy<pt>(pc);
         }
 
-        inline i32 PawnCorrectionIndex(i32 pc) const {
+        inline i32 PawnCorrectionIndex(Color pc) const {
             return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);
         }
 
-        inline i32 NonPawnCorrectionIndex(i32 pc, i32 side) const {
+        inline i32 NonPawnCorrectionIndex(Color pc, Color side) const {
             return (pc * 16384) + static_cast<i32>(NonPawnHash(side) % 16384);
         }
 

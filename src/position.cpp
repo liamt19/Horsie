@@ -109,11 +109,11 @@ namespace Horsie {
 
         const auto [moveFrom, moveTo] = move.Unpack();
 
-        const i32 ourPiece = bb.GetPieceAtIndex(moveFrom);
-        const i32 ourColor = ToMove;
+        const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
+        const auto ourColor = ToMove;
 
-        i32 theirPiece = bb.GetPieceAtIndex(moveTo);
-        const i32 theirColor = Not(ourColor);
+        auto theirPiece = bb.GetPieceAtIndex(moveTo);
+        const auto theirColor = Not(ourColor);
 
         assert(theirPiece != Piece::KING);
         assert(theirPiece == Piece::NONE || bb.GetColorAtIndex(moveTo) != ourColor || move.IsCastle());
@@ -212,9 +212,9 @@ namespace Horsie {
         const auto [moveFrom, moveTo] = move.Unpack();
 
         //  Assume that "we" just made the last move, and "they" are undoing it.
-        i32 ourPiece = bb.GetPieceAtIndex(moveTo);
-        i32 ourColor = Not(ToMove);
-        i32 theirColor = ToMove;
+        auto ourPiece = bb.GetPieceAtIndex(moveTo);
+        const auto ourColor = Not(ToMove);
+        const auto theirColor = ToMove;
 
         GamePly--;
 
@@ -598,7 +598,7 @@ namespace Horsie {
         return cr;
     }
 
-    void Position::UpdateHash(i32 pc, i32 pt, Square sq) const {
+    void Position::UpdateHash(Color pc, i32 pt, Square sq) const {
         Zobrist::ToggleSquare(State->Hash, pc, pt, sq);
 
         if (pt == PAWN)
@@ -763,8 +763,8 @@ namespace Horsie {
                 sq += 2 * SOUTH;
 
             else if ((idx = PieceToChar.find(tolower(token))) != std::string::npos) {
-                i32 pc = isupper(token) ? WHITE : BLACK;
-                i32 pt = Piece(idx);
+                auto pc = isupper(token) ? WHITE : BLACK;
+                auto pt = Piece(idx);
 
                 bb.AddPiece(sq, pc, pt);
                 ++sq;
@@ -1016,7 +1016,7 @@ namespace Horsie {
                 if (ply > i)
                     return true;
 
-                i32 pc = (bb.GetPieceAtIndex(moveFrom) != Piece::NONE) ? bb.GetColorAtIndex(moveFrom) : bb.GetColorAtIndex(moveTo);
+                Color pc = (bb.GetPieceAtIndex(moveFrom) != Piece::NONE) ? bb.GetColorAtIndex(moveFrom) : bb.GetColorAtIndex(moveTo);
                 return pc == ToMove;
             }
         }

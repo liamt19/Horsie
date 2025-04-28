@@ -16,14 +16,14 @@ namespace Horsie::NNUE {
         std::array<bool, 2> NeedsRefresh = { true, true };
         std::array<bool, 2> Computed = { false, false };
 
-        const std::array<i16, L1_SIZE> operator[](const i32 c) { return Sides[c]; }
+        const std::array<i16, L1_SIZE> operator[](Color c) { return Sides[c]; }
 
         void CopyTo(Accumulator* target) const {
             target->Sides = Sides;
             target->NeedsRefresh = NeedsRefresh;
         }
 
-        void CopyTo(Accumulator* target, const i32 c) const {
+        void CopyTo(Accumulator* target, Color c) const {
             target->Sides[c] = Sides[c];
             target->NeedsRefresh[c] = NeedsRefresh[c];
         }
@@ -33,7 +33,7 @@ namespace Horsie::NNUE {
             target.NeedsRefresh = NeedsRefresh;
         }
 
-        void CopyTo(Accumulator& target, const i32 c) const {
+        void CopyTo(Accumulator& target, Color c) const {
             target.Sides[c] = Sides[c];
             target.NeedsRefresh[c] = NeedsRefresh[c];
         }

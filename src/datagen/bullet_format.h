@@ -69,7 +69,7 @@ namespace Horsie::Datagen {
                 auto sq = poplsb(temp);
                 i32 piece = (_pcs[idx / 2] >> (4 * (idx & 1))) & 0b1111;
 
-                bb.AddPiece(sq, piece / 8, piece % 8);
+                bb.AddPiece(sq, static_cast<Color>(piece / 8), piece % 8);
 
                 idx++;
             }

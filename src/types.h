@@ -58,6 +58,7 @@ namespace Horsie {
         constexpr T operator-=(T& t, D d) { return t = t - d; }
 
     ENABLE_INCR_OPS_ON(Piece)
+    ENABLE_INCR_OPS_ON(Color)
     ENABLE_INCR_OPS_ON(Square)
     ENABLE_INCR_OPS_ON(File)
     ENABLE_INCR_OPS_ON(Rank)
@@ -118,7 +119,6 @@ namespace Horsie {
 
     constexpr bool MoreThanOne(u64 b) { return b & (b - 1); }
 
-    
     constexpr Square OrientSquare(Square s, Color c) { return Square(static_cast<i32>(s) ^ i32(56 * c)); }
     constexpr Square OrientSquare(Square s, bool b) { return Square(static_cast<i32>(s) ^ (56 * b)); }
 
@@ -151,14 +151,14 @@ namespace Horsie {
     template<Direction D>
     constexpr u64 Shift(u64 b) { return Shift(D, b); }
 
-    constexpr u64 Forward(i32 c, u64 b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
-    constexpr i32 ShiftUpDir(i32 c) { return c == WHITE ? NORTH : SOUTH; };
+    constexpr u64 Forward(Color c, u64 b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
+    constexpr i32 ShiftUpDir(Color c) { return c == WHITE ? NORTH : SOUTH; };
 
     constexpr std::pair<i32, i32> UnpackIndex(Square index) { return { index % 8, index / 8 }; }
 
     constexpr Square MakeIndex(i32 x, i32 y) { return static_cast<Square>((y * 8) + x); }
 
-    constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * 6) + pt; }
+    constexpr i32 MakePiece(Color pc, i32 pt) { return (pc * 6) + pt; }
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }

@@ -33,7 +33,7 @@ namespace Horsie {
         Occupancy = 0;
     }
 
-    void Bitboard::AddPiece(Square idx, i32 pc, i32 pt) {
+    void Bitboard::AddPiece(Square idx, Color pc, i32 pt) {
         PieceTypes[idx] = pt;
 
         assert((Colors[pc] & SquareBB(idx)) == 0);
@@ -45,7 +45,7 @@ namespace Horsie {
         Occupancy |= SquareBB(idx);
     }
 
-    void Bitboard::RemovePiece(Square idx, i32 pc, i32 pt) {
+    void Bitboard::RemovePiece(Square idx, Color pc, i32 pt) {
         PieceTypes[idx] = Piece::NONE;
 
         assert((Colors[pc] & SquareBB(idx)) != 0);
@@ -57,17 +57,17 @@ namespace Horsie {
         Occupancy ^= SquareBB(idx);
     }
 
-    void Bitboard::MoveSimple(Square from, Square to, i32 pc, i32 pt) {
+    void Bitboard::MoveSimple(Square from, Square to, Color pc, i32 pt) {
         RemovePiece(from, pc, pt);
         AddPiece(to, pc, pt);
     }
 
-    Square Bitboard::KingIndex(i32 pc) const {
+    Square Bitboard::KingIndex(Color pc) const {
         assert(lsb(KingMask(pc)) != SQUARE_NB);
         return static_cast<Square>(lsb(KingMask(pc)));
     }
 
-    u64 Bitboard::BlockingPieces(i32 pc, u64* pinners) const {
+    u64 Bitboard::BlockingPieces(Color pc, u64* pinners) const {
         u64 blockers = 0UL;
         *pinners = 0;
 
@@ -110,7 +110,7 @@ namespace Horsie {
             | (PawnAttackMasks[BLACK][idx] & Colors[WHITE] & Pieces[PAWN]);
     }
 
-    u64 Bitboard::AttackMask(Square idx, i32 pc, i32 pt, u64 occupied) const {
+    u64 Bitboard::AttackMask(Square idx, Color pc, i32 pt, u64 occupied) const {
         switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];
         case HORSIE: return PseudoAttacks[HORSIE][idx];
@@ -124,15 +124,15 @@ namespace Horsie {
     }
 
 
-    template u64 Bitboard::AttackMask<PAWN>(Square idx, i32 pc, u64 occupied) const;
-    template u64 Bitboard::AttackMask<HORSIE>(Square idx, i32 pc, u64 occupied) const;
-    template u64 Bitboard::AttackMask<BISHOP>(Square idx, i32 pc, u64 occupied) const;
-    template u64 Bitboard::AttackMask<ROOK>(Square idx, i32 pc, u64 occupied) const;
-    template u64 Bitboard::AttackMask<QUEEN>(Square idx, i32 pc, u64 occupied) const;
-    template u64 Bitboard::AttackMask<KING>(Square idx, i32 pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<PAWN>(Square idx, Color pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<HORSIE>(Square idx, Color pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<BISHOP>(Square idx, Color pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<ROOK>(Square idx, Color pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<QUEEN>(Square idx, Color pc, u64 occupied) const;
+    template u64 Bitboard::AttackMask<KING>(Square idx, Color pc, u64 occupied) const;
 
     template<i32 pt>
-    u64 Bitboard::AttackMask(Square idx, i32 pc, u64 occupied) const {
+    u64 Bitboard::AttackMask(Square idx, Color pc, u64 occupied) const {
         switch (pt) {
         case PAWN: return PawnAttackMasks[pc][idx];
         case HORSIE: return PseudoAttacks[HORSIE][idx];
