@@ -44,27 +44,45 @@ namespace Horsie {
     constexpr u64 Rank7BB = Rank1BB << (8 * 6);
     constexpr u64 Rank8BB = Rank1BB << (8 * 7);
 
-#define ENABLE_INCR_OPERATORS_ON(T) \
-        inline T& operator++(T& d) { return d = T(i32(d) + 1); } \
-        inline T& operator--(T& d) { return d = T(i32(d) - 1); }
 
-    ENABLE_INCR_OPERATORS_ON(Piece)
-    ENABLE_INCR_OPERATORS_ON(Square)
-    ENABLE_INCR_OPERATORS_ON(File)
-    ENABLE_INCR_OPERATORS_ON(Rank)
+    constexpr u64 SquareBB(Square s) { return (1ULL << s); }
 
-#undef ENABLE_INCR_OPERATORS_ON
+#define ENABLE_INCR_OPS_ON(T) \
+        inline T& operator++(T& d) { return d = T(static_cast<i32>(d) + 1); } \
+        inline T& operator--(T& d) { return d = T(static_cast<i32>(d) - 1); }
 
-}
+#define ENABLE_ADD_SUB(T, D) \
+        constexpr T operator+(T t, D d) { return static_cast<T>(static_cast<i32>(t) + static_cast<i32>(d)); } \
+        constexpr T operator-(T t, D d) { return static_cast<T>(static_cast<i32>(t) - static_cast<i32>(d)); } \
+        constexpr T operator+=(T& t, D d) { return t = t + d; } \
+        constexpr T operator-=(T& t, D d) { return t = t - d; }
 
-namespace {
+    ENABLE_INCR_OPS_ON(Piece)
+    ENABLE_INCR_OPS_ON(Square)
+    ENABLE_INCR_OPS_ON(File)
+    ENABLE_INCR_OPS_ON(Rank)
 
-    constexpr Direction operator+(Direction d1, Direction d2) { return Direction(i32(d1) + i32(d2)); }
+    ENABLE_ADD_SUB(Square, Direction)
+    ENABLE_ADD_SUB(Square, i32)
 
-    constexpr Square operator+(Square s, Direction d) { return Square(i32(s) + i32(d)); }
-    constexpr Square operator-(Square s, Direction d) { return Square(i32(s) - i32(d)); }
-    constexpr Square& operator+=(Square& s, Direction d) { return s = s + d; }
-    constexpr Square& operator-=(Square& s, Direction d) { return s = s - d; }
+#undef ENABLE_INCR_OPS_ON
+#undef ENABLE_ADD_SUB
+
+    constexpr bool operator<(Square l, i32 r) { return static_cast<i32>(l) < r; }
+    constexpr bool operator<(i32 l, Square r) { return l < static_cast<i32>(r); }
+    constexpr bool operator>(Square l, i32 r) { return static_cast<i32>(l) > r; }
+    constexpr bool operator>(i32 l, Square r) { return l > static_cast<i32>(r); }
+
+    constexpr CastlingStatus operator~(CastlingStatus l) { return CastlingStatus(~i32(l)); }
+    constexpr CastlingStatus operator&(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) & i32(r)); }
+    constexpr CastlingStatus operator|(CastlingStatus l, CastlingStatus r) { return CastlingStatus(i32(l) | i32(r)); }
+    constexpr CastlingStatus& operator&=(CastlingStatus& l, CastlingStatus r) { return l = CastlingStatus(i32(l) & i32(r)); }
+    constexpr CastlingStatus& operator|=(CastlingStatus& l, CastlingStatus r) { return l = CastlingStatus(i32(l) | i32(r)); }
+
+    constexpr Direction operator+(Direction d1, Direction d2) { return static_cast<Direction>(i32(d1) + i32(d2)); }
+
+    constexpr Square operator^(Square s, i32 d) { return Square(i32(s) ^ d); }
+    constexpr Square& operator^=(Square& s, i32 d) { return s = s ^ d; }
 
     constexpr i32 Not(i32 c) { return c ^ 1; }
     constexpr Color Not(Color c) { return Color(i32(c) ^ 1); }
@@ -88,23 +106,18 @@ namespace {
         return std::popcount(b);
     }
 
-    constexpr inline i32 lsb(u64 b) {
-        return std::countr_zero(b);
+    constexpr inline Square lsb(u64 b) {
+        return static_cast<Square>(std::countr_zero(b));
     }
 
-    constexpr inline i32 poplsb(u64& b) {
+    constexpr inline Square poplsb(u64& b) {
         const auto s = lsb(b);
         b &= b - 1;
         return s;
     }
 
     constexpr bool MoreThanOne(u64 b) { return b & (b - 1); }
-}
 
-namespace Horsie {
-
-    constexpr u64 SquareBB(i32 s) { return (1ULL << s); }
-    constexpr u64 SquareBB(Square s) { return SquareBB(static_cast<i32>(s)); }
     
     constexpr Square OrientSquare(Square s, Color c) { return Square(static_cast<i32>(s) ^ i32(56 * c)); }
     constexpr Square OrientSquare(Square s, bool b) { return Square(static_cast<i32>(s) ^ (56 * b)); }
@@ -112,11 +125,11 @@ namespace Horsie {
     constexpr u64 RankBB(Rank r) { return Rank1BB << (8 * r); }
     constexpr u64 FileBB(File f) { return FileABB << f; }
 
-    constexpr Rank GetIndexRank(i32 s) { return Rank(s >> 3); }
-    constexpr File GetIndexFile(i32 s) { return File(s & 7); }
+    constexpr Rank GetIndexRank(Square s) { return Rank(s >> 3); }
+    constexpr File GetIndexFile(Square s) { return File(i32(s) & 7); }
 
-    constexpr u64 RankBB(i32 s) { return RankBB(GetIndexRank(s)); }
-    constexpr u64 FileBB(i32 s) { return FileBB(GetIndexFile(s)); }
+    constexpr u64 RankBB(Square s) { return RankBB(GetIndexRank(s)); }
+    constexpr u64 FileBB(Square s) { return FileBB(GetIndexFile(s)); }
 
     constexpr char GetFileChar(i32 fileNumber) { return char(97 + fileNumber); }
     constexpr i32 GetFileInt(char fileLetter) { return fileLetter - 97; }
@@ -141,22 +154,22 @@ namespace Horsie {
     constexpr u64 Forward(i32 c, u64 b) { return c == WHITE ? Shift<NORTH>(b) : Shift<SOUTH>(b); };
     constexpr i32 ShiftUpDir(i32 c) { return c == WHITE ? NORTH : SOUTH; };
 
-    constexpr std::pair<i32, i32> UnpackIndex(i32 index) { return { index % 8, index / 8 }; }
+    constexpr std::pair<i32, i32> UnpackIndex(Square index) { return { index % 8, index / 8 }; }
 
-    constexpr i32 MakeIndex(i32 x, i32 y) { return (y * 8) + x; }
+    constexpr Square MakeIndex(i32 x, i32 y) { return static_cast<Square>((y * 8) + x); }
 
     constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * 6) + pt; }
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
 
-    inline const std::string IndexToString(i32 sq) {
+    inline const std::string IndexToString(Square sq) {
         const auto [x, y] = UnpackIndex(sq);
         return std::string{ char('a' + x), char('1' + y) };
     }
 
     inline const std::string PieceToString(Piece n) {
-        constexpr std::array<std::string, 7> arr = { "Pawn", "Horsie", "Bishop", "Rook", "Queen", "King", "None" };
+        const std::array<std::string, 7> arr = { "Pawn", "Horsie", "Bishop", "Rook", "Queen", "King", "None" };
         return arr[n];
     }
 
@@ -184,13 +197,13 @@ namespace Horsie {
         u64 CheckSquares[PIECE_NB];
         u64 BlockingPieces[2];
         u64 Pinners[2];
-        i32 KingSquares[2];
+        Square KingSquares[2];
         u64 Checkers = 0;
         u64 Hash = 0;
         u64 PawnHash = 0;
         u64 NonPawnHash[2];
         i32 HalfmoveClock = 0;
-        i32 EPSquare = EP_NONE;
+        Square EPSquare = EP_NONE;
         i32 CapturedPiece = Piece::NONE;
         i32 PliesFromNull = 0;
         CastlingStatus CastleStatus = CastlingStatus::None;

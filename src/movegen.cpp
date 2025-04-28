@@ -65,12 +65,12 @@ namespace Horsie {
                 }
 
                 while (moves != 0) {
-                    i32 to = poplsb(moves);
+                    auto to = poplsb(moves);
                     list[size++].move = Move(to - up, to);
                 }
 
                 while (twoMoves != 0) {
-                    i32 to = poplsb(twoMoves);
+                    auto to = poplsb(twoMoves);
                     list[size++].move = Move(to - up - up, to);
                 }
             }
@@ -86,17 +86,17 @@ namespace Horsie {
                 }
 
                 while (promotions != 0) {
-                    i32 to = poplsb(promotions);
+                    auto to = poplsb(promotions);
                     size = MakePromotionChecks<noisyMoves>(list, to - up, to, false, size);
                 }
 
                 while (promotionCapturesL != 0) {
-                    i32 to = poplsb(promotionCapturesL);
+                    auto to = poplsb(promotionCapturesL);
                     size = MakePromotionChecks<noisyMoves>(list, to - up - Direction::WEST, to, true, size);
                 }
 
                 while (promotionCapturesR != 0) {
-                    i32 to = poplsb(promotionCapturesR);
+                    auto to = poplsb(promotionCapturesR);
                     size = MakePromotionChecks<noisyMoves>(list, to - up - Direction::EAST, to, true, size);
                 }
             }
@@ -105,12 +105,12 @@ namespace Horsie {
             u64 capturesR = Shift(UpRight, notPromotingPawns) & captureSquares;
 
             while (capturesL != 0) {
-                i32 to = poplsb(capturesL);
+                auto to = poplsb(capturesL);
                 list[size++].move = Move(to - up - Direction::WEST, to);
             }
 
             while (capturesR != 0) {
-                i32 to = poplsb(capturesR);
+                auto to = poplsb(capturesR);
                 list[size++].move = Move(to - up - Direction::EAST, to);
             }
 
@@ -123,7 +123,7 @@ namespace Horsie {
 
                 u64 mask = notPromotingPawns & PawnAttackMasks[theirColor][epSq];
                 while (mask != 0) {
-                    i32 from = poplsb(mask);
+                    auto from = poplsb(mask);
                     list[size++].move = Move(from, epSq, FlagEnPassant);
                 }
             }
@@ -138,11 +138,11 @@ namespace Horsie {
             u64 ourPieces = bb.Pieces[pt] & bb.Colors[stm];
 
             while (ourPieces != 0) {
-                i32 idx = poplsb(ourPieces);
+                auto idx = poplsb(ourPieces);
                 u64 moves = bb.AttackMask(idx, stm, pt, occ) & targets;
 
                 while (moves != 0) {
-                    i32 to = poplsb(moves);
+                    auto to = poplsb(moves);
                     list[size++].move = Move(idx, to);
                 }
             }
@@ -163,7 +163,7 @@ namespace Horsie {
             u64 them = bb.Colors[Not(stm)];
             u64 occ  = bb.Occupancy;
 
-            i32 ourKing = pos.KingSquare(stm);
+            auto ourKing = pos.KingSquare(stm);
             u64 targets = 0;
 
             // If we are generating evasions and in double check, then skip non-king moves.
@@ -182,19 +182,19 @@ namespace Horsie {
 
             u64 moves = PseudoAttacks[KING][ourKing] & (evasions ? ~us : targets);
             while (moves != 0) {
-                i32 to = poplsb(moves);
+                auto to = poplsb(moves);
                 list[size++].move = Move(ourKing, to);
             }
 
             if (nonEvasions) {
-                if (stm == Color::WHITE && (ourKing == static_cast<i32>(Square::E1) || pos.IsChess960)) {
+                if (stm == Color::WHITE && (ourKing == Square::E1 || pos.IsChess960)) {
                     if (pos.CanCastle(occ, us, CastlingStatus::WK))
                         list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WK), FlagCastle);
 
                     if (pos.CanCastle(occ, us, CastlingStatus::WQ))
                         list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WQ), FlagCastle);
                 }
-                else if (stm == Color::BLACK && (ourKing == static_cast<i32>(Square::E8) || pos.IsChess960)) {
+                else if (stm == Color::BLACK && (ourKing == Square::E8 || pos.IsChess960)) {
                     if (pos.CanCastle(occ, us, CastlingStatus::BK))
                         list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::BK), FlagCastle);
 

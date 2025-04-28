@@ -31,9 +31,9 @@ namespace Horsie {
         constexpr explicit Move(u16 d) : data(d) {}
         constexpr Move(i32 from, i32 to, i32 flags = 0) : data((u16)(to | (from << 6) | flags)) {}
 
-        constexpr i32 To() const { return i32(data & 0x3F); }
-        constexpr i32 From() const { return i32((data >> 6) & 0x3F); }
-        constexpr std::pair<i32, i32> Unpack() const { return { From(), To() }; }
+        constexpr Square To() const { return Square(data & 0x3F); }
+        constexpr Square From() const { return Square((data >> 6) & 0x3F); }
+        constexpr std::pair<Square, Square> Unpack() const { return { From(), To() }; }
 
         constexpr i32 Data() const { return data; }
         constexpr i32 GetMoveMask() const { return data & 0xFFF; }
@@ -44,6 +44,8 @@ namespace Horsie {
 
         constexpr Piece PromotionTo() const { return Piece(((data >> 14) & 0x3) + 1); }
 
+        constexpr bool IsDoublePush() const { return (static_cast<i32>(From()) ^ static_cast<i32>(To())) == 16; }
+
         constexpr bool IsNull() const { return data == 0; }
         static constexpr Move Null() { return Move(0); }
 
@@ -51,12 +53,12 @@ namespace Horsie {
         constexpr bool operator!=(const Move& m) const { return data != m.data; }
         constexpr explicit operator bool() const { return data != 0; }
 
-        constexpr i32 CastlingKingSquare() const {
+        constexpr Square CastlingKingSquare() const {
             const bool flip = (From() >= Square::A2);
             return OrientSquare(To() > From() ? Square::G1 : Square::C1, flip);
         }
 
-        constexpr i32 CastlingRookSquare() const {
+        constexpr Square CastlingRookSquare() const {
             const bool flip = (From() >= Square::A2);
             return OrientSquare(To() > From() ? Square::F1 : Square::D1, flip);
         }

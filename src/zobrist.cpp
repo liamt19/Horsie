@@ -57,11 +57,11 @@ namespace Horsie::Zobrist {
         }
     }
 
-    void Move(u64& hash, i32 from, i32 to, i32 color, i32 pt) {
+    void Move(u64& hash, Square from, Square to, i32 color, i32 pt) {
         hash ^= PSQHashes[color][pt][from] ^ PSQHashes[color][pt][to];
     }
 
-    void ToggleSquare(u64& hash, i32 color, i32 pt, i32 idx) {
+    void ToggleSquare(u64& hash, i32 color, i32 pt, Square idx) {
         hash ^= PSQHashes[color][pt][idx];
     }
 
@@ -83,7 +83,7 @@ namespace Horsie::Zobrist {
             u64 pieces = bb.Colors[pc];
 
             while (pieces != 0) {
-                i32 idx = poplsb(pieces);
+                auto idx = poplsb(pieces);
                 i32 pt = bb.GetPieceAtIndex(idx);
                 hash ^= PSQHashes[pc][pt][idx];
 

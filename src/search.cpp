@@ -1032,7 +1032,7 @@ namespace Horsie {
         nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
     }
 
-    void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) const {
+    void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, Square sq, i32 bonus) const {
         const auto piece = MakePiece(pc, pt);
 
         for (auto i : {1, 2, 4, 6}) {

@@ -23,7 +23,7 @@ namespace Horsie {
         i32 FullMoves;
         i32 GamePly;
 
-        i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)]{};
+        Square CastlingRookSquares[static_cast<i32>(CastlingStatus::All)]{};
         u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)]{};
 
         bool IsChess960;
@@ -37,13 +37,13 @@ namespace Horsie {
         constexpr u64 CheckSquares(i32 pt) const { return State->CheckSquares[pt]; }
         constexpr u64 BlockingPieces(i32 pc) const { return State->BlockingPieces[pc]; }
         constexpr u64 Pinners(i32 pc) const { return State->Pinners[pc]; }
-        constexpr i32 KingSquare(i32 pc) const { return State->KingSquares[pc]; }
+        constexpr Square KingSquare(i32 pc) const { return State->KingSquares[pc]; }
         constexpr u64 Checkers() const { return State->Checkers; }
         constexpr u64 Hash() const { return State->Hash; }
         constexpr u64 PawnHash() const { return State->PawnHash; }
         constexpr u64 NonPawnHash(i32 pc) const { return State->NonPawnHash[pc]; }
         constexpr i32 HalfmoveClock() const { return State->HalfmoveClock; }
-        constexpr i32 EPSquare() const { return State->EPSquare; }
+        constexpr Square EPSquare() const { return State->EPSquare; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
         constexpr auto CastleStatus() const { return State->CastleStatus; }
         constexpr auto accumulator() const { return State->accumulator; }
@@ -51,13 +51,13 @@ namespace Horsie {
         constexpr auto CurrAccumulator() const { return State->accumulator; }
         constexpr auto NextAccumulator() const { return NextState()->accumulator; }
 
-        constexpr bool GivesCheck(i32 pt, i32 sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
+        constexpr bool GivesCheck(i32 pt, Square sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
 
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
             return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
 
-        constexpr i32 CastlingRookSquare(CastlingStatus cr) const { return CastlingRookSquares[static_cast<i32>(cr)]; }
+        constexpr Square CastlingRookSquare(CastlingStatus cr) const { return CastlingRookSquares[static_cast<i32>(cr)]; }
         constexpr u64 CastlingRookPath(CastlingStatus cr) const { return CastlingRookPaths[static_cast<i32>(cr)]; }
 
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State->CastleStatus & cr) != CastlingStatus::None); }
@@ -69,8 +69,8 @@ namespace Horsie {
         constexpr bool IsNoisy(Move m) const { return IsCapture(m) || m.IsEnPassant(); }
 
         void RemoveCastling(CastlingStatus cr) const;
-        void UpdateHash(i32 pc, i32 pt, i32 sq) const;
-        constexpr CastlingStatus GetCastlingForRook(i32 sq) const;
+        void UpdateHash(i32 pc, i32 pt, Square sq) const;
+        constexpr CastlingStatus GetCastlingForRook(Square sq) const;
         Move TryFindMove(const std::string& moveStr, bool& found) const;
 
         template<bool UpdateNN>
@@ -86,13 +86,13 @@ namespace Horsie {
 
         void SetState();
         void SetCheckInfo();
-        void SetCastlingStatus(Color c, i32 rfrom);
+        void SetCastlingStatus(Color c, Square rfrom);
 
         u64 HashAfter(Move move) const;
 
         bool IsPseudoLegal(Move move) const;
         bool IsLegal(Move move) const;
-        bool IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const;
+        bool IsLegal(Move move, Square ourKing, Square theirKing, u64 pinnedPieces) const;
 
         bool IsDraw() const;
         bool IsInsufficientMaterial() const;

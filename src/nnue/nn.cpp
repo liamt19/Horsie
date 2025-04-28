@@ -156,10 +156,10 @@ namespace Horsie::NNUE {
         accumulator->NeedsRefresh[perspective] = false;
         accumulator->Computed[perspective] = true;
 
-        i32 ourKing = pos.KingSquare(perspective);
+        auto ourKing = pos.KingSquare(perspective);
         u64 occ = bb.Occupancy;
         while (occ != 0) {
-            i32 pieceIdx = poplsb(occ);
+            auto pieceIdx = poplsb(occ);
 
             i32 pt = bb.GetPieceAtIndex(pieceIdx);
             i32 pc = bb.GetColorAtIndex(pieceIdx);
@@ -183,7 +183,7 @@ namespace Horsie::NNUE {
         auto accumulator = pos.CurrAccumulator();
         Bitboard& bb = pos.bb;
 
-        i32 ourKing = pos.KingSquare(perspective);
+        auto ourKing = pos.KingSquare(perspective);
 
         auto& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
         auto& entryBB = rtEntry.Boards[perspective];
@@ -201,7 +201,7 @@ namespace Horsie::NNUE {
                 u64 removed = prev & ~curr;
 
                 while (added != 0) {
-                    i32 sq = poplsb(added);
+                    auto sq = poplsb(added);
                     i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
                     const auto weights = &net.FTWeights[idx];
@@ -209,7 +209,7 @@ namespace Horsie::NNUE {
                 }
 
                 while (removed != 0) {
-                    i32 sq = poplsb(removed);
+                    auto sq = poplsb(removed);
                     i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
 
                     const auto weights = &net.FTWeights[idx];
@@ -384,7 +384,7 @@ namespace Horsie::NNUE {
             dst->NeedsRefresh[us] = true;
 
             PerspectiveUpdate& theirUpdate = dst->Update[them];
-            i32 theirKing = pos.KingSquare(them);
+            auto theirKing = pos.KingSquare(them);
 
             i32 from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
             i32 to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
@@ -395,8 +395,8 @@ namespace Horsie::NNUE {
                 theirUpdate.PushSubSubAdd(from, cap, to);
             }
             else if (m.IsCastle()) {
-                i32 rookFromSq = moveTo;
-                i32 rookToSq = m.CastlingRookSquare();
+                auto rookFromSq = moveTo;
+                auto rookToSq = m.CastlingRookSquare();
 
                 to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare(), theirKing, them);
 
@@ -410,8 +410,8 @@ namespace Horsie::NNUE {
             }
         }
         else {
-            i32 wKing = pos.KingSquare(WHITE);
-            i32 bKing = pos.KingSquare(BLACK);
+            auto wKing = pos.KingSquare(WHITE);
+            auto bKing = pos.KingSquare(BLACK);
 
             const auto [wFrom, bFrom] = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
             const auto [wTo, bTo] = FeatureIndex(us, m.IsPromotion() ? m.PromotionTo() : ourPiece, moveTo, wKing, bKing);
@@ -426,7 +426,7 @@ namespace Horsie::NNUE {
                 bUpdate.PushSub(bCap);
             }
             else if (m.IsEnPassant()) {
-                i32 idxPawn = moveTo - ShiftUpDir(us);
+                auto idxPawn = moveTo - ShiftUpDir(us);
 
                 const auto [wCap, bCap] = FeatureIndex(them, PAWN, idxPawn, wKing, bKing);
 
@@ -515,12 +515,12 @@ namespace Horsie::NNUE {
         curr->Computed[perspective] = true;
     }
 
-    std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk) {
+    std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, Square sq, Square wk, Square bk) {
         const i32 ColorStride = 64 * 6;
         const i32 PieceStride = 64;
 
-        i32 wSq = sq;
-        i32 bSq = sq ^ 56;
+        auto wSq = sq;
+        auto bSq = sq ^ 56;
 
         if (wk % 8 > 3) {
             wk ^= 7;
@@ -539,7 +539,7 @@ namespace Horsie::NNUE {
         return { whiteIndex * L1_SIZE, blackIndex * L1_SIZE };
     }
 
-    i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective) {
+    i32 FeatureIndexSingle(i32 pc, i32 pt, Square sq, Square kingSq, i32 perspective) {
         const i32 ColorStride = 64 * 6;
         const i32 PieceStride = 64;
 

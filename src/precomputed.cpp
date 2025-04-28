@@ -41,8 +41,8 @@ namespace Horsie {
                 return false;
             }
 
-            i32 rankDistance = std::abs(GetIndexRank((i32)sq) - GetIndexRank((i32)sq + dir));
-            i32 fileDistance = std::abs(GetIndexFile((i32)sq) - GetIndexFile((i32)sq + dir));
+            i32 rankDistance = std::abs(GetIndexRank(sq) - GetIndexRank(sq + dir));
+            i32 fileDistance = std::abs(GetIndexFile(sq) - GetIndexFile(sq + dir));
             return std::max(rankDistance, fileDistance) <= 2;
         }
     }
@@ -58,26 +58,25 @@ namespace Horsie {
             InitNormalMagics(BISHOP, BishopTable, BishopMagics);
         }
 
-        for (Square sq1 = Square::A1; sq1 <= Square::H8; ++sq1) {
-            i32 s1 = static_cast<i32>(sq1);
-            PawnAttackMasks[WHITE][s1] = Shift<NORTH_WEST>(SquareBB(sq1)) | Shift<NORTH_EAST>(SquareBB(sq1));
-            PawnAttackMasks[BLACK][s1] = Shift<SOUTH_WEST>(SquareBB(sq1)) | Shift<SOUTH_EAST>(SquareBB(sq1));
+        for (Square s1 = Square::A1; s1 <= Square::H8; ++s1) {
+            PawnAttackMasks[WHITE][s1] = Shift<NORTH_WEST>(SquareBB(s1)) | Shift<NORTH_EAST>(SquareBB(s1));
+            PawnAttackMasks[BLACK][s1] = Shift<SOUTH_WEST>(SquareBB(s1)) | Shift<SOUTH_EAST>(SquareBB(s1));
 
             for (i32 step : {7, 8, 9, -1, 1, -7, -8, -9}) {
-                if (DirectionOK(sq1, static_cast<Direction>(step)))
-                    PseudoAttacks[KING][s1] |= (1ULL << (static_cast<i32>(sq1) + step));
+                if (DirectionOK(s1, static_cast<Direction>(step)))
+                    PseudoAttacks[KING][s1] |= (1ULL << (static_cast<i32>(s1) + step));
             }
 
             for (i32 step : {6, 10, 15, 17, -6, -10, -15, -17}) {
-                if (DirectionOK(sq1, static_cast<Direction>(step)))
-                    PseudoAttacks[HORSIE][s1] |= (1ULL << (static_cast<i32>(sq1) + step));
+                if (DirectionOK(s1, static_cast<Direction>(step)))
+                    PseudoAttacks[HORSIE][s1] |= (1ULL << (static_cast<i32>(s1) + step));
             }
 
             PseudoAttacks[BISHOP][s1] = BishopRays[s1] = attacks_bb<BISHOP>(s1, 0);
             PseudoAttacks[ROOK][s1] = RookRays[s1] = attacks_bb<ROOK>(s1, 0);
             PseudoAttacks[QUEEN][s1] = PseudoAttacks[BISHOP][s1] | PseudoAttacks[ROOK][s1];
 
-            for (i32 s2 = 0; s2 < 64; s2++) {
+            for (Square s2 = Square::A1; s2 <= Square::H8; ++s2) {
                 if ((RookRays[s1] & SquareBB(s2)) != 0) {
                     BetweenBB[s1][s2] = attacks_bb<ROOK>(s1, SquareBB(s2)) & attacks_bb<ROOK>(s2, SquareBB(s1));
                     RayBB[s1][s2] = (attacks_bb<ROOK>(s1, 0) & attacks_bb<ROOK>(s2, 0)) | SquareBB(s1) | SquareBB(s2);
@@ -135,7 +134,7 @@ namespace Horsie {
             u64 combo = 0;
             u64 iter = 0;
             u64 edges = 0;
-            for (i32 sq = 0; sq <= 63; sq++) {
+            for (Square sq = Square::A1; sq <= Square::H8; ++sq) {
                 auto& m = magics[sq];
                 
                 edges = ((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq));
@@ -161,18 +160,18 @@ namespace Horsie {
         void InitNormalMagics(Piece pt, u64 table[], Magic magics[]) {
             u64 offset = 0;
 
-            for (i32 sq = 0; sq <= 63; sq++) {
+            for (Square sq = Square::A1; sq <= Square::H8; ++sq) {
                 auto& m = magics[sq];
 
                 m.number = (pt == BISHOP) ? BishopMagicNumbers[sq] : RookMagicNumbers[sq];
-                m.mask = sliding_attack(pt, static_cast<Square>(sq), 0) & ~(((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq)));
+                m.mask = sliding_attack(pt, sq, 0) & ~(((Rank1BB | Rank8BB) & ~RankBB(sq)) | ((FileABB | FileHBB) & ~FileBB(sq)));
                 m.shift = static_cast<i32>(64 - popcount(m.mask));
                 m.attacks = &table[offset];
 
                 u64 combo = 0;
                 u32 iter = 0;
                 do {
-                    m.attacks[(combo * m.number) >> m.shift] = sliding_attack(pt, static_cast<Square>(sq), combo);
+                    m.attacks[(combo * m.number) >> m.shift] = sliding_attack(pt, sq, combo);
                     iter++;
                     combo = (combo - m.mask) & m.mask;
                 } while (combo != 0);

@@ -66,7 +66,7 @@ namespace Horsie::Datagen {
             u64 temp = _occ;
             i32 idx = 0;
             while (temp != 0) {
-                i32 sq = poplsb(temp);
+                auto sq = poplsb(temp);
                 i32 piece = (_pcs[idx / 2] >> (4 * (idx & 1))) & 0b1111;
 
                 bb.AddPiece(sq, piece / 8, piece % 8);
@@ -100,15 +100,15 @@ namespace Horsie::Datagen {
             }
             _score = score;
             _result = static_cast<u8>((2 * static_cast<i32>(result)));
-            _ksq = static_cast<u8>(std::countr_zero(bbs[0] & bbs[7]));
-            _opp_ksq = static_cast<u8>(std::countr_zero(bbs[1] & bbs[7]) ^ 56);
+            _ksq = static_cast<u8>(lsb(bbs[0] & bbs[7]));
+            _opp_ksq = static_cast<u8>(OrientSquare(lsb(bbs[1] & bbs[7]), true));
 
 
             i32 idx = 0;
             u64 occ2 = occ;
             i32 piece = 0;
             while (occ2 > 0) {
-                i32 sq = std::countr_zero(occ2);
+                auto sq = lsb(occ2);
                 u64 bit = 1ULL << sq;
                 occ2 &= occ2 - 1;
 

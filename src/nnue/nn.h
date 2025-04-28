@@ -80,8 +80,8 @@ namespace Horsie::NNUE {
     i32 GetEvaluation(Position& pos, i32 outputBucket);
     i32 GetEvaluation(Position& pos);
 
-    std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, i32 sq, i32 wk, i32 bk);
-    i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective);
+    std::pair<i32, i32> FeatureIndex(i32 pc, i32 pt, Square sq, Square wk, Square bk);
+    i32 FeatureIndexSingle(i32 pc, i32 pt, Square sq, Square kingSq, i32 perspective);
 
 
     constexpr auto KingBuckets = [] {

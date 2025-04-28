@@ -23,8 +23,8 @@ namespace Horsie::Cuckoo {
         i32 count = 0;
         for (i32 pc = Color::WHITE; pc <= Color::BLACK; pc++) {
             for (i32 pt = Piece::HORSIE; pt <= Piece::KING; pt++) {
-                for (i32 s1 = 0; s1 < 64; s1++) {
-                    for (i32 s2 = s1 + 1; s2 < 64; s2++) {
+                for (Square s1 = Square::A1; s1 <= Square::H8; ++s1) {
+                    for (Square s2 = s1 + 1; s2 <= Square::H8; ++s2) {
                         if ((attacks_bb(pt, s1, 0) & SquareBB(s2)) != 0) {
                             Move m = Move(s1, s2);
                             u64 key = Zobrist::PSQHashes[pc][pt][s1] ^ Zobrist::PSQHashes[pc][pt][s2] ^ Zobrist::BlackHash;

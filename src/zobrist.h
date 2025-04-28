@@ -14,8 +14,8 @@ namespace Horsie::Zobrist {
 
     void Init();
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove);
-    void Move(u64& hash, i32 from, i32 to, i32 color, i32 pt);
-    void ToggleSquare(u64& hash, i32 color, i32 pt, i32 idx);
+    void Move(u64& hash, Square from, Square to, i32 color, i32 pt);
+    void ToggleSquare(u64& hash, i32 color, i32 pt, Square idx);
     void EnPassant(u64& hash, i32 file);
     void ChangeToMove(u64& hash);
     void SetHashes(Horsie::Position& pos);
