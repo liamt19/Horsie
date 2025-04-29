@@ -252,7 +252,7 @@ namespace Horsie {
         }
 
         if (!isRoot) {
-            if (pos.IsDraw()) {
+            if (pos.IsDraw(ss->Ply)) {
                 return MakeDrawScore(Nodes);
             }
 
@@ -807,7 +807,7 @@ namespace Horsie {
             SelDepth = std::max(SelDepth, ss->Ply + 1);
         }
 
-        if (pos.IsDraw()) {
+        if (pos.IsDraw(ss->Ply)) {
             return ScoreDraw;
         }
 
