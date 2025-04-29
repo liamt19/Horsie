@@ -370,14 +370,18 @@ namespace Horsie {
 
         const auto [moveFrom, moveTo] = move.Unpack();
         i32 us = bb.GetColorAtIndex(moveFrom);
-        i32 ourPiece = bb.GetPieceAtIndex(moveFrom);
+        const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
+        const auto captured = bb.GetPieceAtIndex(moveTo);
 
-        if (bb.GetPieceAtIndex(moveTo) != Piece::NONE) {
-            Zobrist::ToggleSquare(hash, Not(us), bb.GetPieceAtIndex(moveTo), moveTo);
+        if (captured != Piece::NONE) {
+            Zobrist::ToggleSquare(hash, Not(us), captured, moveTo);
         }
 
         Zobrist::Move(hash, moveFrom, moveTo, us, ourPiece);
         Zobrist::ChangeToMove(hash);
+
+        auto hmc = (ourPiece == PAWN || captured != NONE) ? 0 : (HalfmoveClock() + 1);
+        hash ^= Zobrist::HalfmoveHashes[hmc];
 
         return hash;
     }

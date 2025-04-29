@@ -4,20 +4,23 @@
 #include "bitboard.h"
 #include "types.h"
 
-#define LIZARD_HASHES 1
-
-#if !defined(LIZARD_HASHES)
 #include <random>
-#endif
+
+#define LIZARD_HASHES 1
 
 namespace Horsie::Zobrist {
 
-    u64 ColorPieceSquareHashes[2][6][64];
-    u64 CastlingRightsHashes[4];
-    u64 EnPassantFileHashes[8];
-    u64 BlackHash;
+    u64 HalfmoveHashes[120] = {};
+    u64 ColorPieceSquareHashes[2][6][64] = {};
+    u64 CastlingRightsHashes[4] = {};
+    u64 EnPassantFileHashes[8] = {};
+    u64 BlackHash = {};
 
     void Init() {
+
+        std::mt19937_64 rng(DefaultSeed);
+        std::uniform_int_distribution<u64> dis;
+
 #if defined(LIZARD_HASHES)
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
@@ -32,8 +35,6 @@ namespace Horsie::Zobrist {
 
         BlackHash = LizardBH;
 #else
-        std::mt19937_64 rng(DefaultSeed);
-        std::uniform_int_distribution<u64> dis;
 
         for (i32 i = 0; i < 2; i++)
             for (i32 j = 0; j < 6; j++)
@@ -48,6 +49,14 @@ namespace Horsie::Zobrist {
 
         BlackHash = dis(rng);
 #endif
+
+        const i32 HashSpan = 8;
+        for (int i = 14; i <= 112; i += HashSpan) {
+            uint64_t key = dis(rng);
+            for (int j = 0; j < HashSpan; j++)
+                HalfmoveHashes[i + j] = key;
+        }
+
     }
 
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove) {

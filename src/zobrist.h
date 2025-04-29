@@ -6,11 +6,12 @@
 
 namespace Horsie::Zobrist {
 
+    extern u64 HalfmoveHashes[120];
     extern u64 ColorPieceSquareHashes[2][6][64];
     extern u64 CastlingRightsHashes[4];
     extern u64 EnPassantFileHashes[8];
     extern u64 BlackHash;
-    const i32 DefaultSeed = 0xBEEF;
+    const i32 DefaultSeed = 0xBEEF123;
 
     void Init();
     void Castle(u64& hash, CastlingStatus prev, CastlingStatus toRemove);
