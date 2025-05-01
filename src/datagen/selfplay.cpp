@@ -287,7 +287,7 @@ namespace Horsie::Datagen {
                            :                         GameResult::WhiteWin;
                     break;
                 }
-                else if (pos.IsDraw()) {
+                else if (pos.IsDraw(0)) {
                     result = GameResult::Draw;
                     break;
                 }

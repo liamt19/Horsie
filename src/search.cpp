@@ -252,8 +252,8 @@ namespace Horsie {
         }
 
         if (!isRoot) {
-            if (pos.IsDraw()) {
-                return MakeDrawScore(Nodes);
+            if (pos.IsDraw(ss->Ply)) {
+                return ScoreDraw;
             }
 
             if (ShouldStop() || ss->Ply >= MaxSearchStackPly - 1) {
@@ -807,7 +807,7 @@ namespace Horsie {
             SelDepth = std::max(SelDepth, ss->Ply + 1);
         }
 
-        if (pos.IsDraw()) {
+        if (pos.IsDraw(ss->Ply)) {
             return ScoreDraw;
         }
 

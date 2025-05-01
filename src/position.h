@@ -29,6 +29,8 @@ namespace Horsie {
         bool UpdateNN;
         bool IsChess960;
 
+        std::vector<u64> HashHistory{};
+
         constexpr bool InCheck()       const { return State->Checkers != 0; }
         constexpr bool InDoubleCheck() const { return MoreThanOne(State->Checkers); }
         constexpr StateInfo* StartingState() const { return _SentinelStart; }
@@ -94,9 +96,9 @@ namespace Horsie {
         bool IsLegal(Move move) const;
         bool IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const;
 
-        bool IsDraw() const;
+        bool IsDraw(i16 ply) const;
         bool IsInsufficientMaterial() const;
-        bool IsThreefoldRepetition() const;
+        bool IsThreefoldRepetition(i16 ply) const;
         bool IsFiftyMoveDraw() const;
         bool HasLegalMoves() const;
 
