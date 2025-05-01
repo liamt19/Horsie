@@ -14,7 +14,7 @@ namespace Horsie {
 
     const bool ShallowPruning = true;
     const bool UseSingularExtensions = true;
-    const bool UseNMP = true;
+    const bool UseNMP = false;
     const bool UseRazoring = true;
     const bool UseRFP = true;
     const bool UseProbcut = true;
