@@ -276,7 +276,7 @@ namespace Horsie::UCI {
         SearchLimits limits = ParseGoParameters(is);
         thread->SoftTimeLimit = limits.SetTimeLimits();
 
-        SearchPool->StartSearch(pos, limits);
+        SearchPool->StartSearch(pos, limits, setup);
     }
 
     void UCIClient::HandleStopCommand() {
