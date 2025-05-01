@@ -1003,6 +1003,7 @@ namespace Horsie {
 
     bool Position::HasCycle(i32 ply) const {
         using namespace Horsie::Cuckoo;
+        return false;
 
         StateInfo* st = State;
         i32 dist = std::min(st->HalfmoveClock, st->PliesFromNull);
