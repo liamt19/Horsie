@@ -525,7 +525,7 @@ namespace Horsie {
     }
 
     bool Position::IsDraw(i16 ply) const {
-        return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition(ply);
+        return IsFiftyMoveDraw() || IsInsufficientMaterial();
     }
 
     bool Position::IsInsufficientMaterial() const {
