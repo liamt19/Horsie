@@ -11,7 +11,7 @@ namespace Horsie {
     UCI_OPTION_SPECIAL(MoveOverhead, 25, 1, 5000)
     UCI_OPTION_SPIN(UCI_Chess960, false)
     UCI_OPTION_SPIN(UCI_ShowWDL, true)
-    UCI_OPTION_SPIN(UCI_HandleMovesCorrectly, true)
+    UCI_OPTION_SPECIAL(HandleMovesCorrectly, 1, 0, 2)
 
     const bool ShallowPruning = true;
     const bool UseSingularExtensions = true;
