@@ -524,8 +524,8 @@ namespace Horsie {
         return ((State->BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
     }
 
-    bool Position::IsDraw() const {
-        return IsFiftyMoveDraw() || IsInsufficientMaterial();
+    bool Position::IsDraw(i16 ply) const {
+        return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition(ply);
     }
 
     bool Position::IsInsufficientMaterial() const {
@@ -541,34 +541,23 @@ namespace Horsie {
         return (horsies == 0 && bishops < 2) || (bishops == 0 && horsies <= 2);
     }
 
-    bool Position::IsThreefoldRepetition() const {
-        //  At least 8 moves must be made before a draw can occur.
-        if (GamePly < 8) {
-            return false;
-        }
+    bool Position::IsThreefoldRepetition(i16 ply) const {
 
-        u64 currHash = State->Hash;
+        const auto currHash = State->Hash;
+        const auto dist = std::min(State->HalfmoveClock, GamePly);
 
-        //  Beginning with the current state's Hash, step backwards in increments of 2 until reaching the first move that we made.
-        //  If we encounter the current hash 2 additional times, then this is a draw.
+        bool rep = false;
+        const auto st = StartingState();
+        for (i32 i = 4; i <= dist; i += 2) {
 
-        i32 count = 0;
-        StateInfo* temp = State;
-        for (i32 i = 0; i < GamePly - 1; i += 2) {
-            if (temp->Hash == currHash) {
-                count++;
-
-                if (count == 3) {
+            if (st[GamePly - i].Hash == currHash) {
+                if (ply >= i || rep)
                     return true;
-                }
-            }
 
-            if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart) {
-                break;
+                rep = true;
             }
-
-            temp -= 2;
         }
+
         return false;
     }
 

@@ -252,7 +252,7 @@ namespace Horsie {
         }
 
         if (!isRoot) {
-            if (pos.IsDraw()) {
+            if (pos.IsDraw(ss->Ply)) {
                 return MakeDrawScore(Nodes);
             }
 
@@ -323,8 +323,7 @@ namespace Horsie {
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
         }
 
-        if (!isRoot
-            && !(ss - 1)->InCheck
+        if (!(ss - 1)->InCheck
             && (ss - 1)->CurrentMove != Move::Null() 
             && pos.CapturedPiece() == NONE) {
 
@@ -808,7 +807,7 @@ namespace Horsie {
             SelDepth = std::max(SelDepth, ss->Ply + 1);
         }
 
-        if (pos.IsDraw()) {
+        if (pos.IsDraw(ss->Ply)) {
             return ScoreDraw;
         }
 
