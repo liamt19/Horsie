@@ -5,18 +5,23 @@
 #include "../nnue/simd.h"
 
 #include <cstring>
+#include <fstream>
 #include <memory>
 
-#if !defined(_MSC_VER)
-#include "../3rdparty/incbin/incbin.h"
-#include <sstream>
-INCBIN(EVAL, EVALFILE);
-#else
-#include <fstream>
-const unsigned char gEVALData[1] = {};
-const unsigned char* const gEVALEnd = &gEVALData[1];
-const unsigned int gEVALSize = 1;
+#ifdef _MSC_VER
+#define HIDE_MSVC
+#pragma push_macro("_MSC_VER")
+#undef _MSC_VER
 #endif
+#include "../3rdparty/incbin/incbin.h"
+#ifdef HIDE_MSVC
+#pragma pop_macro("_MSC_VER")
+#undef HIDE_MSVC
+#endif
+
+namespace {
+    INCBIN(EVAL, EVALFILE);
+}
 
 namespace Horsie
 {
@@ -38,7 +43,7 @@ namespace Horsie
             std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
             const auto dst = reinterpret_cast<std::byte*>(UQNet.get());
 
-#if defined(_MSC_VER)
+#if defined(VS_COMP)
             std::ifstream stream(path, std::ios::binary);
 #else
             std::istringstream stream(std::string(reinterpret_cast<const char*>(gEVALData), gEVALSize));

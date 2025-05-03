@@ -1,14 +1,8 @@
 
-# Compiler and flags
-CXX := g++
-PGO = off
-
 EXE := horsie
+CXX := clang++
 
 SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/threadpool.cpp src/tt.cpp src/wdl.cpp src/zobrist.cpp src/util/dbg_hit.cpp src/nnue/nn.cpp src/datagen/selfplay.cpp src/3rdparty/zstd/zstddeclib.c
-
-COMPILER_VERSION := $(shell $(CXX) --version)
-ARCH_DEFINES := $(shell echo | $(CXX) -march=native -E -dM -)
 
 
 ifeq ($(UNAME_S),Darwin)
@@ -26,12 +20,14 @@ endif
 CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -funroll-loops
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 
+
 CXXFLAGS_NATIVE := -march=native
 CXXFLAGS_AVX2_BMI2 := -march=haswell -mtune=haswell -DAVX256
 CXXFLAGS_V4 := -march=x86-64-v4 -DAVX512 -DUSE_PEXT
 CXXFLAGS_V3 := -march=x86-64-v3 -DAVX256 -DUSE_PEXT
 CXXFLAGS_V2 := -march=x86-64-v2 -DAVX128
 
+ARCH_DEFINES := $(shell echo | $(CXX) -march=native -E -dM -)
 ifneq ($(findstring __AVX512BW__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DAVX512
 endif
@@ -44,13 +40,15 @@ endif
 ifeq ($(findstring __znver2__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DUSE_PEXT
 endif
- 
 
 
 ifeq ($(CXX),clang++)
 	STACK_SIZE := -Wl,/STACK:12582912
+	CXXFLAGS += -flto
+	PGO := on
 else
 	STACK_SIZE := -Wl,--stack,12194304
+	PGO := off
 endif
 
 ifeq ($(OS),Windows_NT) 
@@ -62,8 +60,8 @@ else
 	RM_FILE_CMD = rm
 endif
 
-#	https://github.com/Ciekce/Stormphrax/blob/main/Makefile
-
+#	Taken from https://github.com/Ciekce/Stormphrax/blob/main/Makefile
+COMPILER_VERSION := $(shell $(CXX) --version)
 ifneq (, $(findstring clang,$(COMPILER_VERSION)))
 PGO_GENERATE := -fprofile-instr-generate
 PGO_MERGE := llvm-profdata merge -output=horsie_p.profdata *.profraw
