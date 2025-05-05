@@ -530,7 +530,7 @@ namespace Horsie {
     }
 
     bool Position::IsDraw(i16 ply) const {
-        return IsFiftyMoveDraw() || IsInsufficientMaterial();// || IsThreefoldRepetition(ply);
+        return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition(ply);
     }
 
     bool Position::IsInsufficientMaterial() const {
@@ -548,14 +548,13 @@ namespace Horsie {
 
     bool Position::IsThreefoldRepetition(i16 ply) const {
 
-        const auto currHash = State->Hash;
-        const auto dist = std::min(State->HalfmoveClock, GamePly);
+        const auto histSize = static_cast<i32>(Hashes.size());
+        const auto dist = std::min(State->HalfmoveClock, histSize);
 
         bool rep = false;
-        const auto st = StartingState();
         for (i32 i = 4; i <= dist; i += 2) {
 
-            if (st[GamePly - i].Hash == currHash) {
+            if (Hashes[histSize - i] == State->Hash) {
                 if (ply >= i || rep)
                     return true;
 
