@@ -370,8 +370,10 @@ namespace Horsie::UCI {
         
         bool found{};
         Move m = pos.TryFindMove(moveStr, found);
-        if (found)
-            pos.MakeMove<true>(m);
+        if (found) {
+            pos.MakeMove(m);
+            setup.SetupMoves.push_back(m);
+        }
     }
 
 
