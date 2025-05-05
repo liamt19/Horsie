@@ -19,8 +19,6 @@
 namespace Horsie {
 
     Position::Position(const std::string& fen) {
-        GamePly = 0;
-        FullMoves = 1;
 
         bb = Bitboard();
 
@@ -28,7 +26,6 @@ namespace Horsie {
         _stateBlock = AlignedAlloc<StateInfo>(StateStackSize);
 
         _SentinelStart = &_stateBlock[0];
-        _SentinelEnd = &_stateBlock[StateStackSize - 1];
         State = &_stateBlock[0];
 
         _accumulatorBlock = AlignedAlloc<NNUE::Accumulator>(StateStackSize);
@@ -108,7 +105,6 @@ namespace Horsie {
 
         State->HalfmoveClock++;
         State->PliesFromNull++;
-        GamePly++;
 
         if (ToMove == Color::BLACK) {
             FullMoves++;
@@ -222,8 +218,6 @@ namespace Horsie {
         i32 ourPiece = bb.GetPieceAtIndex(moveTo);
         i32 ourColor = Not(ToMove);
         i32 theirColor = ToMove;
-
-        GamePly--;
 
         if (move.IsPromotion()) {
             //  Remove the promotion piece and replace it with a pawn
@@ -740,7 +734,6 @@ namespace Horsie {
     void Position::LoadFromFEN(const std::string& fen) {
         bb.Reset();
         FullMoves = 1;
-        GamePly = 0;
 
         Hashes.clear();
         State = StartingState();
@@ -993,17 +986,25 @@ namespace Horsie {
     bool Position::HasCycle(i32 ply) const {
         using namespace Horsie::Cuckoo;
 
-        StateInfo* st = State;
-        i32 dist = std::min(st->HalfmoveClock, st->PliesFromNull);
+        const auto occ = bb.Occupancy;
 
+        i32 dist = std::min(State->HalfmoveClock, State->PliesFromNull);
         if (dist < 3)
             return false;
 
         const auto HashFromStack = [&](i32 i) { return Hashes[Hashes.size() - i]; };
 
+        auto other = State->Hash ^ HashFromStack(1) ^ Zobrist::BlackHash;
+
         i32 slot;
         for (i32 i = 3; i <= dist; i += 2) {
-            const auto diff = st->Hash ^ HashFromStack(i);
+            const auto currKey = HashFromStack(i);
+            other ^= currKey ^ HashFromStack(i - 1) ^ Zobrist::BlackHash;
+
+            if (other != 0)
+                continue;
+
+            const auto diff = State->Hash ^ currKey;
 
             if (diff != keys[(slot = Hash1(diff))] &&
                 diff != keys[(slot = Hash2(diff))])
@@ -1012,12 +1013,15 @@ namespace Horsie {
             Move move = moves[slot];
             const auto [moveFrom, moveTo] = move.Unpack();
 
-            if ((bb.Occupancy & LineBB[moveFrom][moveTo]) == 0) {
-                if (ply > i)
-                    return true;
+            if (occ & BetweenBB[moveFrom][moveTo])
+                continue;
 
-                i32 pc = (bb.GetPieceAtIndex(moveFrom) != Piece::NONE) ? bb.GetColorAtIndex(moveFrom) : bb.GetColorAtIndex(moveTo);
-                return pc == ToMove;
+            if (ply >= i)
+                return true;
+
+            for (int j = i + 4; j <= dist; j += 2) {
+                if (HashFromStack(j) == HashFromStack(i))
+                    return true;
             }
         }
 

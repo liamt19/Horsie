@@ -21,7 +21,6 @@ namespace Horsie {
         Bitboard bb;
         Color ToMove;
         i32 FullMoves;
-        i32 GamePly;
 
         i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)];
         u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)];
@@ -131,7 +130,6 @@ namespace Horsie {
         std::vector<u64> Hashes{};
 
         StateInfo* _SentinelStart;
-        StateInfo* _SentinelEnd;
     };
 
     std::ostream& operator<<(std::ostream& os, const Position& pos);
