@@ -24,6 +24,7 @@ namespace Horsie {
 
         bb = Bitboard();
 
+        Hashes.reserve(MaxPly);
         _stateBlock = AlignedAlloc<StateInfo>(StateStackSize);
 
         _SentinelStart = &_stateBlock[0];
@@ -102,7 +103,7 @@ namespace Horsie {
             NNUE::MakeMoveNN(*this, move);
         }
 
-        //  Move onto the next state
+        Hashes.push_back(Hash());
         State++;
 
         State->HalfmoveClock++;
@@ -262,6 +263,7 @@ namespace Horsie {
         }
 
         State--;
+        Hashes.pop_back();
 
         ToMove = Not(ToMove);
     }
@@ -270,6 +272,7 @@ namespace Horsie {
         std::memcpy(State + 1, State, StateCopySize);
         NNUE::MakeNullMove(*this);
 
+        Hashes.push_back(Hash());
         State++;
 
         if (State->EPSquare != EP_NONE) {
@@ -289,6 +292,8 @@ namespace Horsie {
 
     void Position::UnmakeNullMove() {
         State--;
+        Hashes.pop_back();
+
         ToMove = Not(ToMove);
     }
 
@@ -525,7 +530,7 @@ namespace Horsie {
     }
 
     bool Position::IsDraw(i16 ply) const {
-        return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition(ply);
+        return IsFiftyMoveDraw() || IsInsufficientMaterial();// || IsThreefoldRepetition(ply);
     }
 
     bool Position::IsInsufficientMaterial() const {
@@ -736,14 +741,12 @@ namespace Horsie {
     void Position::LoadFromFEN(const std::string& fen) {
         bb.Reset();
         FullMoves = 1;
+        GamePly = 0;
 
+        Hashes.clear();
         State = StartingState();
         std::memset(State, 0, StateCopySize);
-        State->CastleStatus = CastlingStatus::None;
-        State->HalfmoveClock = 0;
-        State->PliesFromNull = 0;
-
-        GamePly = 0;
+        State->CapturedPiece = Piece::NONE;
 
         unsigned char col, row, token;
         size_t idx;
@@ -800,8 +803,6 @@ namespace Horsie {
         State->KingSquares[BLACK] = bb.KingIndex(BLACK);
 
         SetState();
-
-        State->CapturedPiece = Piece::NONE;
 
         NNUE::RefreshAccumulator(*this);
     }
@@ -999,7 +1000,7 @@ namespace Horsie {
         if (dist < 3)
             return false;
 
-        const auto HashFromStack = [&](i32 i) { return _SentinelStart[GamePly - i].Hash; };
+        const auto HashFromStack = [&](i32 i) { return Hashes[Hashes.size() - i]; };
 
         i32 slot;
         for (i32 i = 3; i <= dist; i += 2) {

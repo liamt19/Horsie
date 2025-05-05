@@ -128,6 +128,7 @@ namespace Horsie {
         
         NNUE::Accumulator* _accumulatorBlock;
         StateInfo* _stateBlock;
+        std::vector<u64> Hashes{};
 
         StateInfo* _SentinelStart;
         StateInfo* _SentinelEnd;
