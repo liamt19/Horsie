@@ -524,30 +524,15 @@ namespace Horsie {
     }
 
     bool Position::IsDraw(i16 ply) const {
-        return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition(ply);
-    }
+        //  50 move rule, iff it's not checkmate (which takes priority)
+        if (State->HalfmoveClock >= 100 && (!InCheck() || HasLegalMoves()))
+            return true;
 
-    bool Position::IsInsufficientMaterial() const {
-        if ((bb.Pieces[Piece::QUEEN] | bb.Pieces[Piece::ROOK] | bb.Pieces[Piece::PAWN]) != 0) {
-            return false;
-        }
-
-        u64 horsies = popcount(bb.Pieces[Piece::HORSIE]);
-        u64 bishops = popcount(bb.Pieces[Piece::BISHOP]);
-
-        //  Just kings, only 1 bishop, or 1 or 2 horsies is a draw
-        //  Some organizations classify 2 horsies a draw and others don't.
-        return (horsies == 0 && bishops < 2) || (bishops == 0 && horsies <= 2);
-    }
-
-    bool Position::IsThreefoldRepetition(i16 ply) const {
-
+        //  Two repetitions before root or one after it
         const auto histSize = static_cast<i32>(Hashes.size());
         const auto dist = std::min(State->HalfmoveClock, histSize);
-
         bool rep = false;
         for (i32 i = 4; i <= dist; i += 2) {
-
             if (Hashes[histSize - i] == State->Hash) {
                 if (ply >= i || rep)
                     return true;
@@ -556,11 +541,15 @@ namespace Horsie {
             }
         }
 
-        return false;
-    }
+        //  Any pawns/rooks/queens are sufficient material
+        if ((bb.Pieces[Piece::QUEEN] | bb.Pieces[Piece::ROOK] | bb.Pieces[Piece::PAWN]) != 0)
+            return false;
 
-    bool Position::IsFiftyMoveDraw() const {
-        return State->HalfmoveClock >= 100;
+        //  Otherwise, fewer than 2 minors is insufficient
+        if (!MoreThanOne(bb.Pieces[Piece::HORSIE] | bb.Pieces[Piece::BISHOP]))
+            return true;
+
+        return false;
     }
 
     bool Position::HasLegalMoves() const {

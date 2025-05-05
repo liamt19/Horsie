@@ -494,8 +494,9 @@ namespace Horsie {
                 continue;
             }
 
-            if (isRoot && MultiPV != 1) {
+            if (isRoot) {
                 //  If this move is ordered before PVIndex, it's already been searched.
+                //  Also handles searchmoves, ensuring the current move is in the list.
                 if (std::count(RootMoves.begin() + PVIndex, RootMoves.end(), m) == 0)
                     continue;
             }

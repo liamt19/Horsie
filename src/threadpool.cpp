@@ -71,21 +71,27 @@ namespace Horsie {
         }
 
         ScoredMove rms[MoveListSize] = {};
-        i32 size = Generate<GenLegal>(rootPosition, &rms[0], 0);
+        i32 size = Generate<GenLegal>(rootPosition, rms, 0);
+
+        const auto isInSearchMoves = [&](const Move m) {
+            if (setup.UCISearchMoves.size() == 0)
+                return true;
+
+            return std::any_of(setup.UCISearchMoves.begin(), setup.UCISearchMoves.end(), [&m](const Move& setupMove) {
+                return setupMove == m;
+            });
+        };
 
         for (auto t : Threads) {
             auto td = t->Worker.get();
             td->Reset();
 
             td->RootMoves.clear();
-            td->RootMoves.shrink_to_fit();
-            td->RootMoves.reserve(size);
             for (i32 j = 0; j < size; j++) {
-                td->RootMoves.push_back(RootMove(rms[j].move));
-            }
+                const auto m = rms[j].move;
 
-            if (setup.UCISearchMoves.size() != 0) {
-                //td.RootMoves = td.RootMoves.Where(x => setup.UCISearchMoves.Contains(x.Move)).ToList();
+                if (isInSearchMoves(m))
+                    td->RootMoves.emplace_back(m);
             }
 
             td->RootPosition.LoadFromFEN(rootFEN);

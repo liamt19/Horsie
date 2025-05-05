@@ -94,9 +94,6 @@ namespace Horsie {
         bool IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const;
 
         bool IsDraw(i16 ply = 0) const;
-        bool IsInsufficientMaterial() const;
-        bool IsThreefoldRepetition(i16 ply) const;
-        bool IsFiftyMoveDraw() const;
         bool HasLegalMoves() const;
 
         i32 MaterialCount() const;
@@ -114,13 +111,6 @@ namespace Horsie {
             return bb.ThreatsBy<pt>(pc);
         }
 
-        inline i32 PawnCorrectionIndex(i32 pc) const {
-            return (pc * 16384) + static_cast<i32>(PawnHash() % 16384);
-        }
-
-        inline i32 NonPawnCorrectionIndex(i32 pc, i32 side) const {
-            return (pc * 16384) + static_cast<i32>(NonPawnHash(side) % 16384);
-        }
 
     private:
         static constexpr i32 StateStackSize = 1024; 
