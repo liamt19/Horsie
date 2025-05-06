@@ -99,6 +99,8 @@ namespace Horsie {
             for (auto& move : setup.SetupMoves) {
                 td->RootPosition.MakeMove(move);
             }
+
+            td->RootPosition.SetState();
         }
 
         MainThreadBase()->WakeUp();
