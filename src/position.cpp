@@ -19,17 +19,9 @@
 namespace Horsie {
 
     Position::Position(const std::string& fen) {
-
         Hashes.reserve(MaxPly);
-        StateBlock = AlignedAlloc<StateInfo>(StateStackSize);
-
-        State = &StateBlock[0];
 
         LoadFromFEN(fen);
-    }
-
-    Position::~Position() {
-        AlignedFree(StateBlock);
     }
 
     Move Position::TryFindMove(const std::string& moveStr, bool& found) const {
@@ -79,17 +71,15 @@ namespace Horsie {
 
     template<bool UpdateNN>
     void Position::MakeMove(Move move) {
-        std::memcpy(State + 1, State, sizeof(StateInfo));
+        States.Add(State);
+        Hashes.push_back(Hash());
 
         if (UpdateNN) {
             Accumulators.MakeMove(*this, move);
         }
 
-        Hashes.push_back(Hash());
-        State++;
-
-        State->HalfmoveClock++;
-        State->PliesFromNull++;
+        State.HalfmoveClock++;
+        State.PliesFromNull++;
 
         if (ToMove == Color::BLACK) {
             FullMoves++;
@@ -111,10 +101,10 @@ namespace Horsie {
                 //  Move our rook and update the hash
                 theirPiece = Piece::NONE;
                 DoCastling(ourColor, moveFrom, moveTo, false);
-                State->KingSquares[ourColor] = move.CastlingKingSquare();
+                State.KingSquares[ourColor] = move.CastlingKingSquare();
             }
             else {
-                State->KingSquares[ourColor] = moveTo;
+                State.KingSquares[ourColor] = moveTo;
             }
 
             RemoveCastling(ourColor == Color::WHITE ? CastlingStatus::White : CastlingStatus::Black);
@@ -123,7 +113,7 @@ namespace Horsie {
             RemoveCastling(GetCastlingForRook(moveFrom));
         }
 
-        State->CapturedPiece = theirPiece;
+        State.CapturedPiece = theirPiece;
         if (theirPiece != Piece::NONE) {
             //  Remove their piece, and update the hash
             bb.RemovePiece(moveTo, theirColor, theirPiece);
@@ -134,16 +124,16 @@ namespace Horsie {
             }
 
             //  Reset the halfmove clock
-            State->HalfmoveClock = 0;
+            State.HalfmoveClock = 0;
         }
 
 
-        i32 tempEPSquare = State->EPSquare;
-        if (State->EPSquare != EP_NONE) {
+        i32 tempEPSquare = State.EPSquare;
+        if (State.EPSquare != EP_NONE) {
             //  Set st->EPSquare to 64 now.
             //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
-            Zobrist::EnPassant(State->Hash, GetIndexFile(State->EPSquare));
-            State->EPSquare = EP_NONE;
+            Zobrist::EnPassant(State.Hash, GetIndexFile(State.EPSquare));
+            State.EPSquare = EP_NONE;
         }
 
         if (ourPiece == Piece::PAWN) {
@@ -154,20 +144,20 @@ namespace Horsie {
                 UpdateHash(theirColor, Piece::PAWN, idxPawn);
 
                 //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
-                State->CapturedPiece = Piece::PAWN;
+                State.CapturedPiece = Piece::PAWN;
             }
             else if ((moveTo ^ moveFrom) == 16) {
                 i32 down = -ShiftUpDir(ourColor);
 
                 //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
                 if ((PawnAttackMasks[ourColor][moveTo + down] & bb.Colors[theirColor] & bb.Pieces[PAWN]) != 0) {
-                    State->EPSquare = moveTo + down;
-                    Zobrist::EnPassant(State->Hash, GetIndexFile(State->EPSquare));
+                    State.EPSquare = moveTo + down;
+                    Zobrist::EnPassant(State.Hash, GetIndexFile(State.EPSquare));
                 }
             }
 
             //  Reset the halfmove clock
-            State->HalfmoveClock = 0;
+            State.HalfmoveClock = 0;
         }
 
         if (!move.IsCastle()) {
@@ -188,10 +178,10 @@ namespace Horsie {
             UpdateHash(ourColor, move.PromotionTo(), moveTo);
         }
 
-        Zobrist::ChangeToMove(State->Hash);
+        Zobrist::ChangeToMove(State.Hash);
         ToMove = Not(ToMove);
 
-        State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
+        State.Checkers = bb.AttackersTo(State.KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
 
         SetCheckInfo();
     }
@@ -231,7 +221,7 @@ namespace Horsie {
             bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
         }
 
-        if (State->CapturedPiece != Piece::NONE) {
+        if (State.CapturedPiece != Piece::NONE) {
             //  CapturedPiece is set for captures and en passant, so check which it was
             if (move.IsEnPassant()) {
                 //  If the move was an en passant, put the captured pawn back
@@ -241,7 +231,7 @@ namespace Horsie {
             }
             else {
                 //  Otherwise it was a capture, so put the captured piece back
-                bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
+                bb.AddPiece(moveTo, theirColor, State.CapturedPiece);
             }
         }
 
@@ -250,35 +240,33 @@ namespace Horsie {
             FullMoves--;
         }
 
-        State--;
+        State = States.RemoveLast();
         Hashes.pop_back();
 
         ToMove = Not(ToMove);
     }
 
     void Position::MakeNullMove() {
-        std::memcpy(State + 1, State, sizeof(StateInfo));
-
+        States.Add(State);
         Hashes.push_back(Hash());
-        State++;
 
-        if (State->EPSquare != EP_NONE) {
+        if (State.EPSquare != EP_NONE) {
             //  Set EnPassantTarget to 64 now.
             //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
-            Zobrist::EnPassant(State->Hash, GetIndexFile(State->EPSquare));
-            State->EPSquare = EP_NONE;
+            Zobrist::EnPassant(State.Hash, GetIndexFile(State.EPSquare));
+            State.EPSquare = EP_NONE;
         }
 
-        Zobrist::ChangeToMove(State->Hash);
+        Zobrist::ChangeToMove(State.Hash);
         ToMove = Not(ToMove);
-        State->HalfmoveClock++;
-        State->PliesFromNull = 0;
+        State.HalfmoveClock++;
+        State.PliesFromNull = 0;
 
         SetCheckInfo();
     }
 
     void Position::UnmakeNullMove() {
-        State--;
+        State = States.RemoveLast();
         Hashes.pop_back();
 
         ToMove = Not(ToMove);
@@ -313,28 +301,28 @@ namespace Horsie {
     }
 
     void Position::SetState() {
-        State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
+        State.Checkers = bb.AttackersTo(State.KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
 
         SetCheckInfo();
 
-        State->PawnHash = 0;
-        State->NonPawnHash[WHITE] = State->NonPawnHash[BLACK] = 0;
-        State->Hash = Zobrist::GetHash(*this, &State->PawnHash, &State->NonPawnHash[WHITE]);
-        State->NonPawnHash[BLACK] = State->NonPawnHash[WHITE];
+        State.PawnHash = 0;
+        State.NonPawnHash[WHITE] = State.NonPawnHash[BLACK] = 0;
+        State.Hash = Zobrist::GetHash(*this, &State.PawnHash, &State.NonPawnHash[WHITE]);
+        State.NonPawnHash[BLACK] = State.NonPawnHash[WHITE];
     }
 
     void Position::SetCheckInfo() {
-        State->BlockingPieces[WHITE] = bb.BlockingPieces(WHITE, &State->Pinners[BLACK]);
-        State->BlockingPieces[BLACK] = bb.BlockingPieces(BLACK, &State->Pinners[WHITE]);
+        State.BlockingPieces[WHITE] = bb.BlockingPieces(WHITE, &State.Pinners[BLACK]);
+        State.BlockingPieces[BLACK] = bb.BlockingPieces(BLACK, &State.Pinners[WHITE]);
 
-        i32 kingSq = State->KingSquares[Not(ToMove)];
+        i32 kingSq = State.KingSquares[Not(ToMove)];
 
-        State->CheckSquares[PAWN] = PawnAttackMasks[Not(ToMove)][kingSq];
-        State->CheckSquares[HORSIE] = PseudoAttacks[HORSIE][kingSq];
-        State->CheckSquares[BISHOP] = attacks_bb<BISHOP>(kingSq, bb.Occupancy);
-        State->CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
-        State->CheckSquares[QUEEN] = State->CheckSquares[BISHOP] | State->CheckSquares[ROOK];
-        State->CheckSquares[KING] = 0;
+        State.CheckSquares[PAWN] = PawnAttackMasks[Not(ToMove)][kingSq];
+        State.CheckSquares[HORSIE] = PseudoAttacks[HORSIE][kingSq];
+        State.CheckSquares[BISHOP] = attacks_bb<BISHOP>(kingSq, bb.Occupancy);
+        State.CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
+        State.CheckSquares[QUEEN] = State.CheckSquares[BISHOP] | State.CheckSquares[ROOK];
+        State.CheckSquares[KING] = 0;
     }
 
     void Position::SetCastlingStatus(i32 c, i32 rfrom) {
@@ -354,11 +342,11 @@ namespace Horsie {
 
         CastlingRookPaths[static_cast<i32>(cr)] = (LineBB[rfrom][static_cast<i32>(rto)] | LineBB[kfrom][static_cast<i32>(kto)]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
 
-        State->CastleStatus |= cr;
+        State.CastleStatus |= cr;
     }
 
     u64 Position::HashAfter(Move move) const {
-        u64 hash = State->Hash;
+        u64 hash = State.Hash;
 
         const auto [moveFrom, moveTo] = move.Unpack();
         i32 us = bb.GetColorAtIndex(moveFrom);
@@ -397,7 +385,7 @@ namespace Horsie {
 
         if (pt == PAWN) {
             if (move.IsEnPassant()) {
-                return State->EPSquare != EP_NONE && (SquareBB(moveTo - ShiftUpDir(ToMove)) & bb.Pieces[PAWN] & bb.Colors[Not(ToMove)]) != 0;
+                return State.EPSquare != EP_NONE && (SquareBB(moveTo - ShiftUpDir(ToMove)) & bb.Pieces[PAWN] & bb.Colors[Not(ToMove)]) != 0;
             }
 
             u64 empty = ~bb.Occupancy;
@@ -420,7 +408,7 @@ namespace Horsie {
         return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
     }
 
-    bool Position::IsLegal(Move move) const { return IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]); }
+    bool Position::IsLegal(Move move) const { return IsLegal(move, State.KingSquares[ToMove], State.KingSquares[Not(ToMove)], State.BlockingPieces[ToMove]); }
 
     bool Position::IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const {
         const auto [moveFrom, moveTo] = move.Unpack();
@@ -449,7 +437,7 @@ namespace Horsie {
                 return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(moveFrom)) & bb.Colors[theirColor]) | (PseudoAttacks[KING][moveTo] & SquareBB(theirKing))) == 0;
             }
 
-            i32 checker = lsb(State->Checkers);
+            i32 checker = lsb(State.Checkers);
             if (((LineBB[ourKing][checker] & SquareBB(moveTo)) != 0)
                 || (move.IsEnPassant() && GetIndexFile(moveTo) == GetIndexFile(checker))) {
 
@@ -470,7 +458,7 @@ namespace Horsie {
                     return false;
                 }
 
-                if (IsChess960 && (State->BlockingPieces[ourColor] & SquareBB(moveTo)) != 0) {
+                if (IsChess960 && (State.BlockingPieces[ourColor] & SquareBB(moveTo)) != 0) {
                     //  This rook was blocking a check, and it would put our king in check
                     //  once the rook and king switched places
                     return false;
@@ -513,20 +501,20 @@ namespace Horsie {
         //  The piece is a blocker for our king, but it is moving along the same ray that it had been blocking previously.
         //  (i.e. a rook on B1 moving to A1 to capture a rook that was pinning it to our king on C1)
 
-        return ((State->BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
+        return ((State.BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
     }
 
     bool Position::IsDraw(i16 ply) const {
         //  50 move rule, iff it's not checkmate (which takes priority)
-        if (State->HalfmoveClock >= 100 && (!InCheck() || HasLegalMoves()))
+        if (State.HalfmoveClock >= 100 && (!InCheck() || HasLegalMoves()))
             return true;
 
         //  Two repetitions before root or one after it
         const auto histSize = static_cast<i32>(Hashes.size());
-        const auto dist = std::min(State->HalfmoveClock, histSize);
+        const auto dist = std::min(State.HalfmoveClock, histSize);
         bool rep = false;
         for (i32 i = 4; i <= dist; i += 2) {
-            if (Hashes[histSize - i] == State->Hash) {
+            if (Hashes[histSize - i] == State.Hash) {
                 if (ply >= i || rep)
                     return true;
 
@@ -559,9 +547,9 @@ namespace Horsie {
                1 * popcount(bb.Pieces[PAWN]);
     }
 
-    void Position::RemoveCastling(CastlingStatus cr) const {
-        Zobrist::Castle(State->Hash, State->CastleStatus, cr);
-        State->CastleStatus &= ~cr;
+    void Position::RemoveCastling(CastlingStatus cr) {
+        Zobrist::Castle(State.Hash, State.CastleStatus, cr);
+        State.CastleStatus &= ~cr;
     }
 
     constexpr CastlingStatus Position::GetCastlingForRook(i32 sq) const {
@@ -574,13 +562,13 @@ namespace Horsie {
         return cr;
     }
 
-    void Position::UpdateHash(i32 pc, i32 pt, i32 sq) const {
-        Zobrist::ToggleSquare(State->Hash, pc, pt, sq);
+    void Position::UpdateHash(i32 pc, i32 pt, i32 sq) {
+        Zobrist::ToggleSquare(State.Hash, pc, pt, sq);
 
         if (pt == PAWN)
-            Zobrist::ToggleSquare(State->PawnHash, pc, pt, sq);
+            Zobrist::ToggleSquare(State.PawnHash, pc, pt, sq);
         else
-            Zobrist::ToggleSquare(State->NonPawnHash[pc], pc, pt, sq);
+            Zobrist::ToggleSquare(State.NonPawnHash[pc], pc, pt, sq);
     }
 
 
@@ -696,10 +684,10 @@ namespace Horsie {
             bb.AddPiece(static_cast<i32>(Square::A8) + sq, BLACK, bBackrank[sq]);
 
             if (wBackrank[sq] == KING)
-                State->KingSquares[WHITE] = static_cast<i32>(Square::A1) + sq;
+                State.KingSquares[WHITE] = static_cast<i32>(Square::A1) + sq;
 
             if (bBackrank[sq] == KING)
-                State->KingSquares[BLACK] = static_cast<i32>(Square::A8) + sq;
+                State.KingSquares[BLACK] = static_cast<i32>(Square::A8) + sq;
         }
 
         for (i32 sq = 0; sq < 8; sq++) {
@@ -718,8 +706,8 @@ namespace Horsie {
         FullMoves = 1;
 
         Hashes.clear();
-        State = StartingState();
-        *State = {};
+        States.Clear();
+        State = {};
 
         unsigned char col, row, token;
         size_t idx;
@@ -767,13 +755,13 @@ namespace Horsie {
         }
 
         if (((ss >> col) && (col >= 'a' && col <= 'h')) && ((ss >> row) && (row == (ToMove == WHITE ? '6' : '3')))) {
-            State->EPSquare = CoordToIndex(File(col - 'a'), Rank(row - '1'));
+            State.EPSquare = CoordToIndex(File(col - 'a'), Rank(row - '1'));
         }
 
-        ss >> std::skipws >> State->HalfmoveClock >> FullMoves;
+        ss >> std::skipws >> State.HalfmoveClock >> FullMoves;
 
-        State->KingSquares[WHITE] = bb.KingIndex(WHITE);
-        State->KingSquares[BLACK] = bb.KingIndex(BLACK);
+        State.KingSquares[WHITE] = bb.KingIndex(WHITE);
+        State.KingSquares[BLACK] = bb.KingIndex(BLACK);
 
         SetState();
 
@@ -822,17 +810,17 @@ namespace Horsie {
 
         fen << (ToMove == Color::WHITE ? " w " : " b ");
 
-        if (State->CastleStatus != CastlingStatus::None) {
-            if ((State->CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
+        if (State.CastleStatus != CastlingStatus::None) {
+            if ((State.CastleStatus & CastlingStatus::WK) != CastlingStatus::None) {
                 fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WK))) : 'K');
             }
-            if ((State->CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
+            if ((State.CastleStatus & CastlingStatus::WQ) != CastlingStatus::None) {
                 fen << (IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus::WQ))) : 'Q');
             }
-            if ((State->CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
+            if ((State.CastleStatus & CastlingStatus::BK) != CastlingStatus::None) {
                 fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BK))) : 'k');
             }
-            if ((State->CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
+            if ((State.CastleStatus & CastlingStatus::BQ) != CastlingStatus::None) {
                 fen << (IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus::BQ))) : 'q');
             }
         }
@@ -840,14 +828,14 @@ namespace Horsie {
             fen << "-";
         }
 
-        if (State->EPSquare != EP_NONE) {
-            fen << " " << IndexToString(State->EPSquare);
+        if (State.EPSquare != EP_NONE) {
+            fen << " " << IndexToString(State.EPSquare);
         }
         else {
             fen << " -";
         }
 
-        fen << " " << std::to_string(State->HalfmoveClock) << " " << std::to_string(FullMoves);
+        fen << " " << std::to_string(State.HalfmoveClock) << " " << std::to_string(FullMoves);
 
         return fen.str();
     }
@@ -874,7 +862,7 @@ namespace Horsie {
 
         os << "   a   b   c   d   e   f   g   h\n";
         os << "\nFen: " << pos.GetFEN() << "\n";
-        os << "\nHash: " << pos.State->Hash << "\n";
+        os << "\nHash: " << pos.Hash() << "\n";
 
         return os;
     }
@@ -911,8 +899,8 @@ namespace Horsie {
                 break;
             }
 
-            if ((State->Pinners[Not(stm)] & occ) != 0) {
-                stmAttackers &= ~State->BlockingPieces[stm];
+            if ((State.Pinners[Not(stm)] & occ) != 0) {
+                stmAttackers &= ~State.BlockingPieces[stm];
                 if (stmAttackers == 0) {
                     break;
                 }
@@ -971,13 +959,13 @@ namespace Horsie {
 
         const auto occ = bb.Occupancy;
 
-        i32 dist = std::min(State->HalfmoveClock, State->PliesFromNull);
+        i32 dist = std::min(State.HalfmoveClock, State.PliesFromNull);
         if (dist < 3)
             return false;
 
         const auto HashFromStack = [&](i32 i) { return Hashes[Hashes.size() - i]; };
 
-        auto other = State->Hash ^ HashFromStack(1) ^ Zobrist::BlackHash;
+        auto other = State.Hash ^ HashFromStack(1) ^ Zobrist::BlackHash;
 
         i32 slot;
         for (i32 i = 3; i <= dist; i += 2) {
@@ -987,7 +975,7 @@ namespace Horsie {
             if (other != 0)
                 continue;
 
-            const auto diff = State->Hash ^ currKey;
+            const auto diff = State.Hash ^ currKey;
 
             if (diff != keys[(slot = Hash1(diff))] &&
                 diff != keys[(slot = Hash2(diff))])
