@@ -20,31 +20,16 @@ namespace Horsie {
 
     Position::Position(const std::string& fen) {
 
-        bb = Bitboard();
-
         Hashes.reserve(MaxPly);
-        _stateBlock = AlignedAlloc<StateInfo>(StateStackSize);
+        StateBlock = AlignedAlloc<StateInfo>(StateStackSize);
 
-        _SentinelStart = &_stateBlock[0];
-        State = &_stateBlock[0];
-
-        _accumulatorBlock = AlignedAlloc<NNUE::Accumulator>(StateStackSize);
-        for (i32 i = 0; i < StateStackSize; i++) {
-            (_stateBlock + i)->accumulator = _accumulatorBlock + i;
-            *(_stateBlock + i)->accumulator = NNUE::Accumulator();
-        }
-
-        IsChess960 = false;
+        State = &StateBlock[0];
 
         LoadFromFEN(fen);
-
-        NNUE::RefreshAccumulator(*this);
-        NNUE::ResetCaches(*this);
     }
 
     Position::~Position() {
-        AlignedFree(_accumulatorBlock);
-        AlignedFree(_stateBlock);
+        AlignedFree(StateBlock);
     }
 
     Move Position::TryFindMove(const std::string& moveStr, bool& found) const {
@@ -94,10 +79,10 @@ namespace Horsie {
 
     template<bool UpdateNN>
     void Position::MakeMove(Move move) {
-        std::memcpy(State + 1, State, StateCopySize);
+        std::memcpy(State + 1, State, sizeof(StateInfo));
 
         if (UpdateNN) {
-            NNUE::MakeMoveNN(*this, move);
+            Accumulators.MakeMove(*this, move);
         }
 
         Hashes.push_back(Hash());
@@ -212,7 +197,16 @@ namespace Horsie {
     }
 
     void Position::UnmakeMove(Move move) {
+        UnmakeMove<true>(move);
+    }
+
+    template<bool UpdateNN>
+    void Position::UnmakeMove(Move move) {
         const auto [moveFrom, moveTo] = move.Unpack();
+
+        if (UpdateNN) {
+            Accumulators.UndoMove();
+        }
 
         //  Assume that "we" just made the last move, and "they" are undoing it.
         i32 ourPiece = bb.GetPieceAtIndex(moveTo);
@@ -263,8 +257,7 @@ namespace Horsie {
     }
 
     void Position::MakeNullMove() {
-        std::memcpy(State + 1, State, StateCopySize);
-        NNUE::MakeNullMove(*this);
+        std::memcpy(State + 1, State, sizeof(StateInfo));
 
         Hashes.push_back(Hash());
         State++;
@@ -614,7 +607,7 @@ namespace Horsie {
 
             MakeMove<false>(m);
             n += Perft(depth - 1);
-            UnmakeMove(m);
+            UnmakeMove<false>(m);
         }
 
         return n;
@@ -632,7 +625,7 @@ namespace Horsie {
             MakeMove<false>(m);
             n = Perft(depth - 1);
             total += n;
-            UnmakeMove(m);
+            UnmakeMove<false>(m);
 
             std::cout << Move::ToString(m) << ": " << n << std::endl;
         }
@@ -726,8 +719,7 @@ namespace Horsie {
 
         Hashes.clear();
         State = StartingState();
-        std::memset(State, 0, StateCopySize);
-        State->CapturedPiece = Piece::NONE;
+        *State = {};
 
         unsigned char col, row, token;
         size_t idx;
@@ -785,7 +777,9 @@ namespace Horsie {
 
         SetState();
 
-        NNUE::RefreshAccumulator(*this);
+        Accumulators.Reset();
+        Accumulators.RefreshIntoCache(*this);
+        NNUE::ResetCaches(*this);
     }
 
     std::string Position::GetFEN() const {

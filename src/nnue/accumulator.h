@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../bitboard.h"
 #include "../defs.h"
 #include "../types.h"
 #include "../util/NDArray.h"
@@ -7,6 +8,12 @@
 #include "network_update.h"
 
 #include <array>
+#include <vector>
+
+namespace Horsie {
+    class Position;
+    class Move;
+}
 
 namespace Horsie::NNUE {
 
@@ -37,6 +44,47 @@ namespace Horsie::NNUE {
             target.Sides[c] = Sides[c];
             target.NeedsRefresh[c] = NeedsRefresh[c];
         }
+
+        void MarkDirty() {
+            NeedsRefresh[WHITE] = NeedsRefresh[BLACK] = true;
+            Computed[WHITE] = Computed[BLACK] = false;
+        }
+    };
+
+
+    class AccumulatorStack {
+    public:
+        AccumulatorStack() : AccStack(256) {
+            Reset();
+        }
+        
+        const std::array<i16, L1_SIZE> operator[](const i32 c) { return CurrentAccumulator->Sides[c]; }
+        
+        void Reset() { 
+            HeadIndex = 0;
+            CurrentAccumulator = &AccStack[HeadIndex];
+            CurrentAccumulator->MarkDirty();
+        }
+
+        constexpr Accumulator* Prev() { return &AccStack[HeadIndex - 1]; }
+        constexpr Accumulator* Head() { return CurrentAccumulator; }
+        constexpr Accumulator* Next() { return &AccStack[HeadIndex + 1]; }
+
+        void MoveNext();
+        void MakeMove(const Position& pos, Move m);
+        void UndoMove();
+
+        void EnsureUpdated(Position& pos);
+        void RefreshIntoCache(Position& pos);
+        void RefreshIntoCache(Position& pos, i32 perspective);
+        void RefreshFromCache(Position& pos, i32 perspective);
+
+    private:
+        std::vector<Accumulator> AccStack{};
+        i32 HeadIndex{};
+        Accumulator* CurrentAccumulator{};
+
+        void ProcessUpdate(Accumulator* prev, Accumulator* curr, i32 perspective);
     };
 
     struct FinnyTable {

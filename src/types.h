@@ -225,25 +225,20 @@ namespace Horsie {
         struct Accumulator; 
     }
 
-    struct alignas(32) StateInfo {
-    public:
-
+    struct StateInfo {
         u64 CheckSquares[PIECE_NB];
         u64 BlockingPieces[2];
         u64 Pinners[2];
-        i32 KingSquares[2];
-        u64 Checkers = 0;
+        u64 NonPawnHash[2];
         u64 Hash = 0;
         u64 PawnHash = 0;
-        u64 NonPawnHash[2];
+        u64 Checkers = 0;
+        i32 KingSquares[2];
         i32 HalfmoveClock = 0;
         i32 EPSquare = EP_NONE;
         i32 CapturedPiece = Piece::NONE;
         i32 PliesFromNull = 0;
         CastlingStatus CastleStatus = CastlingStatus::None;
-
-        NNUE::Accumulator* accumulator;
     };
 
-    constexpr static i32 StateCopySize = sizeof(StateInfo) - sizeof(u64);
 }

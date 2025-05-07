@@ -15,22 +15,22 @@ namespace Horsie {
         ~Position();
         void LoadFromFEN(const std::string& fen);
 
+        NNUE::AccumulatorStack Accumulators;
         NNUE::BucketCache CachedBuckets;
         StateInfo* State;
 
-        Bitboard bb;
-        Color ToMove;
-        i32 FullMoves;
+        Bitboard bb{};
+        Color ToMove{};
+        i32 FullMoves{};
 
-        i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)];
-        u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)];
+        i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)]{};
+        u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)]{};
 
-        bool UpdateNN;
-        bool IsChess960;
+        bool IsChess960{};
 
         constexpr bool InCheck()       const { return State->Checkers != 0; }
         constexpr bool InDoubleCheck() const { return MoreThanOne(State->Checkers); }
-        constexpr StateInfo* StartingState() const { return _SentinelStart; }
+        constexpr StateInfo* StartingState() const { return StateBlock; }
         constexpr StateInfo* PreviousState() const { return State - 1; }
         constexpr StateInfo* NextState() const { return State + 1; }
 
@@ -46,10 +46,9 @@ namespace Horsie {
         constexpr i32 EPSquare() const { return State->EPSquare; }
         constexpr i32 CapturedPiece() const { return State->CapturedPiece; }
         constexpr auto CastleStatus() const { return State->CastleStatus; }
-        constexpr auto accumulator() const { return State->accumulator; }
 
-        constexpr auto CurrAccumulator() const { return State->accumulator; }
-        constexpr auto NextAccumulator() const { return NextState()->accumulator; }
+        constexpr auto CurrAccumulator() { return Accumulators.Head(); }
+        constexpr auto NextAccumulator() { return Accumulators.Next(); }
 
         constexpr bool GivesCheck(i32 pt, i32 sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
 
@@ -77,7 +76,10 @@ namespace Horsie {
         void MakeMove(Move move);
         void MakeMove(Move move);
 
+        template<bool UpdateNN>
         void UnmakeMove(Move move);
+        void UnmakeMove(Move move);
+
         void MakeNullMove();
         void UnmakeNullMove();
 
@@ -115,11 +117,10 @@ namespace Horsie {
     private:
         static constexpr i32 StateStackSize = 1024; 
         
-        NNUE::Accumulator* _accumulatorBlock;
-        StateInfo* _stateBlock;
+        //NNUE::Accumulator* _accumulatorBlock;
+        StateInfo* StateBlock;
         std::vector<u64> Hashes{};
 
-        StateInfo* _SentinelStart;
     };
 
     std::ostream& operator<<(std::ostream& os, const Position& pos);
