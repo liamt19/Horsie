@@ -148,8 +148,20 @@ namespace Horsie::UCI {
         limits.MoveTime = 0;
         limits.Increment = 0;
 
-        while (is >> token)
-            if ((pos.ToMove == WHITE && token == "wtime") || (pos.ToMove == BLACK && token == "btime"))
+        setup.UCISearchMoves.clear();
+
+        while (is >> token) {
+            if (token == "searchmoves") {
+                while (is >> token) {
+                    bool found = false;
+                    Move m = pos.TryFindMove(token, found);
+                    
+                    if (found)
+                        setup.UCISearchMoves.push_back(m);
+                }
+            }
+
+            else if ((pos.ToMove == WHITE && token == "wtime") || (pos.ToMove == BLACK && token == "btime"))
                 is >> limits.PlayerTime;
 
             else if ((pos.ToMove == WHITE && token == "winc") || (pos.ToMove == BLACK && token == "binc"))
@@ -166,6 +178,7 @@ namespace Horsie::UCI {
 
             else if (token == "movestogo")
                 is >> limits.MovesToGo;
+        }
 
         return limits;
     }
@@ -251,6 +264,7 @@ namespace Horsie::UCI {
 
         setup.StartFEN = fen;
         setup.SetupMoves.clear();
+        setup.UCISearchMoves.clear();
 
         while (is >> token) {
             bool found = false;
@@ -276,7 +290,7 @@ namespace Horsie::UCI {
         SearchLimits limits = ParseGoParameters(is);
         thread->SoftTimeLimit = limits.SetTimeLimits();
 
-        SearchPool->StartSearch(pos, limits);
+        SearchPool->StartSearch(pos, limits, setup);
     }
 
     void UCIClient::HandleStopCommand() {
@@ -370,8 +384,10 @@ namespace Horsie::UCI {
         
         bool found{};
         Move m = pos.TryFindMove(moveStr, found);
-        if (found)
-            pos.MakeMove<true>(m);
+        if (found) {
+            pos.MakeMove(m);
+            setup.SetupMoves.push_back(m);
+        }
     }
 
 

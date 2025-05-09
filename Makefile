@@ -2,7 +2,7 @@
 EXE := horsie
 CXX := clang++
 
-SOURCES := src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/threadpool.cpp src/tt.cpp src/uci.cpp src/wdl.cpp src/zobrist.cpp src/util/dbg_hit.cpp src/nnue/nn.cpp src/datagen/selfplay.cpp src/3rdparty/zstd/zstddeclib.c
+SOURCES := src/nnue/accumulator.cpp src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/threadpool.cpp src/tt.cpp src/uci.cpp src/wdl.cpp src/zobrist.cpp src/util/dbg_hit.cpp src/nnue/nn.cpp src/datagen/selfplay.cpp src/3rdparty/zstd/zstddeclib.c
 
 
 ifeq ($(UNAME_S),Darwin)

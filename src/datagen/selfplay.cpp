@@ -328,12 +328,9 @@ namespace Horsie::Datagen {
         td.Reset();
 
         ScoredMove rms[MoveListSize] = {};
-        i32 size = Generate<GenLegal>(pos, &rms[0], 0);
+        i32 size = Generate<GenLegal>(pos, rms, 0);
 
         td.RootMoves.clear();
-        td.RootMoves.shrink_to_fit();
-        td.RootMoves.reserve(size);
-
         for (i32 j = 0; j < size; j++) {
             td.RootMoves.push_back(RootMove(rms[j].move));
         }

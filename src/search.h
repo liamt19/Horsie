@@ -114,9 +114,9 @@ namespace Horsie {
         };
 
         struct ThreadSetup {
-            std::string StartFEN;
-            std::vector<Move> SetupMoves;
-            std::vector<Move> UCISearchMoves;
+            std::string StartFEN{};
+            std::vector<Move> SetupMoves{};
+            std::vector<Move> UCISearchMoves{};
 
             ThreadSetup(std::vector<Move> setupMoves) : ThreadSetup(InitialFEN, setupMoves, {}) {}
             ThreadSetup(std::string_view fen = InitialFEN) : ThreadSetup(fen, {}, {}) {}

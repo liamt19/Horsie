@@ -252,7 +252,7 @@ namespace Horsie {
         }
 
         if (!isRoot) {
-            if (pos.IsDraw()) {
+            if (pos.IsDraw(ss->Ply)) {
                 return MakeDrawScore(Nodes);
             }
 
@@ -494,8 +494,9 @@ namespace Horsie {
                 continue;
             }
 
-            if (isRoot && MultiPV != 1) {
+            if (isRoot) {
                 //  If this move is ordered before PVIndex, it's already been searched.
+                //  Also handles searchmoves, ensuring the current move is in the list.
                 if (std::count(RootMoves.begin() + PVIndex, RootMoves.end(), m) == 0)
                     continue;
             }
@@ -807,7 +808,7 @@ namespace Horsie {
             SelDepth = std::max(SelDepth, ss->Ply + 1);
         }
 
-        if (pos.IsDraw()) {
+        if (pos.IsDraw(ss->Ply)) {
             return ScoreDraw;
         }
 
@@ -1006,7 +1007,7 @@ namespace Horsie {
     }
 
     i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
-        rawEval = static_cast<i16>(rawEval * (200 - pos.State->HalfmoveClock) / 200);
+        rawEval = static_cast<i16>(rawEval * (200 - pos.HalfmoveClock()) / 200);
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
