@@ -413,7 +413,7 @@ namespace Horsie {
 
             ScoredMove captures[MoveListSize];
             i32 numCaps = GenerateQS(pos, captures, 0);
-            AssignProbcutScores(pos, captures, numCaps);
+            AssignProbcutScores(pos, *history, captures, numCaps, ttMove);
 
             for (i32 i = 0; i < numCaps; i++) {
                 Move m = OrderNextMove(captures, numCaps, i);
@@ -1117,14 +1117,21 @@ namespace Horsie {
         return moves[listIndex].move;
     }
 
-    void SearchThread::AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const {
+    void SearchThread::AssignProbcutScores(Position& pos, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
         Bitboard& bb = pos.bb;
+        const auto pc = pos.ToMove;
+
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;
+            const auto [moveFrom, moveTo] = m.Unpack();
+            const auto pt = bb.GetPieceAtIndex(moveFrom);
 
-            list[i].score = m.IsEnPassant() ? PAWN : bb.GetPieceAtIndex(m.To());
-            if (m.IsPromotion()) {
-                list[i].score += 10;
+            const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
+            const auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
+            list[i].score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
+
+            if (m == ttMove) {
+                list[i].score = INT32_MAX - 100000;
             }
         }
     }

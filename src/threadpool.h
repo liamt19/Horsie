@@ -99,7 +99,7 @@ namespace Horsie {
         void UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth);
         i16 AdjustEval(Position& pos, i32 us, i16 rawEval) const;
 
-        void AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const;
+        void AssignProbcutScores(Position& pos, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
         void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
         void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
         Move OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const;
