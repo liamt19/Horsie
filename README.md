@@ -6,7 +6,17 @@ Horsie - A C++ chess engine
 <img src="./Resources/logo.png" width="500">
 </h2>
 
-A (WIP) port of [Lizard](https://github.com/liamt19/Lizard/) from C# to C++. As of December 4th, its search is functionally identical to [this commit](https://github.com/liamt19/Lizard/commit/5cfcc4f7fb0540bda504460a0225a85a44bc2c74).
+An (almost) functionally identical port of [Lizard](https://github.com/liamt19/Lizard/) from C# to C++. Both engines are being kept up to date, although Lizard may lag behind by a few patches and most testing is done on Horsie since it is faster.
+
+## Ratings
+<div align="center">
+
+| Version | Released | [CCRL 40/15](https://www.computerchess.org.uk/ccrl/4040/) | [CCRL Blitz](https://www.computerchess.org.uk/ccrl/404/) | [CCRL FRC](https://www.computerchess.org.uk/ccrl/404FRC/) | Notes |
+| ---- | ------------ | ---- | ---- | ---- | --- |
+| 1.0 | Jan. 8 2025  | 3575 | - | 3941 | Initial port |
+| 1.1 | May 12 2025  | TDB | TDB | TDB | Many cleanups and simplifications |
+
+</div>
 
 ---
 
