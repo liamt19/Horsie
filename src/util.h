@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <locale>
+#include <optional>
 #include <sstream>
 #include <string>
 

@@ -5,7 +5,7 @@
 
 namespace Horsie {
 
-    UCI_OPTION_SPECIAL(Threads, 1, 1, 512)
+    UCI_OPTION_SPECIAL(Threads, 1, 1, 2048)
     UCI_OPTION_SPECIAL(Hash, 32, 1, 1048576)
     UCI_OPTION_SPECIAL(MultiPV, 1, 1, 256)
     UCI_OPTION_SPECIAL(MoveOverhead, 25, 1, 5000)

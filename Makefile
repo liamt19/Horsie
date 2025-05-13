@@ -17,7 +17,7 @@ ifndef EVALFILE
 endif
 
 
-CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -funroll-loops
+CXXFLAGS:= -std=c++20 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -funroll-loops
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 
 
@@ -58,6 +58,7 @@ ifeq ($(OS),Windows_NT)
 	SUFFIX := .exe
 else
 	RM_FILE_CMD = rm
+	LDFLAGS += -pthread
 endif
 
 #	Taken from https://github.com/Ciekce/Stormphrax/blob/main/Makefile

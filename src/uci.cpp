@@ -477,39 +477,7 @@ namespace Horsie::UCI {
 
 
     void UCIClient::HandleDatagenCommand(std::istringstream& is) {
-        std::string token;
-        std::vector<std::string> tokens{};
-        while (is >> token) {
-            tokens.push_back(token);
-        }
 
-        auto findOption = [&tokens](const std::string& opt) -> std::optional<u64> {
-            auto it = std::find_if(tokens.begin(), tokens.end(), [opt](const std::string& str) { return !str.empty() && str.back() == opt.front(); });
-
-            if (it != tokens.end()) {
-                std::string numberPart = it->substr(0, it->size() - 1);
-                return std::stoull(numberPart);
-            }
-
-            return {};
-        };
-
-        u64 nodes = findOption("nodes").value_or(Datagen::SoftNodeLimit);
-        u64 depth = findOption("depth").value_or(Datagen::DepthLimit);
-        u64 games = findOption("games").value_or(Datagen::DefaultGameCount);
-        u64 threads = findOption("threads").value_or(Datagen::DefaultThreadCount);
-        bool dfrc = tokens.size() > 0 && tokens.back() == "dfrc";
-
-        std::cout << std::format("Threads:      {}\n", threads);
-        std::cout << std::format("Games/thread: {}\n", games);
-        std::cout << std::format("Total games:  {}\n", games * threads);
-        std::cout << std::format("Node limit:   {}\n", nodes);
-        std::cout << std::format("Depth limit:  {}\n", depth);
-        std::cout << std::format("Variant:      {}\n", (dfrc ? "DFRC" : "Standard"));
-        std::cout << std::format("Hit enter to begin...\n");
-        std::cin.get();
-
-        Datagen::MonitorDG(nodes, depth, games, threads, dfrc);
     }
 
 }
