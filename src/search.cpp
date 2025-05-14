@@ -323,7 +323,8 @@ namespace Horsie {
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
         }
 
-        if (!(ss - 1)->InCheck 
+        if (!doSkip
+            && !(ss - 1)->InCheck 
             && (ss - 1)->CurrentMove != Move::Null() 
             && pos.CapturedPiece() == NONE) {
 
