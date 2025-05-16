@@ -539,6 +539,19 @@ namespace Horsie {
         return legals != 0;
     }
 
+    bool Position::HasEasyThreat() const {
+        const auto them = Not(ToMove);
+        const auto pawnThreats = ThreatsBy<PAWN>(them);
+        const auto minorThreats = ThreatsBy<HORSIE>(them) | ThreatsBy<BISHOP>(them) | pawnThreats;
+        const auto rookThreats = ThreatsBy<ROOK>(them) | minorThreats;
+
+        const auto ourQueens = bb.Pieces[QUEEN] & bb.Colors[ToMove];
+        const auto ourRooks = (bb.Pieces[ROOK] & bb.Colors[ToMove]) | ourQueens;
+        const auto ourMinors = ((bb.Pieces[BISHOP] | bb.Pieces[HORSIE]) & bb.Colors[ToMove]) | ourRooks;
+
+        return (pawnThreats & ourMinors) || (minorThreats & ourRooks) || (rookThreats & ourQueens);
+    }
+
     i32 Position::MaterialCount() const {
         return 9 * popcount(bb.Pieces[QUEEN]) +
                5 * popcount(bb.Pieces[ROOK]) +

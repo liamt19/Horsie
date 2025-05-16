@@ -340,7 +340,7 @@ namespace Horsie {
             && ttMove == Move::Null()
             && (eval < ScoreAssuredWin)
             && (eval >= beta)
-            && (eval - GetRFPMargin(depth, improving)) >= beta) {
+            && (eval - GetRFPMargin(depth, improving && !pos.HasEasyThreat())) >= beta) {
             
             return (eval + beta) / 2;
         }

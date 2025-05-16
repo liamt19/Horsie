@@ -96,6 +96,8 @@ namespace Horsie {
         bool IsDraw(i16 ply = 0) const;
         bool HasLegalMoves() const;
 
+        bool HasEasyThreat() const;
+
         i32 MaterialCount() const;
 
         u64 Perft(i32 depth);
