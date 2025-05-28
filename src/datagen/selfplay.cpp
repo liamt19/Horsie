@@ -76,7 +76,7 @@ namespace Horsie::Datagen {
 
         std::vector<std::thread> dg_threads;
         for (i32 i = 0; i < threads; i++) {
-            dg_threads.emplace_back(Datagen::RunGames, i, 5000, 14, games, dfrc);
+            dg_threads.emplace_back(Datagen::RunGames, i, nodes, depth, games, dfrc);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
