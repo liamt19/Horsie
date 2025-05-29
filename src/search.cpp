@@ -544,7 +544,7 @@ namespace Horsie {
                     continue;
                 }
 
-                const auto seeMargin = isQuiet ? (-ShallowSEEMargin * depth) : (-25 * lmrDepth * lmrDepth);
+                const auto seeMargin = isQuiet ? (-ShallowSEEMargin * depth) : (-65 * lmrDepth * lmrDepth);
                 if ((!isQuiet || skipQuiets) && !pos.SEE_GE(m, seeMargin)) {
                     continue;
                 }
