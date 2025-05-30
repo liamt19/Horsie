@@ -526,7 +526,7 @@ namespace Horsie {
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
                     continue;
 
-                i32 lmrRed = (R * 1024) + NMFutileBase;
+                i32 lmrRed = R + NMFutileBase;
 
                 lmrRed += !isPV * NMFutilePVCoeff;
                 lmrRed += !improving * NMFutileImpCoeff;
@@ -544,7 +544,7 @@ namespace Horsie {
                     continue;
                 }
 
-                const auto seeMargin = -ShallowSEEMargin * depth;
+                const auto seeMargin = isQuiet ? (-30 * lmrDepth * lmrDepth) : (-ShallowSEEMargin * depth);
                 if ((!isQuiet || skipQuiets) && !pos.SEE_GE(m, seeMargin)) {
                     continue;
                 }
@@ -623,21 +623,20 @@ namespace Horsie {
                 && legalMoves >= 2
                 && !(isPV && isCapture)) {
 
-                R += (!improving);
-                R += cutNode * 2;
+                R += (!improving) * 1024;
+                R += cutNode * 2048;
 
-                R -= ss->TTPV;
-                R -= isPV;
-                R -= (m == ss->KillerMove);
+                R -= (ss->TTPV + isPV) * 1024;
+                R -= (m == ss->KillerMove) * 1024;
 
                 i32 histScore = 2 * moveHist +
                                 2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
                                     (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
                                     (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
 
-                R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
+                R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * 1024;
 
-                R = std::max(1, std::min(R, newDepth));
+                R = std::max(1, std::min(R / 1024, newDepth));
                 i32 reducedDepth = (newDepth - R);
 
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
