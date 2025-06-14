@@ -63,6 +63,7 @@ namespace Horsie {
             i16 DoubleExtensions;
             i16 Ply;
             i16 StaticEval;
+            i16 Complexity;
             Move KillerMove;
             Move CurrentMove;
             Move Skip;
@@ -78,6 +79,7 @@ namespace Horsie {
 
                 Ply = 0;
                 DoubleExtensions = 0;
+                Complexity = 0;
                 StaticEval = ScoreNone;
 
                 PVLength = 0;

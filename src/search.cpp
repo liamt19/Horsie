@@ -295,6 +295,7 @@ namespace Horsie {
 
         if (ss->InCheck) {
             ss->StaticEval = eval = ScoreNone;
+            ss->Complexity = 0;
             goto MovesLoop;
         }
 
@@ -318,6 +319,9 @@ namespace Horsie {
             tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
 
+        if (!doSkip)
+            ss->Complexity = std::abs(ss->StaticEval - rawEval);
+
         if (ss->Ply >= 2) {
             improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
@@ -339,10 +343,11 @@ namespace Horsie {
             && depth <= RFPMaxDepth
             && ttMove == Move::Null()
             && (eval < ScoreAssuredWin)
-            && (eval >= beta)
-            && (eval - GetRFPMargin(depth, improving)) >= beta) {
-            
-            return (eval + beta) / 2;
+            && (eval >= beta)) {
+
+            const auto rfpMargin = ((depth - improving) * RFPMargin) + ss->Complexity / 3;
+            if ((eval - rfpMargin) >= beta)
+                return (eval + beta) / 2;
         }
 
 
@@ -629,6 +634,7 @@ namespace Horsie {
                 R -= ss->TTPV;
                 R -= isPV;
                 R -= (m == ss->KillerMove);
+                R -= (ss->Complexity >= 70);
 
                 i32 histScore = 2 * moveHist +
                                 2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
