@@ -630,11 +630,11 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
+                R += (ss->Complexity <= 10 && ss->Complexity != 0);
 
                 R -= ss->TTPV;
                 R -= isPV;
                 R -= (m == ss->KillerMove);
-                R -= (ss->Complexity >= 70);
 
                 i32 histScore = 2 * moveHist +
                                 2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
