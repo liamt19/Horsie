@@ -345,7 +345,7 @@ namespace Horsie {
             && (eval < ScoreAssuredWin)
             && (eval >= beta)) {
 
-            const auto rfpMargin = ((depth - improving) * RFPMargin) + ss->Complexity / 3;
+            const auto rfpMargin = (depth - improving) * RFPMargin;
             if ((eval - rfpMargin) >= beta)
                 return (eval + beta) / 2;
         }
