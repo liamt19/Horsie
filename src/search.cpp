@@ -345,7 +345,7 @@ namespace Horsie {
             && (eval < ScoreAssuredWin)
             && (eval >= beta)) {
 
-            const auto rfpMargin = (depth - improving) * RFPMargin;
+            const auto rfpMargin = ((depth - improving) * RFPMargin) + ss->Complexity / 3;
             if ((eval - rfpMargin) >= beta)
                 return (eval + beta) / 2;
         }
@@ -630,7 +630,7 @@ namespace Horsie {
 
                 R += (!improving);
                 R += cutNode * 2;
-                R += (ss->Complexity <= 10 && ss->Complexity != 0);
+                R += (ss->Complexity <= 20 && ss->Complexity != 0);
 
                 R -= ss->TTPV;
                 R -= isPV;
