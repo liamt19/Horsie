@@ -635,7 +635,7 @@ namespace Horsie {
                 R -= ss->TTPV;
                 R -= isPV;
                 R -= (m == ss->KillerMove);
-                R -= (ss->Complexity >= 65);
+                R -= ((ss->Complexity >= 65) + (ss->Complexity >= 95));
 
                 i32 histScore = 2 * moveHist +
                                 2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
