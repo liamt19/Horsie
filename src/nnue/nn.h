@@ -4,7 +4,7 @@
 #undef COUNT_FOR_PERMUTATIONS
 
 #define NO_WEIGHT_PERMUTING 1
-#undef NO_WEIGHT_PERMUTING
+//#undef NO_WEIGHT_PERMUTING
 
 #include "../defs.h"
 #include "../nnue/arch.h"
@@ -29,11 +29,11 @@ namespace Horsie::NNUE {
     struct alignas(64) QuantisedNetworkBase {
         T FTWeights[INPUT_SIZE * L1_SIZE * INPUT_BUCKETS];
         T FTBiases[L1_SIZE];
-        W L1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
+        W L1Weights[OUTPUT_BUCKETS][L2_SIZE][L1_SIZE];
         U L1Biases[OUTPUT_BUCKETS][L2_SIZE];
-        U L2Weights[L2_SIZE][OUTPUT_BUCKETS][L3_SIZE];
+        U L2Weights[OUTPUT_BUCKETS][L3_SIZE][L2_SIZE];
         U L2Biases[OUTPUT_BUCKETS][L3_SIZE];
-        U L3Weights[L3_SIZE][OUTPUT_BUCKETS];
+        U L3Weights[OUTPUT_BUCKETS][L3_SIZE];
         U L3Biases[OUTPUT_BUCKETS];
     };
     using QuantisedNetwork = QuantisedNetworkBase<i16, i8, float>;
@@ -64,7 +64,7 @@ namespace Horsie::NNUE {
     void LoadNetwork(const std::string& name);
     static void SetupNNZ();
     static void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases);
-    static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]);
+    static void PermuteL1(i8 l1Weights[OUTPUT_BUCKETS][L2_SIZE][L1_SIZE]);
 
     i32 GetEvaluation(Position& pos, i32 outputBucket);
     i32 GetEvaluation(Position& pos);
@@ -73,16 +73,34 @@ namespace Horsie::NNUE {
     i32 FeatureIndexSingle(i32 pc, i32 pt, i32 sq, i32 kingSq, i32 perspective);
 
 
-    constexpr i32 KingBuckets[] = {
-         0,  1,  2,  3, 17, 16, 15, 14,
-         4,  5,  6,  7, 21, 20, 19, 18,
-         8,  9, 10, 11, 25, 24, 23, 22,
-         8,  9, 10, 11, 25, 24, 23, 22,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
+    constexpr i32 BucketScheme[] = {
+        0, 0, 1, 1,
+        0, 0, 1, 1,
+        2, 2, 2, 2,
+        2, 2, 2, 2,
+        3, 3, 3, 3,
+        3, 3, 3, 3,
+        3, 3, 3, 3,
+        3, 3, 3, 3,
     };
+
+    constexpr auto KingBuckets = []
+    {
+        std::array<i32, 64> buckets{};
+
+        const auto nBuckets = *std::max_element(BucketScheme, &BucketScheme[32]) + 1;
+        for (i32 rank = 0; rank < 8; rank++) {
+            for (i32 file = 0; file < 4; file++) {
+                const auto b = BucketScheme[rank * 4 + file];
+                const auto dst = rank * 8 + file;
+
+                buckets[dst] = b;
+                buckets[dst ^ 7] = b + nBuckets;
+            }
+        }
+
+        return buckets;
+    }();
 
     constexpr i32 BucketForPerspective(i32 ksq, i32 perspective) {
         return (KingBuckets[(ksq ^ (56 * perspective))]);
