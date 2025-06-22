@@ -12,6 +12,7 @@
 #include "util/dbg_hit.h"
 #include "util/timer.h"
 #include "wdl.h"
+#include "zobrist.h"
 
 #include <algorithm>
 #include <chrono>
@@ -225,6 +226,7 @@ namespace Horsie {
 
         Bitboard& bb = pos.bb;
         HistoryTable* history = &History;
+        const auto posHash = pos.Hash() ^ Zobrist::HalfmoveHashes[pos.HalfmoveClock()];
 
         Move bestMove = Move::Null();
 
@@ -276,7 +278,7 @@ namespace Horsie {
         
         ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
         ss->InCheck = pos.InCheck();
-        ss->TTHit = TT->Probe(pos.Hash(), tte);
+        ss->TTHit = TT->Probe(posHash, tte);
         if (!doSkip) {
             ss->TTPV = isPV || (ss->TTHit && tte->PV());
         }
@@ -315,7 +317,7 @@ namespace Horsie {
 
             eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
 
-            tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
+            tte->Update(posHash, ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
 
         if (ss->Ply >= 2) {
@@ -374,7 +376,7 @@ namespace Horsie {
             ss->ContinuationHistory = &history->Continuations[0][0][0][0];
 
             pos.MakeNullMove();
-            prefetch(TT->GetCluster(pos.Hash()));
+            prefetch(TT->GetCluster(posHash));
             score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
             pos.UnmakeNullMove();
 
@@ -443,7 +445,7 @@ namespace Horsie {
                 pos.UnmakeMove(m);
 
                 if (score >= probBeta) {
-                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
+                    tte->Update(posHash, MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
                     return score;
                 }
             }
@@ -754,7 +756,7 @@ namespace Horsie {
 
             Move moveToSave = (bound == TTNodeType::Beta) ? Move::Null() : bestMove;
             
-            tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(bestScore), ss->Ply), bound, depth, moveToSave, rawEval, TT->Age, ss->TTPV);
+            tte->Update(posHash, MakeTTScore(static_cast<i16>(bestScore), ss->Ply), bound, depth, moveToSave, rawEval, TT->Age, ss->TTPV);
 
             if (!ss->InCheck
                 && (bestMove.IsNull() || !pos.IsNoisy(bestMove))
@@ -783,6 +785,7 @@ namespace Horsie {
 
         Bitboard& bb = pos.bb;
         HistoryTable* history = &History;
+        const auto posHash = pos.Hash() ^ Zobrist::HalfmoveHashes[pos.HalfmoveClock()];
 
         Move bestMove = Move::Null();
 
@@ -798,7 +801,7 @@ namespace Horsie {
         TTEntry _tte{};
         TTEntry* tte = &_tte;
         ss->InCheck = inCheck;
-        ss->TTHit = TT->Probe(pos.Hash(), tte);
+        ss->TTHit = TT->Probe(posHash, tte);
         const i16 ttScore = ss->TTHit ? MakeNormalScore(tte->Score(), ss->Ply) : ScoreNone;
         const Move ttMove = ss->TTHit ? tte->BestMove : Move::Null();
         bool ttPV = ss->TTHit && tte->PV();
@@ -843,7 +846,7 @@ namespace Horsie {
 
             if (eval >= beta) {
                 if (!ss->TTHit)
-                    tte->Update(pos.Hash(), MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, false);
+                    tte->Update(posHash, MakeTTScore(eval, ss->Ply), TTNodeType::Alpha, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, false);
 
                 if (std::abs(eval) < ScoreTTWin)
                     eval = static_cast<i16>((4 * eval + beta) / 5);
@@ -934,7 +937,7 @@ namespace Horsie {
 
         TTNodeType bound = (bestScore >= beta) ? TTNodeType::Alpha : TTNodeType::Beta;
 
-        tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(bestScore), ss->Ply), bound, 0, bestMove, rawEval, TT->Age, ttPV);
+        tte->Update(posHash, MakeTTScore(static_cast<i16>(bestScore), ss->Ply), bound, 0, bestMove, rawEval, TT->Age, ttPV);
 
         return bestScore;
     }
