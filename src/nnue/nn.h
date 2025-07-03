@@ -1,7 +1,7 @@
 #pragma once
 
-#define COUNT_FOR_PERMUTATIONS 1
-#undef COUNT_FOR_PERMUTATIONS
+#define PERM_COUNT 1
+#undef PERM_COUNT
 
 #define NO_WEIGHT_PERMUTING 1
 #undef NO_WEIGHT_PERMUTING
@@ -16,7 +16,7 @@
 
 namespace Horsie::NNUE {
 
-#if defined(COUNT_FOR_PERMUTATIONS)
+#if defined(PERM_COUNT)
     extern std::array<u64, L1_SIZE> NNZCounts;
     extern u64 ActivationCount;
     extern u64 EvalCalls;

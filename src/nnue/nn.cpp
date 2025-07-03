@@ -25,7 +25,7 @@ namespace {
 
 namespace Horsie::NNUE {
 
-#if defined(COUNT_FOR_PERMUTATIONS)
+#if defined(PERM_COUNT)
     std::array<u64, L1_SIZE> NNZCounts = {};
     u64 ActivationCount = 0;
     u64 EvalCalls = 0;
@@ -203,6 +203,13 @@ namespace Horsie::NNUE {
 
                 offset += L1_PAIR_COUNT;
             }
+
+#if defined(PERM_COUNT)
+            EvalCalls++;
+            ActivationCount += static_cast<u64>(nnzCount);
+            for (i32 i = 0; i < L1_SIZE; i++)
+                NNZCounts[i] += (ft_outputs[i] ? 1UL : 0);
+#endif
         }
 
 
