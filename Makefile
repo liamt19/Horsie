@@ -1,6 +1,7 @@
 
 EXE := horsie
 CXX := clang++
+PGO := off
 
 SOURCES := src/nnue/accumulator.cpp src/bitboard.cpp src/cuckoo.cpp src/Horsie.cpp src/movegen.cpp src/position.cpp src/precomputed.cpp src/search.cpp src/threadpool.cpp src/tt.cpp src/uci.cpp src/wdl.cpp src/zobrist.cpp src/util/dbg_hit.cpp src/nnue/nn.cpp src/datagen/selfplay.cpp src/3rdparty/zstd/zstddeclib.c
 
@@ -45,10 +46,8 @@ endif
 ifeq ($(CXX),clang++)
 	STACK_SIZE := -Wl,/STACK:12582912
 	CXXFLAGS += -flto
-	PGO := on
 else
 	STACK_SIZE := -Wl,--stack,12194304
-	PGO := off
 endif
 
 ifeq ($(OS),Windows_NT) 
