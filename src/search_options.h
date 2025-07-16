@@ -60,6 +60,35 @@ namespace Horsie {
     UCI_OPTION(ShallowSEEMargin, 80)
     UCI_OPTION(ShallowMaxDepth, 9)
 
+    UCI_OPTION(LMRNotImpCoeff, 1024)
+    UCI_OPTION(LMRCutNodeCoeff, 2048)
+    UCI_OPTION(LMRTTPVCoeff, 1024)
+    UCI_OPTION(LMRPVCoeff, 1024)
+    UCI_OPTION(LMRKillerCoeff, 1024)
+
+    UCI_OPTION(LMRHist, 256)
+    UCI_OPTION(LMRHistSS1, 256)
+    UCI_OPTION(LMRHistSS2, 128)
+    UCI_OPTION(LMRHistSS4, 128)
+
+    UCI_OPTION(PawnCorrCoeff, 400)
+    UCI_OPTION(NonPawnCorrCoeff, 200)
+    UCI_OPTION(CorrDivisor, 600)
+
+    UCI_OPTION(NMOrderingMH, 512)
+    UCI_OPTION(NMOrderingSS1, 512)
+    UCI_OPTION(NMOrderingSS2, 256)
+    UCI_OPTION(NMOrderingSS4, 256)
+    UCI_OPTION(NMOrderingSS6, 256)
+
+    UCI_OPTION(QSOrderingMH, 512)
+    UCI_OPTION(QSOrderingSS1, 512)
+    UCI_OPTION(QSOrderingSS2, 256)
+    UCI_OPTION(QSOrderingSS4, 256)
+    UCI_OPTION(QSOrderingSS6, 256)
+
+    UCI_OPTION(OrderingEnPriseMult, 512)
+
     UCI_OPTION(LMRQuietDiv, 12948)
     UCI_OPTION(LMRCaptureDiv, 9424)
 

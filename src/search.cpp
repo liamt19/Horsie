@@ -526,7 +526,7 @@ namespace Horsie {
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
                     continue;
 
-                i32 lmrRed = (R * 1024) + NMFutileBase;
+                i32 lmrRed = R + NMFutileBase;
 
                 lmrRed += !isPV * NMFutilePVCoeff;
                 lmrRed += !improving * NMFutileImpCoeff;
@@ -623,19 +623,21 @@ namespace Horsie {
                 && legalMoves >= 2
                 && !(isPV && isCapture)) {
 
-                R += (!improving);
-                R += cutNode * 2;
+                R += (!improving) * LMRNotImpCoeff;
+                R += cutNode * LMRCutNodeCoeff;
 
-                R -= ss->TTPV;
-                R -= isPV;
-                R -= (m == ss->KillerMove);
+                R -= ss->TTPV * LMRTTPVCoeff;
+                R -= isPV * LMRPVCoeff;
+                R -= (m == ss->KillerMove) * LMRKillerCoeff;
 
-                i32 histScore = 2 * moveHist +
-                                2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
-                                    (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
-                                    (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
+                R /= 1024;
 
-                R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
+                i32 histScore = LMRHist * moveHist +
+                                LMRHistSS1 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
+                                LMRHistSS2 * (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
+                                LMRHistSS4 * (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
+
+                R -= (histScore / ((isCapture ? LMRCaptureDiv : LMRQuietDiv) * 128));
 
                 R = std::max(1, std::min(R, newDepth));
                 i32 reducedDepth = (newDepth - R);
@@ -1012,7 +1014,7 @@ namespace Horsie {
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
         const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
+        const auto corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB)) / CorrDivisor;
 
         return static_cast<i16>(rawEval + corr);
     }
@@ -1149,11 +1151,13 @@ namespace Horsie {
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score  = QSOrderingMH * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += QSOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += QSOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += QSOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += QSOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+
+                list[i].score /= 256;
 
                 if (pos.GivesCheck(pt, moveTo)) {
                     list[i].score += CheckBonus;
@@ -1193,11 +1197,13 @@ namespace Horsie {
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score  = NMOrderingMH * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += NMOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += NMOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += NMOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += NMOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+
+                list[i].score /= 256;
 
                 if (ss->Ply < LowPlyCount) {
                     list[i].score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
@@ -1211,16 +1217,16 @@ namespace Horsie {
                 const auto fromBB = SquareBB(moveFrom);
                 const auto   toBB = SquareBB(moveTo);
                 if (pt == QUEEN) {
-                    threat += ((fromBB & rookThreats) ? 12288 : 0);
-                    threat -= ((  toBB & rookThreats) ? 11264 : 0);
+                    threat += ((fromBB & rookThreats) ? 24 * OrderingEnPriseMult : 0);
+                    threat -= ((  toBB & rookThreats) ? 22 * OrderingEnPriseMult : 0);
                 }
                 else if (pt == ROOK) {
-                    threat += ((fromBB & minorThreats) ? 10240 : 0);
-                    threat -= ((  toBB & minorThreats) ? 9216 : 0);
+                    threat += ((fromBB & minorThreats) ? 20 * OrderingEnPriseMult : 0);
+                    threat -= ((  toBB & minorThreats) ? 18 * OrderingEnPriseMult : 0);
                 }
                 else if (pt == BISHOP || pt == HORSIE) {
-                    threat += ((fromBB & pawnThreats) ? 8192 : 0);
-                    threat -= ((  toBB & pawnThreats) ? 7168 : 0);
+                    threat += ((fromBB & pawnThreats) ? 16 * OrderingEnPriseMult : 0);
+                    threat -= ((  toBB & pawnThreats) ? 14 * OrderingEnPriseMult : 0);
                 }
 
                 list[i].score += threat;
