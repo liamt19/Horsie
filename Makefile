@@ -18,7 +18,7 @@ ifndef EVALFILE
 endif
 
 
-CXXFLAGS:= -std=c++23 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -funroll-loops
+CXXFLAGS:= -std=c++20 -g -O3 -DNDEBUG -DEVALFILE=\"$(EVALFILE)\" -funroll-loops
 DEBUG_CXXFLAGS := $(COMMON_CXXFLAGS) -g3 -O0 -DDEBUG -lasan -fsanitize=address,leak,undefined
 
 

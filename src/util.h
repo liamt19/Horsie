@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <locale>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -161,6 +162,17 @@ namespace Horsie {
         T inp{};
         is >> inp;
         return inp;
+    }
+
+    constexpr u64 byteswap(u64 v) {
+        return ((v & 0x00000000000000FFULL) << 56) |
+               ((v & 0x000000000000FF00ULL) << 40) |
+               ((v & 0x0000000000FF0000ULL) << 24) |
+               ((v & 0x00000000FF000000ULL) <<  8) |
+               ((v & 0x000000FF00000000ULL) >>  8) |
+               ((v & 0x0000FF0000000000ULL) >> 24) |
+               ((v & 0x00FF000000000000ULL) >> 40) |
+               ((v & 0xFF00000000000000ULL) >> 56);
     }
 
     const std::string EtherealFENs_D5[] = {

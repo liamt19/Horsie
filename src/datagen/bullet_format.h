@@ -5,6 +5,7 @@
 #include "../nnue/nn.h"
 #include "../position.h"
 #include "../threadpool.h"
+#include "../util.h"
 #include "bullet_format.h"
 
 #include <bit>
@@ -83,8 +84,9 @@ namespace Horsie::Datagen {
             };
 
             if (stm == BLACK) {
-                for (auto& bb : bbs)
-                    bb = std::byteswap(bb);
+                for (auto& bb : bbs) {
+                    bb = byteswap(bb);
+                }
 
                 std::swap(bbs[WHITE], bbs[BLACK]);
 
