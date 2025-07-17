@@ -127,8 +127,13 @@ namespace Horsie {
         bool HardTimeReached() const { return (GetSearchTime() > HardTimeLimit - MoveOverhead); }
 
         inline i32 GetRFPMargin(i32 depth, bool improving) const { return (depth - (improving)) * RFPMargin; }
+
         inline i32 StatBonus(i32 depth) const { return std::min((i32)(StatBonusMult * depth) - StatBonusSub, (i32)StatBonusMax); }
-        inline i32 StatMalus(i32 depth) const { return std::min((i32)(StatMalusMult * depth) - StatMalusSub, (i32)StatMalusMax); }
+        inline i32 StatPenalty(i32 depth) const { return -std::min((i32)(StatPenaltyMult * depth) - StatPenaltySub, (i32)StatPenaltyMax); }
+        
+        inline i32 LMRBonus(i32 depth) const { return std::min((i32)(LMRBonusMult * depth) - LMRBonusSub, (i32)LMRBonusMax); }
+        inline i32 LMRPenalty(i32 depth) const { return -std::min((i32)(LMRPenaltyMult * depth) - LMRPenaltySub, (i32)LMRPenaltyMax); }
+        
 
     private:
         const u32 CheckupFrequency = 1023;

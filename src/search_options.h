@@ -50,15 +50,44 @@ namespace Horsie {
     UCI_OPTION(ProbcutBeta, 257)
     UCI_OPTION(ProbcutBetaImp, 93)
 
-    UCI_OPTION(NMFutileBase, 471)
-    UCI_OPTION(NMFutilePVCoeff, 1062)
-    UCI_OPTION(NMFutileImpCoeff, 1017)
-    UCI_OPTION(NMFutileHistCoeff, 1051)
+    UCI_OPTION(NMFutileBase, 59)
+    UCI_OPTION(NMFutilePVCoeff, 133)
+    UCI_OPTION(NMFutileImpCoeff, 127)
+    UCI_OPTION(NMFutileHistCoeff, 131)
     UCI_OPTION(NMFutMarginB, 180)
     UCI_OPTION(NMFutMarginM, 81)
     UCI_OPTION(NMFutMarginDiv, 139)
     UCI_OPTION(ShallowSEEMargin, 80)
     UCI_OPTION(ShallowMaxDepth, 9)
+
+    UCI_OPTION(LMRNotImpCoeff, 128)
+    UCI_OPTION(LMRCutNodeCoeff, 256)
+    UCI_OPTION(LMRTTPVCoeff, 128)
+    UCI_OPTION(LMRPVCoeff, 128)
+    UCI_OPTION(LMRKillerCoeff, 128)
+
+    UCI_OPTION(LMRHist, 256)
+    UCI_OPTION(LMRHistSS1, 256)
+    UCI_OPTION(LMRHistSS2, 128)
+    UCI_OPTION(LMRHistSS4, 128)
+
+    UCI_OPTION(PawnCorrCoeff, 400)
+    UCI_OPTION(NonPawnCorrCoeff, 200)
+    UCI_OPTION(CorrDivisor, 600)
+
+    UCI_OPTION(NMOrderingMH, 512)
+    UCI_OPTION(NMOrderingSS1, 512)
+    UCI_OPTION(NMOrderingSS2, 256)
+    UCI_OPTION(NMOrderingSS4, 256)
+    UCI_OPTION(NMOrderingSS6, 256)
+
+    UCI_OPTION(QSOrderingMH, 512)
+    UCI_OPTION(QSOrderingSS1, 512)
+    UCI_OPTION(QSOrderingSS2, 256)
+    UCI_OPTION(QSOrderingSS4, 256)
+    UCI_OPTION(QSOrderingSS6, 256)
+
+    UCI_OPTION(OrderingEnPriseMult, 512)
 
     UCI_OPTION(LMRQuietDiv, 12948)
     UCI_OPTION(LMRCaptureDiv, 9424)
@@ -69,7 +98,7 @@ namespace Horsie {
     UCI_OPTION(QSSeeMargin, 78)
 
     UCI_OPTION(CheckBonus, 9315)
-    UCI_OPTION(MVVMult, 11)
+    UCI_OPTION(MVVMult, 352)
 
     UCI_OPTION_CUSTOM(IIRMinDepth, 3, 2, 6)
     UCI_OPTION(AspWindow, 12)
@@ -78,9 +107,17 @@ namespace Horsie {
     UCI_OPTION(StatBonusSub, 82)
     UCI_OPTION(StatBonusMax, 1713)
 
-    UCI_OPTION(StatMalusMult, 654)
-    UCI_OPTION(StatMalusSub, 102)
-    UCI_OPTION(StatMalusMax, 1441)
+    UCI_OPTION(StatPenaltyMult, 654)
+    UCI_OPTION(StatPenaltySub, 102)
+    UCI_OPTION(StatPenaltyMax, 1441)
+
+    UCI_OPTION(LMRBonusMult, 182)
+    UCI_OPTION(LMRBonusSub, 82)
+    UCI_OPTION(LMRBonusMax, 1713)
+
+    UCI_OPTION(LMRPenaltyMult, 654)
+    UCI_OPTION(LMRPenaltySub, 102)
+    UCI_OPTION(LMRPenaltyMax, 1441)
 
     CONST_OPTION(SEEValuePawn, 105)
     CONST_OPTION(SEEValueHorsie, 300)
