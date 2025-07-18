@@ -14,6 +14,7 @@
 #include "zobrist.h"
 
 #include <chrono>
+#include <format>
 #include <iostream>
 #include <list>
 #include <optional>
