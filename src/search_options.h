@@ -115,9 +115,9 @@ namespace Horsie {
     UCI_OPTION(LMRBonusSub, 82)
     UCI_OPTION(LMRBonusMax, 1713)
 
-    UCI_OPTION(LMRPenaltyMult, 654)
-    UCI_OPTION(LMRPenaltySub, 102)
-    UCI_OPTION(LMRPenaltyMax, 1441)
+    UCI_OPTION(LMRPenaltyMult, 182)
+    UCI_OPTION(LMRPenaltySub, 82)
+    UCI_OPTION(LMRPenaltyMax, 1713)
 
     CONST_OPTION(SEEValuePawn, 105)
     CONST_OPTION(SEEValueHorsie, 300)
