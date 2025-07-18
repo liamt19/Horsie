@@ -25,7 +25,7 @@ namespace Horsie {
 
     UCI_OPTION(QuietOrderMin, 100)
     UCI_OPTION(QuietOrderMax, 200)
-    UCI_OPTION(QuietOrderMult, 10)
+    UCI_OPTION(QuietOrderMult, 160)
 
     UCI_OPTION(SEMinDepth, 5)
     UCI_OPTION(SENumerator, 11)
