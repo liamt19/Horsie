@@ -473,8 +473,8 @@ namespace Horsie {
         bool didSkip = false;
         const auto lmpMoves = LMPTable[improving][depth];
 
-        Move captureMoves[16];
-        Move quietMoves[16];
+        Move captureMoves[32];
+        Move quietMoves[32];
 
         bool skipQuiets = false;
 
@@ -601,6 +601,13 @@ namespace Horsie {
 
             prefetch(TT->GetCluster(pos.HashAfter(m)));
 
+            if (isCapture && captureCount < 32) {
+                captureMoves[captureCount++] = m;
+            }
+            else if (!isCapture && quietCount < 32) {
+                quietMoves[quietCount++] = m;
+            }
+
             const auto histIdx = MakePiece(us, ourPiece);
 
             ss->DoubleExtensions = static_cast<i16>((ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0));
@@ -720,15 +727,6 @@ namespace Horsie {
                     }
 
                     alpha = score;
-                }
-            }
-
-            if (m != bestMove) {
-                if (isCapture && captureCount < 16) {
-                    captureMoves[captureCount++] = m;
-                }
-                else if (!isCapture && quietCount < 16) {
-                    quietMoves[quietCount++] = m;
                 }
             }
         }
@@ -983,6 +981,8 @@ namespace Horsie {
 
             for (i32 i = 0; i < quietCount; i++) {
                 Move m = quietMoves[i];
+                if (m == bestMove) continue;
+
                 const auto [moveFrom, moveTo] = m.Unpack();
                 const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
 
@@ -996,6 +996,8 @@ namespace Horsie {
 
         for (i32 i = 0; i < captureCount; i++) {
             Move m = captureMoves[i];
+            if (m == bestMove) continue;
+
             const auto [moveFrom, moveTo] = m.Unpack();
             const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
             const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
