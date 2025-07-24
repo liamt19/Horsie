@@ -97,6 +97,8 @@ namespace Horsie {
                 if (LogarithmicReductionTable[depth][moveIndex] < 1) {
                     LogarithmicReductionTable[depth][moveIndex] = 0;
                 }
+
+                LogarithmicReductionTable[depth][moveIndex] *= 128;
             }
         }
 

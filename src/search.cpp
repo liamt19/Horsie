@@ -327,7 +327,7 @@ namespace Horsie {
             && (ss - 1)->CurrentMove != Move::Null() 
             && pos.CapturedPiece() == NONE) {
 
-            const i32 val = -QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval);
+            const i32 val = -(QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval)) / 16;
             const auto bonus = std::clamp(val, -QuietOrderMin, (i32)QuietOrderMax);
             history->MainHistory[Not(us)][(ss - 1)->CurrentMove.GetMoveMask()] << bonus;
         }
@@ -526,13 +526,13 @@ namespace Horsie {
                 if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
                     continue;
 
-                i32 lmrRed = (R * 1024) + NMFutileBase;
+                i32 lmrRed = R + NMFutileBase;
 
                 lmrRed += !isPV * NMFutilePVCoeff;
                 lmrRed += !improving * NMFutileImpCoeff;
                 lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
 
-                lmrRed /= 1024;
+                lmrRed /= 128;
                 i32 lmrDepth = std::max(0, depth - lmrRed);
 
                 i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
@@ -623,19 +623,21 @@ namespace Horsie {
                 && legalMoves >= 2
                 && !(isPV && isCapture)) {
 
-                R += (!improving);
-                R += cutNode * 2;
+                R += (!improving) * LMRNotImpCoeff;
+                R += cutNode * LMRCutNodeCoeff;
 
-                R -= ss->TTPV;
-                R -= isPV;
-                R -= (m == ss->KillerMove);
+                R -= ss->TTPV * LMRTTPVCoeff;
+                R -= isPV * LMRPVCoeff;
+                R -= (m == ss->KillerMove) * LMRKillerCoeff;
 
-                i32 histScore = 2 * moveHist +
-                                2 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
-                                    (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
-                                    (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
+                i32 histScore = LMRHist * moveHist +
+                                LMRHistSS1 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
+                                LMRHistSS2 * (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
+                                LMRHistSS4 * (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
 
-                R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
+                R -= (histScore / ((isCapture ? LMRCaptureDiv : LMRQuietDiv)));
+                
+                R /= 128;
 
                 const auto reduced = std::max(0, std::min(newDepth - R, newDepth));
                 
@@ -651,9 +653,9 @@ namespace Horsie {
                         score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                     }
 
-                    i32 bonus = (score <= alpha) ? -StatBonus(newDepth)
-                              : (score >= beta)  ?  StatBonus(newDepth)
-                              :                     0;
+                    i32 bonus = (score <= alpha) ? LMRPenalty(newDepth)
+                              : (score >= beta)  ? LMRBonus(newDepth)
+                              :                    0;
 
                     UpdateContinuations(ss, us, ourPiece, moveTo, bonus);
                 }
@@ -956,7 +958,7 @@ namespace Horsie {
         const auto bmCapPiece = bb.GetPieceAtIndex(bmTo);
 
         const auto bonus = StatBonus(depth);
-        const auto malus = StatMalus(depth);
+        const auto penalty = StatPenalty(depth);
 
         if (bmCapPiece != Piece::NONE && !bestMove.IsCastle()) {
             history.CaptureHistory[us][bmPiece][bmTo][bmCapPiece] << bonus;
@@ -984,11 +986,11 @@ namespace Horsie {
                 const auto [moveFrom, moveTo] = m.Unpack();
                 const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
 
-                history.MainHistory[us][m.GetMoveMask()] << -malus;
+                history.MainHistory[us][m.GetMoveMask()] << penalty;
                 if (ss->Ply < LowPlyCount)
-                    history.PlyHistory[ss->Ply][m.GetMoveMask()] << -malus;
+                    history.PlyHistory[ss->Ply][m.GetMoveMask()] << penalty;
 
-                UpdateContinuations(ss, us, thisPiece, moveTo, -malus);
+                UpdateContinuations(ss, us, thisPiece, moveTo, penalty);
             }
         }
 
@@ -998,7 +1000,7 @@ namespace Horsie {
             const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
             const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
 
-            history.CaptureHistory[us][thisPiece][moveTo][capturedPiece] << -malus;
+            history.CaptureHistory[us][thisPiece][moveTo][capturedPiece] << penalty;
         }
 
     }
@@ -1009,7 +1011,7 @@ namespace Horsie {
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
         const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (pawn * 200 + nonPawnW * 100 + nonPawnB * 100) / 300;
+        const auto corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB)) / CorrDivisor;
 
         return static_cast<i16>(rawEval + corr);
     }
@@ -1141,16 +1143,18 @@ namespace Horsie {
             else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
                 const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
                 auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
-                list[i].score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
+                list[i].score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
             }
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score  = QSOrderingMH * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += QSOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += QSOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += QSOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += QSOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+
+                list[i].score /= 256;
 
                 if (pos.GivesCheck(pt, moveTo)) {
                     list[i].score += CheckBonus;
@@ -1185,16 +1189,18 @@ namespace Horsie {
             else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
                 const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
                 auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
-                list[i].score = (MVVMult * GetPieceValue(capturedPiece)) + hist;
+                list[i].score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
             }
             else {
                 i32 contIdx = MakePiece(pc, pt);
 
-                list[i].score =  2 * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score +=     (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score  = NMOrderingMH * history.MainHistory[pc][m.GetMoveMask()];
+                list[i].score += NMOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += NMOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += NMOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
+                list[i].score += NMOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+
+                list[i].score /= 256;
 
                 if (ss->Ply < LowPlyCount) {
                     list[i].score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
@@ -1208,16 +1214,16 @@ namespace Horsie {
                 const auto fromBB = SquareBB(moveFrom);
                 const auto   toBB = SquareBB(moveTo);
                 if (pt == QUEEN) {
-                    threat += ((fromBB & rookThreats) ? 12288 : 0);
-                    threat -= ((  toBB & rookThreats) ? 11264 : 0);
+                    threat += ((fromBB & rookThreats) ? 24 * OrderingEnPriseMult : 0);
+                    threat -= ((  toBB & rookThreats) ? 22 * OrderingEnPriseMult : 0);
                 }
                 else if (pt == ROOK) {
-                    threat += ((fromBB & minorThreats) ? 10240 : 0);
-                    threat -= ((  toBB & minorThreats) ? 9216 : 0);
+                    threat += ((fromBB & minorThreats) ? 20 * OrderingEnPriseMult : 0);
+                    threat -= ((  toBB & minorThreats) ? 18 * OrderingEnPriseMult : 0);
                 }
                 else if (pt == BISHOP || pt == HORSIE) {
-                    threat += ((fromBB & pawnThreats) ? 8192 : 0);
-                    threat -= ((  toBB & pawnThreats) ? 7168 : 0);
+                    threat += ((fromBB & pawnThreats) ? 16 * OrderingEnPriseMult : 0);
+                    threat -= ((  toBB & pawnThreats) ? 14 * OrderingEnPriseMult : 0);
                 }
 
                 list[i].score += threat;
