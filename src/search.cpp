@@ -623,11 +623,11 @@ namespace Horsie {
                 && legalMoves >= 2
                 && !(isPV && isCapture)) {
 
-                R += (!improving) * LMRNotImpCoeff;
+                R += (!isPV) * LMRPVCoeff;
                 R += cutNode * LMRCutNodeCoeff;
 
                 R -= ss->TTPV * LMRTTPVCoeff;
-                R -= isPV * LMRPVCoeff;
+                R -= improving * LMRNotImpCoeff;
                 R -= (m == ss->KillerMove) * LMRKillerCoeff;
 
                 i32 histScore = LMRHist * moveHist +
