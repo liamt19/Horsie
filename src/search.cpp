@@ -647,7 +647,13 @@ namespace Horsie {
                     bool    deeper = score > (bestScore + DeeperMargin + 4 * newDepth);
                     bool shallower = score < (bestScore + newDepth);
 
-                    newDepth += deeper - shallower;
+                    i32 reSearchDepthAdjustment = 0;
+                    if (score > alpha + 100 + 20 * depth)
+                         reSearchDepthAdjustment = 1;
+                    else if (score < alpha + 25)
+                        reSearchDepthAdjustment = -1;
+
+                    newDepth += deeper - shallower + reSearchDepthAdjustment;
 
                     if (reduced < newDepth) {
                         score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
