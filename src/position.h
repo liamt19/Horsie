@@ -112,7 +112,7 @@ namespace Horsie {
         }
 
     private:
-        Util::List<StateInfo, 1024> States{};
+        Util::List<StateInfo, 2048> States{};
         std::vector<u64> Hashes{};
 
     };

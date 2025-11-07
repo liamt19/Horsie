@@ -57,6 +57,7 @@ ifeq ($(OS),Windows_NT)
 	SUFFIX := .exe
 else
 	RM_FILE_CMD = rm
+	LDFLAGS += -pthread
 endif
 
 #	Taken from https://github.com/Ciekce/Stormphrax/blob/main/Makefile
