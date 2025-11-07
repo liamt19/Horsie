@@ -304,7 +304,7 @@ namespace Horsie::UCI {
     }
 
     void UCIClient::HandleEvalCommand() {
-        std::cout << "Evaluation: " << NNUE::GetEvaluation(pos) << std::endl << std::endl;
+        std::cout << NNUE::GetEvaluation(pos) << std::endl;
     }
 
     void UCIClient::HandleWaitCommand() {
