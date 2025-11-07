@@ -46,12 +46,13 @@ endif
 ifeq ($(CXX),clang++)
 	STACK_SIZE := -Wl,/STACK:12582912
 	CXXFLAGS += -flto
+	LDFLAGS += -fuse-ld=lld
 else
 	STACK_SIZE := -Wl,--stack,12194304
 endif
 
 ifeq ($(OS),Windows_NT) 
-	CXXFLAGS += -fuse-ld=lld -static
+	CXXFLAGS += -static
 	RM_FILE_CMD = del
 	LDFLAGS += $(STACK_SIZE)
 	SUFFIX := .exe
