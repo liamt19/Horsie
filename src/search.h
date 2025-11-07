@@ -5,6 +5,7 @@
 #include "move.h"
 #include "util.h"
 #include "util/alloc.h"
+#include "zobrist.h"
 
 #include <cstdint>
 #include <vector>
