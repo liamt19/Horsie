@@ -304,7 +304,7 @@ namespace Horsie {
         else if (ss->TTHit) {
             rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, ss->Ply, rawEval);
 
             if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
                 eval = ttScore;
@@ -313,7 +313,7 @@ namespace Horsie {
         else {
             rawEval = NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, ss->Ply, rawEval);
 
             tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
@@ -828,7 +828,7 @@ namespace Horsie {
             if (ss->TTHit) {
                 rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, ss->Ply, rawEval);
 
                 if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
                     eval = ttScore;
@@ -837,7 +837,7 @@ namespace Horsie {
             else {
                 rawEval = ((ss - 1)->CurrentMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, ss->Ply, rawEval);
             }
 
             if (eval >= beta) {
@@ -1005,13 +1005,17 @@ namespace Horsie {
 
     }
 
-    i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
+    i16 SearchThread::AdjustEval(Position& pos, i16 ply, i16 rawEval) const {
         rawEval = static_cast<i16>(rawEval * (200 - pos.HalfmoveClock()) / 200);
+        const auto us = pos.ToMove;
 
         const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
         const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
         const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB)) / CorrDivisor;
+
+        auto corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB));
+        const auto plyFactor = 1 + ((1.33 * std::clamp(static_cast<i32>(ply), 1, 18)) / 18.0);
+        corr = (corr * plyFactor) / CorrectionGrain;
 
         return static_cast<i16>(rawEval + corr);
     }

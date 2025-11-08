@@ -97,7 +97,7 @@ namespace Horsie {
         i32 QSearch(Position& pos, SearchStackEntry* ss, i32 alpha, i32 beta);
 
         void UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth);
-        i16 AdjustEval(Position& pos, i32 us, i16 rawEval) const;
+        i16 AdjustEval(Position& pos, i16 ply, i16 rawEval) const;
 
         void AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const;
         void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
