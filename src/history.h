@@ -13,6 +13,9 @@ namespace Horsie {
     constexpr i32 LowPlyCount = 4;
     constexpr i32 LowPlyClamp = 8192;
 
+    constexpr i32 CorrectionSize = 16384;
+    constexpr i32 CorrectionClamp = 1024;
+    constexpr i32 CorrectionBonusLimit = CorrectionClamp / 4;
 
     template<typename T, i32 ClampVal>
     class StatsEntry {
@@ -31,8 +34,6 @@ namespace Horsie {
 
     template<typename T, i32 D, i32 Size, i32... Sizes>
     struct Stats : public std::array<Stats<T, D, Sizes...>, Size> {
-        using stats = Stats<T, D, Size, Sizes...>;
-
         void Fill(const T& v) {
             using entry = StatsEntry<T, D>;
             entry* p = reinterpret_cast<entry*>(this);
@@ -48,7 +49,7 @@ namespace Horsie {
     using PlyHistoryT = Stats<i16, LowPlyClamp, LowPlyCount, 64 * 64>;
     using PieceToHistory = Stats<i16, 16384, 12, 64>;
     using ContinuationHistoryT = Stats<PieceToHistory, 0, 12, 64>;
-    using CorrectionT = Util::NDArray<i16, 2, 16384>;
+    using CorrectionT = Stats<i16, CorrectionClamp, 2, CorrectionSize>;
 
     struct alignas(64) HistoryTable {
     public:
