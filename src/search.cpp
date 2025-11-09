@@ -1014,7 +1014,7 @@ namespace Horsie {
         const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
 
         auto corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB));
-        const auto plyFactor = 1 + ((1.33 * std::clamp(static_cast<i32>(ply), 1, 18)) / 18.0);
+        const auto plyFactor = 1 + ((0.66 * std::clamp(static_cast<i32>(ply), 1, 18)) / 18.0);
         corr = (corr * plyFactor) / CorrectionGrain;
 
         return static_cast<i16>(rawEval + corr);
