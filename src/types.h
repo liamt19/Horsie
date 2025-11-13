@@ -187,7 +187,9 @@ namespace Horsie {
 
     constexpr i32 CoordToIndex(i32 x, i32 y) { return (y * 8) + x; }
 
-    constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * 6) + pt; }
+    constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * PIECE_NB) + pt; }
+    constexpr Color ColorOfPiece(i32 piece) { return static_cast<Color>(piece / PIECE_NB); }
+    constexpr i32 TypeOfPiece(i32 piece) { return (piece % PIECE_NB); }
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
