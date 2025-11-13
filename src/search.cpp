@@ -505,13 +505,20 @@ namespace Horsie {
             const auto theirPiece = bb.GetPieceAtIndex(moveTo);
             const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
             const bool isCapture = pos.IsCapture(m);
+            const auto piece = MakePiece(us, ourPiece);
             
             legalMoves++;
             i32 extend = 0;
             i32 R = LogarithmicReductionTable[depth][legalMoves];
 
             i32 moveHist = isCapture ? GetNoisyHistory(us, ourPiece, moveTo, theirPiece) : GetMainHistory(us, m);
-
+            i32 shallowHist = moveHist;
+            if (!isCapture) {
+                shallowHist += GetContinuationEntry(ss->Ply, 1, piece, moveTo)
+                             + GetContinuationEntry(ss->Ply, 2, piece, moveTo)
+                             + GetContinuationEntry(ss->Ply, 4, piece, moveTo);
+            }
+            
             if (ShallowPruning
                 && !isRoot
                 && bestScore > ScoreMatedMax
@@ -530,12 +537,11 @@ namespace Horsie {
 
                 lmrRed += !isPV * NMFutilePVCoeff;
                 lmrRed += !improving * NMFutileImpCoeff;
-                lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
-
+                lmrRed -= ((shallowHist * NMFutileHistCoeff) / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
                 lmrRed /= 128;
                 i32 lmrDepth = std::max(0, depth - lmrRed);
 
-                i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
+                i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (shallowHist / NMFutMarginDiv);
                 if (isQuiet 
                     && !ss->InCheck
                     && lmrDepth <= 8 
@@ -601,11 +607,9 @@ namespace Horsie {
 
             prefetch(TT->GetCluster(pos.HashAfter(m)));
 
-            const auto histIdx = MakePiece(us, ourPiece);
-
             ss->DoubleExtensions = static_cast<i16>((ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0));
             CurrentMoves[ss->Ply] = m;
-            Continuations[ss->Ply] = &History.Continuations[ss->InCheck][isCapture][histIdx][moveTo];
+            Continuations[ss->Ply] = &History.Continuations[ss->InCheck][isCapture][piece][moveTo];
             Nodes++;
 
             pos.MakeMove(m);
@@ -631,9 +635,9 @@ namespace Horsie {
                 R -= (m == ss->KillerMove) * LMRKillerCoeff;
 
                 i32 histScore = LMRHist * moveHist +
-                                LMRHistSS1 * GetContinuationEntry(ss->Ply, 1, histIdx, moveTo) +
-                                LMRHistSS2 * GetContinuationEntry(ss->Ply, 2, histIdx, moveTo) +
-                                LMRHistSS4 * GetContinuationEntry(ss->Ply, 4, histIdx, moveTo);
+                                LMRHistSS1 * GetContinuationEntry(ss->Ply, 1, piece, moveTo) +
+                                LMRHistSS2 * GetContinuationEntry(ss->Ply, 2, piece, moveTo) +
+                                LMRHistSS4 * GetContinuationEntry(ss->Ply, 4, piece, moveTo);
 
                 R -= (histScore / ((isCapture ? LMRCaptureDiv : LMRQuietDiv)));
                 
