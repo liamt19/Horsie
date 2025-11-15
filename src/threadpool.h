@@ -138,11 +138,13 @@ namespace Horsie {
         
         inline i32 LMRBonus(i32 depth) const { return std::min((i32)(LMRBonusMult * depth) - LMRBonusSub, (i32)LMRBonusMax); }
         inline i32 LMRPenalty(i32 depth) const { return -std::min((i32)(LMRPenaltyMult * depth) - LMRPenaltySub, (i32)LMRPenaltyMax); }
-        
-        void ClearContinuations() { Continuations.fill(NullContHist()); }
-        PieceToHistory* NullContHist() { return &(History.Continuations[0][0][0][0]); }
-        PieceToHistory* GetContinuation(i16 ply) const { return Continuations[ply]; }
-        
+
+        inline void ClearContinuations() { Continuations.fill(NullContHist()); }
+        inline PieceToHistory* NullContHist() { return &(History.Continuations[0][0][0][0]); }
+
+        i16 GetCorrection(Position& pos) const { return History.GetCorrection(pos); }
+        void UpdateCorrections(const Position& pos, i32 diff, i32 depth) { History.UpdateCorrections(pos, diff, depth); }
+
         i16 GetPlyHistory(i16 ply, Move m) const {
             if (ply >= LowPlyCount)
                 return 0;
@@ -155,28 +157,28 @@ namespace Horsie {
             return History.GetMainHistory(stm, m);
         }
 
-        i16 GetNoisyHistory(Color pc, i32 pieceType, i32 dstSq, i32 capPieceType) const {
-            return History.GetNoisyHistory(pc, pieceType, dstSq, capPieceType);
+        i16 GetNoisyHistory(i32 movingPiece, i32 dstSq, i32 capPieceType) const {
+            return History.GetNoisyHistory(movingPiece, dstSq, capPieceType);
         }
 
         i16 GetContinuationEntry(i16 ply, i32 i, i32 piece, i32 dstSq) const {
-            return History.GetContinuationEntry(Continuations, ply, i, piece, dstSq); 
+            return History.GetContinuationEntry(Continuations, ply, i, piece, dstSq);
         }
 
         void UpdateMainHistory(Color stm, Move m, i32 bonus) {
             History.UpdateMainHistory(stm, m, bonus);
         }
-        
-        void UpdateContinuations(i16 ply, i32 piece, i32 dstSq, i32 bonus, bool checked) { 
-            History.UpdateContinuations(Continuations, CurrentMoves, ply, piece, dstSq, bonus, checked); 
+
+        void UpdateContinuations(i16 ply, i32 piece, i32 dstSq, i32 bonus, bool checked) {
+            History.UpdateContinuations(Continuations, CurrentMoves, ply, piece, dstSq, bonus, checked);
         }
 
         void UpdateQuietScore(i16 ply, i32 piece, Move move, i32 bonus, bool checked) {
             History.UpdateQuietScore(Continuations, CurrentMoves, ply, piece, move, bonus, checked);
         }
 
-        void UpdateNoisyHistory(Color stm, i32 movingPiece, i32 dstSq, i32 capturedPiece, i32 bonus) {
-            History.UpdateNoisyHistory(stm, movingPiece, dstSq, capturedPiece, bonus);
+        void UpdateNoisyHistory(i32 movingPiece, i32 dstSq, i32 capturedPiece, i32 bonus) {
+            History.UpdateNoisyHistory(movingPiece, dstSq, capturedPiece, bonus);
         }
 
     private:

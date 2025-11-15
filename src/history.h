@@ -3,9 +3,11 @@
 #include "defs.h"
 #include "enums.h"
 #include "move.h"
+#include "position.h"
 #include "types.h"
 #include "util/NDArray.h"
 
+#include "search_options.h"
 #include <array>
 #include <cmath>
 #include <cstring>
@@ -31,26 +33,21 @@ namespace Horsie {
         ContinuationEntry() = default;
         ContinuationEntry(const i16& v) : entry{ v } {};
 
-        void operator=(const i16& v) { entry = v; }
-        i16* operator&() { return &entry; }
-        i16* operator->() { return &entry; }
-        operator const i16& () const { return entry; }
+        constexpr void operator=(const i16& v) { entry = v; }
+        constexpr i16* operator&() { return &entry; }
+        constexpr i16* operator->() { return &entry; }
+        constexpr operator const i16& () const { return entry; }
         void operator<<(i32 bonus) { entry += (bonus - (entry * std::abs(bonus) / ContinuationMax)); }
     };
 
     template<typename T, i32 ClampVal>
-    class StatsEntry {
+    struct StatsEntry {
         T entry;
-
-    public:
         constexpr void operator=(const T& v) { entry = v; }
         constexpr T* operator&() { return &entry; }
         constexpr T* operator->() { return &entry; }
         constexpr operator const T& () const { return entry; }
-
-        void operator<<(i32 bonus) {
-            entry += (bonus - (entry * std::abs(bonus) / ClampVal));
-        }
+        void operator<<(i32 bonus) { entry += (bonus - (entry * std::abs(bonus) / ClampVal)); }
     };
 
     template<typename T, i32 D, i32 Size, i32... Sizes>
@@ -65,8 +62,8 @@ namespace Horsie {
     template<typename T, i32 D, i32 Size>
     struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
-    using MainHistoryT = Stats<i16, 16384, 2, 64 * 64>;
-    using CaptureHistoryT = Stats<i16, 16384, 2, 6, 64, 6>;
+    using MainHistoryT = Stats<i16, HistoryClamp, 2, 64 * 64>;
+    using CaptureHistoryT = Stats<i16, HistoryClamp, 12, 64, 6>;
     using PlyHistoryT = Stats<i16, LowPlyClamp, LowPlyCount, 64 * 64>;
 
     using CorrectionT = Stats<i16, CorrectionClamp, 2, CorrectionSize>;
@@ -108,10 +105,8 @@ namespace Horsie {
         void UpdatePlyHistory(i16 ply, Move move, i32 bonus) { PlyHistory[ply][move.GetMoveMask()] << bonus; }
         i16   GetPlyHistory(i16 ply, Move move) const { return PlyHistory[ply][move.GetMoveMask()]; }
 
-        void UpdateNoisyHistory(Color stm, i32 movingPiece, i32 dstSq, i32 capturedPiece, i32 bonus) { CaptureHistory[stm][movingPiece][dstSq][capturedPiece] << bonus; }
-        i16 GetNoisyHistory(Color stm, i32 ourPieceType, i32 moveTo, i32 theirPieceType) const { return CaptureHistory[stm][ourPieceType][moveTo][theirPieceType]; }
-
-
+        void UpdateNoisyHistory(i32 movingPiece, i32 dstSq, i32 theirPieceType, i32 bonus) { CaptureHistory[movingPiece][dstSq][theirPieceType] << bonus; }
+        i16   GetNoisyHistory(i32 movingPiece, i32 dstSq, i32 theirPieceType) const { return CaptureHistory[movingPiece][dstSq][theirPieceType]; }
 
 
         void UpdateQuietScore(std::span<PieceToHistory* const> cont, std::span<Move const> moves, i16 ply, i32 piece, Move move, i32 bonus, bool checked) {
@@ -138,9 +133,31 @@ namespace Horsie {
 
         i16 GetContinuationEntry(std::span<PieceToHistory* const> cont, i16 ply, i32 i, i32 piece, i32 dstSq) const {
             if (ply < i)
-                return Continuations[0][0][0][0][0][0]; // Jesus wept
+                return ContinuationFill;
 
             return (*cont[ply - i])[piece][dstSq];
+        }
+
+        i32 GetCorrection(const Position& pos) const {
+            const auto us = pos.ToMove;
+
+            i32 corr = 0;
+            corr += PawnCorrCoeff * PawnCorrection[us][pos.PawnHash() % CorrectionSize];
+            corr += NonPawnCorrCoeff * NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % CorrectionSize];
+            corr += NonPawnCorrCoeff * NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % CorrectionSize];
+            corr /= CorrDivisor;
+
+            return corr;
+        }
+
+        void UpdateCorrections(const Position& pos, i32 diff, i32 depth) {
+            const auto us = pos.ToMove;
+
+            const auto bonus = std::clamp((diff * depth) / 8, -CorrectionBonusLimit, CorrectionBonusLimit);
+
+            PawnCorrection[us][pos.PawnHash() % CorrectionSize] << bonus;
+            NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % CorrectionSize] << bonus;
+            NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % CorrectionSize] << bonus;
         }
 
 

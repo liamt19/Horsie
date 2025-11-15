@@ -223,9 +223,10 @@ namespace Horsie {
                 return alpha;
         }
 
-        Bitboard& bb = pos.bb;
+        const Bitboard& bb = pos.bb;
 
         Move bestMove = Move::Null();
+        const Move priorMove = CurrentMoves[ss->Ply - 1];
 
         const auto us = pos.ToMove;
         i32 score = -ScoreMate - MaxPly;
@@ -324,12 +325,12 @@ namespace Horsie {
 
         if (ss->Ply >= 1
             && !(ss - 1)->InCheck
-            && CurrentMoves[ss->Ply - 1] != Move::Null()
+            && priorMove != Move::Null()
             && pos.CapturedPiece() == NONE) {
 
             const i32 val = -(QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval)) / 16;
             const auto bonus = std::clamp(val, -QuietOrderMin, (i32)QuietOrderMax);
-            UpdateMainHistory(Not(us), CurrentMoves[ss->Ply - 1], bonus);
+            UpdateMainHistory(Not(us), priorMove, bonus);
         }
 
 
@@ -366,7 +367,7 @@ namespace Horsie {
             && ss->Ply >= NMPPly
             && eval >= beta
             && eval >= ss->StaticEval
-            && CurrentMoves[ss->Ply - 1] != Move::Null()
+            && priorMove != Move::Null()
             && pos.HasNonPawnMaterial(us)) {
 
             const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, static_cast<i32>(NMPEvalMin));
@@ -511,7 +512,7 @@ namespace Horsie {
             i32 extend = 0;
             i32 R = LogarithmicReductionTable[depth][legalMoves];
 
-            i32 moveHist = isCapture ? GetNoisyHistory(us, ourPiece, moveTo, theirPiece) : GetMainHistory(us, m);
+            i32 moveHist = isCapture ? GetNoisyHistory(piece, moveTo, theirPiece) : GetMainHistory(us, m);
             i32 shallowHist = moveHist;
             if (!isCapture) {
                 shallowHist += GetContinuationEntry(ss->Ply, 1, piece, moveTo)
@@ -765,7 +766,7 @@ namespace Horsie {
                 && !(bound == TTNodeType::Beta && bestScore >= ss->StaticEval)) {
 
                 auto diff = bestScore - ss->StaticEval;
-                UpdateCorrectionHistory(pos, diff, depth);
+                UpdateCorrections(pos, diff, depth);
             }
         }
 
@@ -784,9 +785,10 @@ namespace Horsie {
                 return alpha;
         }
 
-        Bitboard& bb = pos.bb;
+        const Bitboard& bb = pos.bb;
 
         Move bestMove = Move::Null();
+        const Move priorMove = CurrentMoves[ss->Ply - 1];
 
         const auto us = pos.ToMove;
         const bool inCheck = pos.InCheck();
@@ -838,7 +840,7 @@ namespace Horsie {
                 }
             }
             else {
-                rawEval = (CurrentMoves[ss->Ply - 1] == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
+                rawEval = (priorMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
 
                 eval = ss->StaticEval = AdjustEval(pos, rawEval);
             }
@@ -953,7 +955,7 @@ namespace Horsie {
 
         const auto [bmFrom, bmTo] = bestMove.Unpack();
 
-        Bitboard& bb = pos.bb;
+        const Bitboard& bb = pos.bb;
 
         const auto us = pos.ToMove;
         const auto bmPiece = bb.GetPieceAtIndex(bmFrom);
@@ -963,7 +965,7 @@ namespace Horsie {
         const auto penalty = StatPenalty(depth);
 
         if (bmCapPiece != Piece::NONE && !bestMove.IsCastle()) {
-            UpdateNoisyHistory(us, bmPiece, bmTo, bmCapPiece, bonus);
+            UpdateNoisyHistory(MakePiece(us, bmPiece), bmTo, bmCapPiece, bonus);
         }
         else {
 
@@ -992,33 +994,17 @@ namespace Horsie {
             const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
             const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
 
-            UpdateNoisyHistory(us, thisPiece, moveTo, capturedPiece, penalty);
+            UpdateNoisyHistory(MakePiece(us, thisPiece), moveTo, capturedPiece, penalty);
         }
 
     }
 
     i16 SearchThread::AdjustEval(Position& pos, i16 rawEval) const {
-        const auto us = pos.ToMove;
 
-        i32 corr = 0;
-        corr += PawnCorrCoeff * History.PawnCorrection[us][pos.PawnHash() % CorrectionSize];
-        corr += NonPawnCorrCoeff * History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % CorrectionSize];
-        corr += NonPawnCorrCoeff * History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % CorrectionSize];
-        corr /= CorrDivisor;
+        const auto hmvScaled = (rawEval * (200 - pos.HalfmoveClock())) / 200;
+        const auto corr = GetCorrection(pos);
 
-        rawEval = static_cast<i16>(rawEval * (200 - pos.HalfmoveClock()) / 200);
-
-        return static_cast<i16>(rawEval + corr);
-    }
-
-    void SearchThread::UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth) {
-        const auto us = pos.ToMove;
-
-        const auto bonus = std::clamp((diff * depth) / 8, -CorrectionBonusLimit, CorrectionBonusLimit);
-
-        History.PawnCorrection[us][pos.PawnHash() % CorrectionSize] << bonus;
-        History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % CorrectionSize] << bonus;
-        History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % CorrectionSize] << bonus;
+        return static_cast<i16>(hmvScaled + corr);
     }
 
     void SearchThread::PrintSearchInfo() const {
@@ -1117,7 +1103,7 @@ namespace Horsie {
                 list[i].score = INT32_MAX - 100000;
             }
             else if (capturedPiece != Piece::NONE && !m.IsCastle()) {
-                const auto hist = GetNoisyHistory(pc, pt, moveTo, capturedPiece);
+                const auto hist = GetNoisyHistory(MakePiece(pc, pt), moveTo, capturedPiece);
                 list[i].score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
             }
             else {
@@ -1165,7 +1151,7 @@ namespace Horsie {
                 list[i].score = INT32_MAX - 1000000;
             }
             else if (capturedPiece != Piece::NONE && !m.IsCastle()) {
-                const auto hist = GetNoisyHistory(pc, pt, moveTo, capturedPiece);
+                const auto hist = GetNoisyHistory(MakePiece(pc, pt), moveTo, capturedPiece);
                 list[i].score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
             }
             else {

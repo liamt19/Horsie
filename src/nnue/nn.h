@@ -62,9 +62,9 @@ namespace Horsie::NNUE {
     bool IsCompressed(std::istream& stream);
     void LoadZSTD(std::istream& m_stream, std::byte* dst);
     void LoadNetwork(const std::string& name);
-    static void SetupNNZ();
-    static void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases);
-    static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]);
+    void SetupNNZ();
+    void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases);
+    void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]);
 
     i32 GetEvaluation(Position& pos, i32 outputBucket);
     i32 GetEvaluation(Position& pos);
