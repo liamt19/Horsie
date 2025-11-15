@@ -31,8 +31,7 @@ namespace Horsie {
         //  Replace the first entry, unless the 2nd or 3rd is a better option.
         TTEntry* replace = tte;
         for (i32 i = 1; i < TTCluster::EntriesPerCluster; i++) {
-            if ((replace->RawDepth() - replace->RelAge(Age)) >
-                (tte[i].RawDepth() - tte[i].RelAge(Age))) {
+            if (replace->Quality(Age) > tte[i].Quality(Age)) {
                 replace = &tte[i];
             }
         }
@@ -106,7 +105,7 @@ namespace Horsie {
             SetScore(score);
             SetStatEval(statEval);
             _depth = static_cast<u8>(depth - DepthOffset);
-            _AgePVType = static_cast<u8>(age | ((isPV ? 1 : 0) << 2) | static_cast<u32>(nodeType));
+            _AgePVType = static_cast<u8>(age | ((isPV ? 1u : 0u) << 2) | static_cast<u32>(nodeType));
         }
     }
 }

@@ -1,6 +1,7 @@
 
 #include "precomputed.h"
 
+#include "./util/NDArray.h"
 #include "enums.h"
 #include "util.h"
 
@@ -14,38 +15,38 @@ https://github.com/liamt19/Lizard/blob/d77783b19dcbae0f267d8b30c38258251014780b/
 
 namespace Horsie {
 
-    u64 BetweenBB[SQUARE_NB][SQUARE_NB];
-    u64 LineBB[SQUARE_NB][SQUARE_NB];
-    u64 RayBB[SQUARE_NB][SQUARE_NB];
-    u64 PseudoAttacks[PIECE_NB][SQUARE_NB];
+    Util::NDArray<u64, 64, 64> BetweenBB = {};
+    Util::NDArray<u64, 64, 64> LineBB = {};
+    Util::NDArray<u64, 64, 64> RayBB = {};
+    Util::NDArray<u64, 6, 64> PseudoAttacks = {};
 
-    u64 PawnAttackMasks[COLOR_NB][SQUARE_NB];
-    u64 RookRays[SQUARE_NB];
-    u64 BishopRays[SQUARE_NB];
+    Util::NDArray<u64, 6, 64> PawnAttackMasks = {};
+    std::array<u64, 64> RookRays = {};
+    std::array<u64, 64> BishopRays = {};
 
-    Magic RookMagics[SQUARE_NB];
-    Magic BishopMagics[SQUARE_NB];
+    std::array<Magic, 64> RookMagics;
+    std::array<Magic, 64> BishopMagics;
 
-    i32 LogarithmicReductionTable[MaxPly][MoveListSize];
-    i32 LMPTable[2][MaxDepth];
+    Util::NDArray<i32, MaxPly, MoveListSize> LogarithmicReductionTable = {};
+    Util::NDArray<i32, 2, MaxDepth> LMPTable = {};
 
     namespace {
-        u64 RookTable[0x19000];   // To store rook attacks
-        u64 BishopTable[0x1480];  // To store bishop attacks
+        std::array<u64, 0x19000> RookTable = {};    // To store rook attacks
+        std::array<u64, 0x01480> BishopTable = {};  // To store bishop attacks
 
-        void InitPextMagics(Piece pt, u64 table[], Magic magics[]);
-        void InitNormalMagics(Piece pt, u64 table[], Magic magics[]);
+        void InitPextMagics(Piece pt, u64* table, Magic* magics);
+        void InitNormalMagics(Piece pt, u64* table, Magic*magics);
     }
 
     void Precomputed::Init() {
 
         if (UsePext) {
-            InitPextMagics(ROOK, RookTable, RookMagics);
-            InitPextMagics(BISHOP, BishopTable, BishopMagics);
+            InitPextMagics(ROOK, RookTable.data(), RookMagics.data());
+            InitPextMagics(BISHOP, BishopTable.data(), BishopMagics.data());
         }
         else {
-            InitNormalMagics(ROOK, RookTable, RookMagics);
-            InitNormalMagics(BISHOP, BishopTable, BishopMagics);
+            InitNormalMagics(ROOK, RookTable.data(), RookMagics.data());
+            InitNormalMagics(BISHOP, BishopTable.data(), BishopMagics.data());
         }
 
         for (Square sq1 = Square::A1; sq1 <= Square::H8; ++sq1) {
@@ -123,7 +124,7 @@ namespace Horsie {
             return attacks;
         }
 
-        void InitPextMagics(Piece pt, u64 table[], Magic magics[]) {
+        void InitPextMagics(Piece pt, u64* table, Magic* magics) {
             u64 combo = 0;
             u64 iter = 0;
             u64 edges = 0;
@@ -150,7 +151,7 @@ namespace Horsie {
             }
         }
 
-        void InitNormalMagics(Piece pt, u64 table[], Magic magics[]) {
+        void InitNormalMagics(Piece pt, u64* table, Magic* magics) {
             u64 offset = 0;
 
             for (i32 sq = 0; sq <= 63; sq++) {

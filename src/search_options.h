@@ -71,9 +71,9 @@ namespace Horsie {
     UCI_OPTION(LMRHistSS2, 128)
     UCI_OPTION(LMRHistSS4, 127)
 
-    UCI_OPTION(PawnCorrCoeff, 388)
-    UCI_OPTION(NonPawnCorrCoeff, 208)
-    UCI_OPTION(CorrDivisor, 588)
+    UCI_OPTION(PawnCorrCoeff, 129)
+    UCI_OPTION(NonPawnCorrCoeff, 70)
+    UCI_OPTION(CorrDivisor, 3136)
 
     UCI_OPTION(NMOrderingMH, 419)
     UCI_OPTION(NMOrderingSS1, 491)

@@ -21,6 +21,7 @@ https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
 #include "util/NDArray.h"
 #include "util/timer.h"
 
+#include <array>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
@@ -76,6 +77,8 @@ namespace Horsie {
         TranspositionTable* TT{};
         Position RootPosition;
         HistoryTable History{};
+        std::array<Move, MaxPly> CurrentMoves{};
+        std::array<PieceToHistory*, MaxPly> Continuations{};
 
         Timepoint StartTime{};
 
@@ -97,17 +100,16 @@ namespace Horsie {
         i32 QSearch(Position& pos, SearchStackEntry* ss, i32 alpha, i32 beta);
 
         void UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth);
-        i16 AdjustEval(Position& pos, i32 us, i16 rawEval) const;
+        i16 AdjustEval(Position& pos, i16 rawEval) const;
 
         void AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const;
-        void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
-        void AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const;
+        void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, ScoredMove* list, i32 size, Move ttMove) const;
+        void AssignScores(Position& pos, SearchStackEntry* ss, ScoredMove* list, i32 size, Move ttMove) const;
         Move OrderNextMove(ScoredMove* moves, i32 size, i32 listIndex) const;
 
         void UpdatePV(Move* pv, Move move, Move* childPV) const;
 
-        void UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) const;
-        void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, Move* quietMoves, i32 quietCount, Move* captureMoves, i32 captureCount);
+        void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, std::span<Move, 16> quietMoves, i32 quietCount, std::span<Move, 16> captureMoves, i32 captureCount);
 
         std::string Debug_GetMovesPlayed(SearchStackEntry* ss) const;
 
@@ -120,6 +122,9 @@ namespace Horsie {
         void Reset() {
             Nodes = 0;
             PVIndex = RootDepth = SelDepth = CompletedDepth = NMPPly = 0;
+
+            ClearContinuations();
+            CurrentMoves.fill(Move::Null());
         }
 
         Move CurrentMove() const { return RootMoves[PVIndex].move; }
@@ -133,7 +138,48 @@ namespace Horsie {
         
         inline i32 LMRBonus(i32 depth) const { return std::min((i32)(LMRBonusMult * depth) - LMRBonusSub, (i32)LMRBonusMax); }
         inline i32 LMRPenalty(i32 depth) const { return -std::min((i32)(LMRPenaltyMult * depth) - LMRPenaltySub, (i32)LMRPenaltyMax); }
-        
+
+        inline void ClearContinuations() { Continuations.fill(NullContHist()); }
+        inline PieceToHistory* NullContHist() { return &(History.Continuations[0][0][0][0]); }
+
+        i32 GetCorrection(Position& pos) const { return History.GetCorrection(pos); }
+        void UpdateCorrections(const Position& pos, i32 diff, i32 depth) { History.UpdateCorrections(pos, diff, depth); }
+
+        i16 GetPlyHistory(i16 ply, Move m) const {
+            if (ply >= LowPlyCount)
+                return 0;
+
+            const auto hist = History.GetPlyHistory(ply, m);
+            return ((2 * LowPlyCount + 1) * hist) / (2 * ply + 1);
+        }
+
+        i16 GetMainHistory(Color stm, Move m) const {
+            return History.GetMainHistory(stm, m);
+        }
+
+        i16 GetNoisyHistory(i32 movingPiece, i32 dstSq, i32 capPieceType) const {
+            return History.GetNoisyHistory(movingPiece, dstSq, capPieceType);
+        }
+
+        i16 GetContinuationEntry(i16 ply, i32 i, i32 piece, i32 dstSq) const {
+            return History.GetContinuationEntry(Continuations, ply, i, piece, dstSq);
+        }
+
+        void UpdateMainHistory(Color stm, Move m, i32 bonus) {
+            History.UpdateMainHistory(stm, m, bonus);
+        }
+
+        void UpdateContinuations(i16 ply, i32 piece, i32 dstSq, i32 bonus, bool checked) {
+            History.UpdateContinuations(Continuations, CurrentMoves, ply, piece, dstSq, bonus, checked);
+        }
+
+        void UpdateQuietScore(i16 ply, i32 piece, Move move, i32 bonus, bool checked) {
+            History.UpdateQuietScore(Continuations, CurrentMoves, ply, piece, move, bonus, checked);
+        }
+
+        void UpdateNoisyHistory(i32 movingPiece, i32 dstSq, i32 capturedPiece, i32 bonus) {
+            History.UpdateNoisyHistory(movingPiece, dstSq, capturedPiece, bonus);
+        }
 
     private:
         const u32 CheckupFrequency = 1023;

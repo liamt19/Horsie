@@ -3,6 +3,7 @@
 #include "defs.h"
 #include "enums.h"
 
+#include <array>
 #include <bit>
 #include <cmath>
 #include <string>
@@ -23,7 +24,7 @@
 namespace Horsie {
 
     constexpr auto InitialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    constexpr auto EngVersion = "1.1.3";
+    constexpr auto EngVersion = "1.1.4";
 
     constexpr u64 FileABB = 0x0101010101010101ULL;
     constexpr u64 FileBBB = FileABB << 1;
@@ -187,7 +188,9 @@ namespace Horsie {
 
     constexpr i32 CoordToIndex(i32 x, i32 y) { return (y * 8) + x; }
 
-    constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * 6) + pt; }
+    constexpr i32 MakePiece(i32 pc, i32 pt) { return (pc * PIECE_NB) + pt; }
+    constexpr Color ColorOfPiece(i32 piece) { return static_cast<Color>(piece / PIECE_NB); }
+    constexpr i32 TypeOfPiece(i32 piece) { return (piece % PIECE_NB); }
 
     inline const std::string ColorToString(Color color) { return color == WHITE ? "White" : "Black"; }
     inline i32 StringToColor(const std::string& color) { return color == "White" ? WHITE : color == "Black" ? BLACK : COLOR_NB; }
@@ -226,18 +229,18 @@ namespace Horsie {
     }
 
     struct StateInfo {
-        u64 CheckSquares[PIECE_NB];
-        u64 BlockingPieces[2];
-        u64 Pinners[2];
-        u64 NonPawnHash[2];
-        u64 Hash = 0;
-        u64 PawnHash = 0;
-        u64 Checkers = 0;
-        i32 KingSquares[2];
-        i32 HalfmoveClock = 0;
+        std::array<u64, PIECE_NB> CheckSquares = {};
+        std::array<u64, 2> BlockingPieces = {};
+        std::array<u64, 2> Pinners = {};
+        std::array<u64, 2> NonPawnHash = {};
+        u64 Hash = {};
+        u64 PawnHash = {};
+        u64 Checkers = {};
+        std::array<i32, 2> KingSquares = {};
+        i32 HalfmoveClock = {};
         i32 EPSquare = EP_NONE;
         i32 CapturedPiece = Piece::NONE;
-        i32 PliesFromNull = 0;
+        i32 PliesFromNull = {};
         CastlingStatus CastleStatus = CastlingStatus::None;
     };
 

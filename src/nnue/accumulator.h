@@ -89,7 +89,7 @@ namespace Horsie::NNUE {
 
     struct FinnyTable {
         Accumulator accumulator;
-        Horsie::Bitboard Boards[2];
+        std::array<Horsie::Bitboard, 2> Boards = {};
     };
 
     using BucketCache = std::array<FinnyTable, NNUE::INPUT_BUCKETS * 2>;

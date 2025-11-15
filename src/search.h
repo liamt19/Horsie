@@ -56,15 +56,13 @@ namespace Horsie {
             }
         };
 
-        struct alignas(64) SearchStackEntry {
+        struct alignas(32) SearchStackEntry {
         public:
             Move* PV;
-            PieceToHistory* ContinuationHistory;
             i16 DoubleExtensions;
             i16 Ply;
             i16 StaticEval;
             Move KillerMove;
-            Move CurrentMove;
             Move Skip;
             bool InCheck;
             bool TTPV;
@@ -73,8 +71,7 @@ namespace Horsie {
 
 
             void Clear() {
-                CurrentMove = Skip = KillerMove = Move::Null();
-                ContinuationHistory = nullptr;
+                Skip = KillerMove = Move::Null();
 
                 Ply = 0;
                 DoubleExtensions = 0;

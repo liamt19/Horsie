@@ -5,10 +5,10 @@
 namespace Horsie {
 
     struct PerspectiveUpdate {
-        i32 Adds[2];
-        i32 Subs[2];
-        i32 AddCnt = 0;
-        i32 SubCnt = 0;
+        std::array<i32, 2> Adds{};
+        std::array<i32, 2> Subs{};
+        i32 AddCnt{};
+        i32 SubCnt{};
 
         void Clear() {
             AddCnt = SubCnt = 0;
@@ -38,7 +38,7 @@ namespace Horsie {
     };
 
     struct NetworkUpdate {
-        PerspectiveUpdate Perspectives[2];
+        std::array<PerspectiveUpdate, 2> Perspectives;
 
         PerspectiveUpdate& operator[](const i32 c) { return Perspectives[c]; }
     };

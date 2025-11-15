@@ -56,9 +56,9 @@ namespace Horsie {
             (ss + i)->Ply = static_cast<i16>(i);
             (ss + i)->PV = AlignedAlloc<Move>(MaxPly);
             (ss + i)->PVLength = 0;
-            (ss + i)->ContinuationHistory = &History.Continuations[0][0][0][0];
         }
 
+        ClearContinuations();
         NNUE::ResetCaches(RootPosition);
 
         i32 multiPV = std::min(i32(MultiPV), i32(RootMoves.size()));
@@ -223,10 +223,10 @@ namespace Horsie {
                 return alpha;
         }
 
-        Bitboard& bb = pos.bb;
-        HistoryTable* history = &History;
+        const Bitboard& bb = pos.bb;
 
         Move bestMove = Move::Null();
+        const Move priorMove = CurrentMoves[ss->Ply - 1];
 
         const auto us = pos.ToMove;
         i32 score = -ScoreMate - MaxPly;
@@ -304,7 +304,7 @@ namespace Horsie {
         else if (ss->TTHit) {
             rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, rawEval);
 
             if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
                 eval = ttScore;
@@ -313,7 +313,7 @@ namespace Horsie {
         else {
             rawEval = NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, rawEval);
 
             tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
@@ -323,13 +323,14 @@ namespace Horsie {
                        ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
         }
 
-        if (!(ss - 1)->InCheck 
-            && (ss - 1)->CurrentMove != Move::Null() 
+        if (ss->Ply >= 1
+            && !(ss - 1)->InCheck
+            && priorMove != Move::Null()
             && pos.CapturedPiece() == NONE) {
 
             const i32 val = -(QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval)) / 16;
             const auto bonus = std::clamp(val, -QuietOrderMin, (i32)QuietOrderMax);
-            history->MainHistory[Not(us)][(ss - 1)->CurrentMove.GetMoveMask()] << bonus;
+            UpdateMainHistory(Not(us), priorMove, bonus);
         }
 
 
@@ -366,12 +367,12 @@ namespace Horsie {
             && ss->Ply >= NMPPly
             && eval >= beta
             && eval >= ss->StaticEval
-            && (ss - 1)->CurrentMove != Move::Null()
+            && priorMove != Move::Null()
             && pos.HasNonPawnMaterial(us)) {
 
             const auto reduction = NMPBaseRed + (depth / NMPDepthDiv) + std::min((eval - beta) / NMPEvalDiv, static_cast<i32>(NMPEvalMin));
-            ss->CurrentMove = Move::Null();
-            ss->ContinuationHistory = &history->Continuations[0][0][0][0];
+            CurrentMoves[ss->Ply]= Move::Null();
+            Continuations[ss->Ply] = NullContHist();
 
             pos.MakeNullMove();
             prefetch(TT->GetCluster(pos.Hash()));
@@ -427,8 +428,8 @@ namespace Horsie {
                 const auto [moveFrom, moveTo] = m.Unpack();
                 const auto histIdx = MakePiece(us, bb.GetPieceAtIndex(moveFrom));
 
-                ss->CurrentMove = m;
-                ss->ContinuationHistory = &history->Continuations[0][1][histIdx][moveTo];
+                CurrentMoves[ss->Ply] = m;
+                Continuations[ss->Ply] = &History.Continuations[0][1][histIdx][moveTo];
                 Nodes++;
 
                 pos.MakeMove(m);
@@ -473,14 +474,14 @@ namespace Horsie {
         bool didSkip = false;
         const auto lmpMoves = LMPTable[improving][depth];
 
-        Move captureMoves[16];
-        Move quietMoves[16];
+        std::array<Move, 16> captureMoves;
+        std::array<Move, 16> quietMoves;
 
         bool skipQuiets = false;
 
         ScoredMove list[MoveListSize];
         i32 size = Generate<PseudoLegal>(pos, list, 0);
-        AssignScores(pos, ss, *history, list, size, ttMove);
+        AssignScores(pos, ss, list, size, ttMove);
 
         for (i32 i = 0; i < size; i++) {
             Move m = OrderNextMove(list, size, i);
@@ -505,13 +506,20 @@ namespace Horsie {
             const auto theirPiece = bb.GetPieceAtIndex(moveTo);
             const auto ourPiece = bb.GetPieceAtIndex(moveFrom);
             const bool isCapture = pos.IsCapture(m);
+            const auto piece = MakePiece(us, ourPiece);
             
             legalMoves++;
             i32 extend = 0;
             i32 R = LogarithmicReductionTable[depth][legalMoves];
 
-            i32 moveHist = isCapture ? history->CaptureHistory[us][ourPiece][moveTo][theirPiece] : history->MainHistory[us][m.GetMoveMask()];
-
+            i32 moveHist = isCapture ? GetNoisyHistory(piece, moveTo, theirPiece) : GetMainHistory(us, m);
+            i32 shallowHist = moveHist;
+            if (!isCapture) {
+                shallowHist += GetContinuationEntry(ss->Ply, 1, piece, moveTo)
+                             + GetContinuationEntry(ss->Ply, 2, piece, moveTo)
+                             + GetContinuationEntry(ss->Ply, 4, piece, moveTo);
+            }
+            
             if (ShallowPruning
                 && !isRoot
                 && bestScore > ScoreMatedMax
@@ -530,12 +538,11 @@ namespace Horsie {
 
                 lmrRed += !isPV * NMFutilePVCoeff;
                 lmrRed += !improving * NMFutileImpCoeff;
-                lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
-
+                lmrRed -= ((shallowHist * NMFutileHistCoeff) / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
                 lmrRed /= 128;
                 i32 lmrDepth = std::max(0, depth - lmrRed);
 
-                i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
+                i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (shallowHist / NMFutMarginDiv);
                 if (isQuiet 
                     && !ss->InCheck
                     && lmrDepth <= 8 
@@ -601,11 +608,9 @@ namespace Horsie {
 
             prefetch(TT->GetCluster(pos.HashAfter(m)));
 
-            const auto histIdx = MakePiece(us, ourPiece);
-
             ss->DoubleExtensions = static_cast<i16>((ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0));
-            ss->CurrentMove = m;
-            ss->ContinuationHistory = &history->Continuations[ss->InCheck][isCapture][histIdx][moveTo];
+            CurrentMoves[ss->Ply] = m;
+            Continuations[ss->Ply] = &History.Continuations[ss->InCheck][isCapture][piece][moveTo];
             Nodes++;
 
             pos.MakeMove(m);
@@ -631,9 +636,9 @@ namespace Horsie {
                 R -= (m == ss->KillerMove) * LMRKillerCoeff;
 
                 i32 histScore = LMRHist * moveHist +
-                                LMRHistSS1 * (*(ss - 1)->ContinuationHistory)[histIdx][moveTo] +
-                                LMRHistSS2 * (*(ss - 2)->ContinuationHistory)[histIdx][moveTo] +
-                                LMRHistSS4 * (*(ss - 4)->ContinuationHistory)[histIdx][moveTo];
+                                LMRHistSS1 * GetContinuationEntry(ss->Ply, 1, piece, moveTo) +
+                                LMRHistSS2 * GetContinuationEntry(ss->Ply, 2, piece, moveTo) +
+                                LMRHistSS4 * GetContinuationEntry(ss->Ply, 4, piece, moveTo);
 
                 R -= (histScore / ((isCapture ? LMRCaptureDiv : LMRQuietDiv)));
                 
@@ -657,7 +662,7 @@ namespace Horsie {
                               : (score >= beta)  ? LMRBonus(newDepth)
                               :                    0;
 
-                    UpdateContinuations(ss, us, ourPiece, moveTo, bonus);
+                    UpdateContinuations(ss->Ply, MakePiece(us, ourPiece), moveTo, bonus, ss->InCheck);
                 }
             }
             else if (!isPV || legalMoves > 1) {
@@ -761,7 +766,7 @@ namespace Horsie {
                 && !(bound == TTNodeType::Beta && bestScore >= ss->StaticEval)) {
 
                 auto diff = bestScore - ss->StaticEval;
-                UpdateCorrectionHistory(pos, diff, depth);
+                UpdateCorrections(pos, diff, depth);
             }
         }
 
@@ -780,10 +785,10 @@ namespace Horsie {
                 return alpha;
         }
 
-        Bitboard& bb = pos.bb;
-        HistoryTable* history = &History;
+        const Bitboard& bb = pos.bb;
 
         Move bestMove = Move::Null();
+        const Move priorMove = CurrentMoves[ss->Ply - 1];
 
         const auto us = pos.ToMove;
         const bool inCheck = pos.InCheck();
@@ -828,16 +833,16 @@ namespace Horsie {
             if (ss->TTHit) {
                 rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, rawEval);
 
                 if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
                     eval = ttScore;
                 }
             }
             else {
-                rawEval = ((ss - 1)->CurrentMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
+                rawEval = (priorMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, rawEval);
             }
 
             if (eval >= beta) {
@@ -861,7 +866,7 @@ namespace Horsie {
 
         ScoredMove list[MoveListSize];
         i32 size = GenerateQS(pos, list, 0);
-        AssignQuiescenceScores(pos, ss, *history, list, size, ttMove);
+        AssignQuiescenceScores(pos, ss, list, size, ttMove);
 
         for (i32 i = 0; i < size; i++) {
             Move m = OrderNextMove(list, size, i);
@@ -900,8 +905,8 @@ namespace Horsie {
                 quietEvasions++;
             }
 
-            ss->CurrentMove = m;
-            ss->ContinuationHistory = &History.Continuations[inCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
+            CurrentMoves[ss->Ply] = m;
+            Continuations[ss->Ply] = &History.Continuations[inCheck][isCapture][MakePiece(us, ourPiece)][moveTo];
             Nodes++;
 
             pos.MakeMove(m);
@@ -946,12 +951,11 @@ namespace Horsie {
     }
 
     void SearchThread::UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, 
-                                   Move* quietMoves, i32 quietCount, Move* captureMoves, i32 captureCount) {
+                                   std::span<Move, 16> quietMoves, i32 quietCount, std::span<Move, 16> captureMoves, i32 captureCount) {
 
-        HistoryTable& history = this->History;
         const auto [bmFrom, bmTo] = bestMove.Unpack();
 
-        Bitboard& bb = pos.bb;
+        const Bitboard& bb = pos.bb;
 
         const auto us = pos.ToMove;
         const auto bmPiece = bb.GetPieceAtIndex(bmFrom);
@@ -961,7 +965,7 @@ namespace Horsie {
         const auto penalty = StatPenalty(depth);
 
         if (bmCapPiece != Piece::NONE && !bestMove.IsCastle()) {
-            history.CaptureHistory[us][bmPiece][bmTo][bmCapPiece] << bonus;
+            UpdateNoisyHistory(MakePiece(us, bmPiece), bmTo, bmCapPiece, bonus);
         }
         else {
 
@@ -974,23 +978,13 @@ namespace Horsie {
             if (quietCount == 0 && depth <= 3)
                 return;
 
-            history.MainHistory[us][bestMove.GetMoveMask()] << bonus;
-            if (ss->Ply < LowPlyCount)
-                history.PlyHistory[ss->Ply][bestMove.GetMoveMask()] << bonus;
-
-            UpdateContinuations(ss, us, bmPiece, bmTo, bonus);
-
+            UpdateQuietScore(ss->Ply, MakePiece(us, bmPiece), bestMove, bonus, ss->InCheck);
 
             for (i32 i = 0; i < quietCount; i++) {
                 Move m = quietMoves[i];
                 const auto [moveFrom, moveTo] = m.Unpack();
                 const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
-
-                history.MainHistory[us][m.GetMoveMask()] << penalty;
-                if (ss->Ply < LowPlyCount)
-                    history.PlyHistory[ss->Ply][m.GetMoveMask()] << penalty;
-
-                UpdateContinuations(ss, us, thisPiece, moveTo, penalty);
+                UpdateQuietScore(ss->Ply, MakePiece(us, thisPiece), m, penalty, ss->InCheck);
             }
         }
 
@@ -1000,50 +994,17 @@ namespace Horsie {
             const auto thisPiece = bb.GetPieceAtIndex(moveFrom);
             const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
 
-            history.CaptureHistory[us][thisPiece][moveTo][capturedPiece] << penalty;
+            UpdateNoisyHistory(MakePiece(us, thisPiece), moveTo, capturedPiece, penalty);
         }
 
     }
 
-    i16 SearchThread::AdjustEval(Position& pos, i32 us, i16 rawEval) const {
-        rawEval = static_cast<i16>(rawEval * (200 - pos.HalfmoveClock()) / 200);
+    i16 SearchThread::AdjustEval(Position& pos, i16 rawEval) const {
 
-        const auto pawn = History.PawnCorrection[us][pos.PawnHash() % 16384] / CorrectionGrain;
-        const auto nonPawnW = History.NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % 16384] / CorrectionGrain;
-        const auto nonPawnB = History.NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % 16384] / CorrectionGrain;
-        const auto corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB)) / CorrDivisor;
+        const auto hmvScaled = (rawEval * (200 - pos.HalfmoveClock())) / 200;
+        const auto corr = GetCorrection(pos);
 
-        return static_cast<i16>(rawEval + corr);
-    }
-
-    void SearchThread::UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth) {
-        const auto scaledWeight = std::min((depth * depth) + 1, 128);
-
-        auto& pawnCh = History.PawnCorrection[pos.ToMove][pos.PawnHash() % 16384];
-        const auto pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        pawnCh = std::clamp(pawnBonus, -CorrectionMax, CorrectionMax);
-
-        auto& nonPawnChW = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::WHITE) % 16384];
-        const auto nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        nonPawnChW = std::clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
-
-        auto& nonPawnChB = History.NonPawnCorrection[pos.ToMove][pos.NonPawnHash(Color::BLACK) % 16384];
-        const auto nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-        nonPawnChB = std::clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
-    }
-
-    void SearchThread::UpdateContinuations(SearchStackEntry* ss, i32 pc, i32 pt, i32 sq, i32 bonus) const {
-        const auto piece = MakePiece(pc, pt);
-
-        for (auto i : {1, 2, 4, 6}) {
-            if (ss->InCheck && i > 2) {
-                break;
-            }
-
-            if ((ss - i)->CurrentMove != Move::Null()) {
-                (*(ss - i)->ContinuationHistory)[piece][sq] << bonus;
-            }
-        }
+        return static_cast<i16>(hmvScaled + corr);
     }
 
     void SearchThread::PrintSearchInfo() const {
@@ -1128,7 +1089,7 @@ namespace Horsie {
         }
     }
 
-    void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
+    void SearchThread::AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, ScoredMove* list, i32 size, Move ttMove) const {
         Bitboard& bb = pos.bb;
         const auto pc = pos.ToMove;
 
@@ -1136,29 +1097,31 @@ namespace Horsie {
             Move m = list[i].move;
             const auto [moveFrom, moveTo] = m.Unpack();
             const auto pt = bb.GetPieceAtIndex(moveFrom);
+            const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
 
             if (m == ttMove) {
                 list[i].score = INT32_MAX - 100000;
             }
-            else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
-                const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
-                auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
+            else if (capturedPiece != Piece::NONE && !m.IsCastle()) {
+                const auto hist = GetNoisyHistory(MakePiece(pc, pt), moveTo, capturedPiece);
                 list[i].score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
             }
             else {
-                i32 contIdx = MakePiece(pc, pt);
+                const auto piece = MakePiece(pc, pt);
 
-                list[i].score  = QSOrderingMH * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].score += QSOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score += QSOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score += QSOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score += QSOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
-
-                list[i].score /= 256;
+                i32 score = 0;
+                score  = QSOrderingMH * GetMainHistory(pc, m);
+                score += QSOrderingSS1 * GetContinuationEntry(ss->Ply, 1, piece, moveTo);
+                score += QSOrderingSS2 * GetContinuationEntry(ss->Ply, 2, piece, moveTo);
+                score += QSOrderingSS4 * GetContinuationEntry(ss->Ply, 4, piece, moveTo);
+                score += QSOrderingSS6 * GetContinuationEntry(ss->Ply, 6, piece, moveTo);
+                score /= 256;
 
                 if (pos.GivesCheck(pt, moveTo)) {
-                    list[i].score += CheckBonus;
+                    score += CheckBonus;
                 }
+
+                list[i].score = score;
             }
 
             if (pt == HORSIE) {
@@ -1167,7 +1130,7 @@ namespace Horsie {
         }
     }
 
-    void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, HistoryTable& history, ScoredMove* list, i32 size, Move ttMove) const {
+    void SearchThread::AssignScores(Position& pos, SearchStackEntry* ss, ScoredMove* list, i32 size, Move ttMove) const {
         Bitboard& bb = pos.bb;
         const auto pc = pos.ToMove;
 
@@ -1179,6 +1142,7 @@ namespace Horsie {
             Move m = list[i].move;
             const auto [moveFrom, moveTo] = m.Unpack();
             const auto pt = bb.GetPieceAtIndex(moveFrom);
+            const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
 
             if (m == ttMove) {
                 list[i].score = INT32_MAX - 100000;
@@ -1186,47 +1150,43 @@ namespace Horsie {
             else if (m == ss->KillerMove) {
                 list[i].score = INT32_MAX - 1000000;
             }
-            else if (bb.GetPieceAtIndex(moveTo) != Piece::NONE && !m.IsCastle()) {
-                const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
-                auto& hist = history.CaptureHistory[pc][pt][moveTo][capturedPiece];
+            else if (capturedPiece != Piece::NONE && !m.IsCastle()) {
+                const auto hist = GetNoisyHistory(MakePiece(pc, pt), moveTo, capturedPiece);
                 list[i].score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
             }
             else {
-                i32 contIdx = MakePiece(pc, pt);
+                const auto piece = MakePiece(pc, pt);
 
-                list[i].score  = NMOrderingMH * history.MainHistory[pc][m.GetMoveMask()];
-                list[i].score += NMOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score += NMOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score += NMOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx][moveTo];
-                list[i].score += NMOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx][moveTo];
+                i32 score = 0;
+                score  = NMOrderingMH * GetMainHistory(pc, m);
+                score += NMOrderingSS1 * GetContinuationEntry(ss->Ply, 1, piece, moveTo);
+                score += NMOrderingSS2 * GetContinuationEntry(ss->Ply, 2, piece, moveTo);
+                score += NMOrderingSS4 * GetContinuationEntry(ss->Ply, 4, piece, moveTo);
+                score += NMOrderingSS6 * GetContinuationEntry(ss->Ply, 6, piece, moveTo);
+                score /= 256;
 
-                list[i].score /= 256;
-
-                if (ss->Ply < LowPlyCount) {
-                    list[i].score += ((2 * LowPlyCount + 1) * history.PlyHistory[ss->Ply][m.GetMoveMask()]) / (2 * ss->Ply + 1);
-                }
+                score += GetPlyHistory(ss->Ply, m);
 
                 if (pos.GivesCheck(pt, moveTo)) {
-                    list[i].score += CheckBonus;
+                    score += CheckBonus;
                 }
 
-                i32 threat = 0;
                 const auto fromBB = SquareBB(moveFrom);
                 const auto   toBB = SquareBB(moveTo);
                 if (pt == QUEEN) {
-                    threat += ((fromBB & rookThreats) ? 24 * OrderingEnPriseMult : 0);
-                    threat -= ((  toBB & rookThreats) ? 22 * OrderingEnPriseMult : 0);
+                    score += ((fromBB & rookThreats) ? 24 * OrderingEnPriseMult : 0);
+                    score -= ((  toBB & rookThreats) ? 22 * OrderingEnPriseMult : 0);
                 }
                 else if (pt == ROOK) {
-                    threat += ((fromBB & minorThreats) ? 20 * OrderingEnPriseMult : 0);
-                    threat -= ((  toBB & minorThreats) ? 18 * OrderingEnPriseMult : 0);
+                    score += ((fromBB & minorThreats) ? 20 * OrderingEnPriseMult : 0);
+                    score -= ((  toBB & minorThreats) ? 18 * OrderingEnPriseMult : 0);
                 }
                 else if (pt == BISHOP || pt == HORSIE) {
-                    threat += ((fromBB & pawnThreats) ? 16 * OrderingEnPriseMult : 0);
-                    threat -= ((  toBB & pawnThreats) ? 14 * OrderingEnPriseMult : 0);
+                    score += ((fromBB & pawnThreats) ? 16 * OrderingEnPriseMult : 0);
+                    score -= ((  toBB & pawnThreats) ? 14 * OrderingEnPriseMult : 0);
                 }
 
-                list[i].score += threat;
+                list[i].score = score;
             }
 
             if (pt == HORSIE) {
@@ -1239,7 +1199,7 @@ namespace Horsie {
         std::string moves = "";
 
         while (ss->Ply >= 0) {
-            moves = ss->CurrentMove.SmithNotation(false) + " " + moves;
+            moves = CurrentMoves[ss->Ply].SmithNotation(false) + " " + moves;
             ss--;
         }
 
