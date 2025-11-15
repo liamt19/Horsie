@@ -12,10 +12,10 @@
 
 namespace Horsie::Zobrist {
 
-    u64 ColorPieceSquareHashes[2][6][64];
-    u64 CastlingRightsHashes[4];
-    u64 EnPassantFileHashes[8];
-    u64 BlackHash;
+    Util::NDArray<u64, 2, 6, 64> ColorPieceSquareHashes = {};
+    std::array<u64, 4> CastlingRightsHashes = {};
+    std::array<u64, 8> EnPassantFileHashes = {};
+    u64 BlackHash = {};
 
     void Init() {
 #if defined(LIZARD_HASHES)

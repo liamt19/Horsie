@@ -109,7 +109,7 @@ namespace Horsie {
 
         void UpdatePV(Move* pv, Move move, Move* childPV) const;
 
-        void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, Move* quietMoves, i32 quietCount, Move* captureMoves, i32 captureCount);
+        void UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, std::span<Move, 16> quietMoves, i32 quietCount, std::span<Move, 16> captureMoves, i32 captureCount);
 
         std::string Debug_GetMovesPlayed(SearchStackEntry* ss) const;
 
@@ -142,7 +142,7 @@ namespace Horsie {
         inline void ClearContinuations() { Continuations.fill(NullContHist()); }
         inline PieceToHistory* NullContHist() { return &(History.Continuations[0][0][0][0]); }
 
-        i16 GetCorrection(Position& pos) const { return History.GetCorrection(pos); }
+        i32 GetCorrection(Position& pos) const { return History.GetCorrection(pos); }
         void UpdateCorrections(const Position& pos, i32 diff, i32 depth) { History.UpdateCorrections(pos, diff, depth); }
 
         i16 GetPlyHistory(i16 ply, Move m) const {

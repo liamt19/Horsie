@@ -1,22 +1,22 @@
 #pragma once
 
+#include "./util/NDArray.h"
 #include "defs.h"
 #include "enums.h"
 #include "types.h"
 #include "util.h"
 
 namespace Horsie {
-    extern u64 BetweenBB[SQUARE_NB][SQUARE_NB];
-    extern u64 LineBB[SQUARE_NB][SQUARE_NB];
-    extern u64 RayBB[SQUARE_NB][SQUARE_NB];
-    extern u64 PseudoAttacks[PIECE_NB][SQUARE_NB];
-    extern u64 PawnAttackMasks[COLOR_NB][SQUARE_NB];
-    extern u64 HorsieMasks[SQUARE_NB];
-    extern u64 RookRays[SQUARE_NB];
-    extern u64 BishopRays[SQUARE_NB];
+    extern Util::NDArray<u64, 64, 64> BetweenBB;
+    extern Util::NDArray<u64, 64, 64> LineBB;
+    extern Util::NDArray<u64, 64, 64> RayBB;
+    extern Util::NDArray<u64, 6, 64> PseudoAttacks;
+    extern Util::NDArray<u64, 6, 64> PawnAttackMasks;
+    extern std::array<u64, 64> RookRays;
+    extern std::array<u64, 64> BishopRays;
 
-    extern i32 LogarithmicReductionTable[MaxPly][MoveListSize];
-    extern i32 LMPTable[2][MaxDepth];
+    extern Util::NDArray<i32, MaxPly, MoveListSize> LogarithmicReductionTable;
+    extern Util::NDArray<i32, 2, MaxDepth> LMPTable;
 
     namespace Precomputed {
         void Init();
@@ -29,8 +29,8 @@ namespace Horsie {
         unsigned shift;
     };
 
-    extern Magic RookMagics[SQUARE_NB];
-    extern Magic BishopMagics[SQUARE_NB];
+    extern std::array<Magic, 64> RookMagics;
+    extern std::array<Magic, 64> BishopMagics;
 
     inline u64 GetRookMoves(i32 s, u64 occ) {
         const auto& m = RookMagics[s];
@@ -56,7 +56,7 @@ namespace Horsie {
         case BISHOP: return GetBishopMoves(s, occ);
         case ROOK: return GetRookMoves(s, occ);
         case QUEEN: return GetBishopMoves(s, occ) | GetRookMoves(s, occ);
-        default: return PseudoAttacks[Pt][(i32)s];
+        default: return PseudoAttacks[Pt][s];
         }
     }
 
@@ -65,7 +65,7 @@ namespace Horsie {
         case BISHOP: return GetBishopMoves(s, occ);
         case ROOK: return GetRookMoves(s, occ);
         case QUEEN: return GetBishopMoves(s, occ) | GetRookMoves(s, occ);
-        default: return PseudoAttacks[pt][(i32)s];
+        default: return PseudoAttacks[pt][s];
         }
     }
 

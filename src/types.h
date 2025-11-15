@@ -3,6 +3,7 @@
 #include "defs.h"
 #include "enums.h"
 
+#include <array>
 #include <bit>
 #include <cmath>
 #include <string>
@@ -228,18 +229,18 @@ namespace Horsie {
     }
 
     struct StateInfo {
-        u64 CheckSquares[PIECE_NB];
-        u64 BlockingPieces[2];
-        u64 Pinners[2];
-        u64 NonPawnHash[2];
-        u64 Hash = 0;
-        u64 PawnHash = 0;
-        u64 Checkers = 0;
-        i32 KingSquares[2];
-        i32 HalfmoveClock = 0;
+        std::array<u64, PIECE_NB> CheckSquares = {};
+        std::array<u64, 2> BlockingPieces = {};
+        std::array<u64, 2> Pinners = {};
+        std::array<u64, 2> NonPawnHash = {};
+        u64 Hash = {};
+        u64 PawnHash = {};
+        u64 Checkers = {};
+        std::array<i32, 2> KingSquares = {};
+        i32 HalfmoveClock = {};
         i32 EPSquare = EP_NONE;
         i32 CapturedPiece = Piece::NONE;
-        i32 PliesFromNull = 0;
+        i32 PliesFromNull = {};
         CastlingStatus CastleStatus = CastlingStatus::None;
     };
 

@@ -6,9 +6,9 @@
 
 namespace Horsie::Zobrist {
 
-    extern u64 ColorPieceSquareHashes[2][6][64];
-    extern u64 CastlingRightsHashes[4];
-    extern u64 EnPassantFileHashes[8];
+    extern Util::NDArray<u64, 2, 6, 64> ColorPieceSquareHashes;
+    extern std::array<u64, 4> CastlingRightsHashes;
+    extern std::array<u64, 8> EnPassantFileHashes;
     extern u64 BlackHash;
     const i32 DefaultSeed = 0xBEEF;
 

@@ -49,6 +49,7 @@ namespace Horsie {
         constexpr bool IsEmpty() const { return _depth == 0; }
 
         constexpr i8 RelAge(u8 age) const { return static_cast<i8>((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK); }
+        constexpr i32 Quality(u8 age) const { return RawDepth() - RelAge(age); }
 
         void Update(u64 key, i16 score, TTNodeType nodeType, i32 depth, Move move, i16 statEval, u8 age, bool isPV = false);
 
@@ -56,9 +57,9 @@ namespace Horsie {
         static constexpr i32 TT_AGE_INC = 0x8;
 
     private:
-        static constexpr i32 TT_BOUND_MASK = 0x3;
-        static constexpr i32 TT_PV_MASK = 0x4;
-        static constexpr i32 TT_AGE_MASK = 0xF8;
+        static constexpr i32 TT_BOUND_MASK = 0b011;
+        static constexpr i32 TT_PV_MASK    = 0b100;
+        static constexpr i32 TT_AGE_MASK   = 0xF8;
         static constexpr i32 TT_AGE_CYCLE = 255 + TT_AGE_INC;
 
         static constexpr i32 KeyShift = 64 - (sizeof(u16) * 8);
@@ -69,7 +70,7 @@ namespace Horsie {
     struct alignas(32) TTCluster {
         static constexpr i32 EntriesPerCluster = 3; 
         
-        TTEntry entries[EntriesPerCluster];
+        std::array<TTEntry, EntriesPerCluster> entries;
         char _pad[2];
 
         void Clear() {
@@ -92,7 +93,8 @@ namespace Horsie {
         }
 
         TTCluster* GetCluster(u64 hash) const {
-            return Clusters + static_cast<u64>((static_cast<uint128_t>(hash) * static_cast<uint128_t>(ClusterCount)) >> 64);
+            const auto offset = static_cast<u64>((static_cast<uint128_t>(hash) * static_cast<uint128_t>(ClusterCount)) >> 64);
+            return &Clusters[offset];
         }
 
         TTCluster* Clusters = nullptr;

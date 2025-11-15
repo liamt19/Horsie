@@ -53,7 +53,7 @@ namespace Horsie::NNUE {
 
 
     struct alignas(64) NNZTable {
-        __m128i Entries[256];
+        std::array<__m128i, 256> Entries;
     };
 
     extern Network net;

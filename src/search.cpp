@@ -474,8 +474,8 @@ namespace Horsie {
         bool didSkip = false;
         const auto lmpMoves = LMPTable[improving][depth];
 
-        Move captureMoves[16];
-        Move quietMoves[16];
+        std::array<Move, 16> captureMoves;
+        std::array<Move, 16> quietMoves;
 
         bool skipQuiets = false;
 
@@ -951,7 +951,7 @@ namespace Horsie {
     }
 
     void SearchThread::UpdateStats(Position& pos, SearchStackEntry* ss, Move bestMove, i32 bestScore, i32 beta, i32 depth, 
-                                   Move* quietMoves, i32 quietCount, Move* captureMoves, i32 captureCount) {
+                                   std::span<Move, 16> quietMoves, i32 quietCount, std::span<Move, 16> captureMoves, i32 captureCount) {
 
         const auto [bmFrom, bmTo] = bestMove.Unpack();
 

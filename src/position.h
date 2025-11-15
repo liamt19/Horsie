@@ -23,8 +23,8 @@ namespace Horsie {
         Color ToMove{};
         i32 FullMoves{};
 
-        i32 CastlingRookSquares[static_cast<i32>(CastlingStatus::All)]{};
-        u64 CastlingRookPaths[static_cast<i32>(CastlingStatus::All)]{};
+        std::array<i32, 15> CastlingRookSquares = {};
+        std::array<u64, 15> CastlingRookPaths = {};
 
         bool IsChess960{};
 

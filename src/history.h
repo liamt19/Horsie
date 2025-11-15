@@ -73,7 +73,7 @@ namespace Horsie {
 
     struct alignas(64) HistoryTable {
     public:
-        ContinuationHistoryT Continuations[2][2];
+        Util::NDArray<ContinuationHistoryT, 2, 2> Continuations{};
         MainHistoryT MainHistory{};
         CaptureHistoryT CaptureHistory{};
         PlyHistoryT PlyHistory{};

@@ -4,15 +4,16 @@
 #include "enums.h"
 #include "types.h"
 
+#include <array>
+
 namespace Horsie {
 
     class Bitboard {
     public:
-        u64 Pieces[6];
-        u64 Colors[2];
-        i32 PieceTypes[64];
-
-        u64 Occupancy = 0;
+        std::array<u64, 6> Pieces = {};
+        std::array<u64, 2> Colors = {};
+        std::array<i32, 64> PieceTypes = {};
+        u64 Occupancy = {};
 
         Bitboard();
         ~Bitboard() = default;
