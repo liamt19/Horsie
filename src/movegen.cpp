@@ -131,25 +131,6 @@ namespace Horsie {
             return size;
         }
 
-        i32 GenNormal(const Position& pos, ScoredMove* list, i32 pt, u64 targets, i32 size) {
-            const Color stm = pos.ToMove;
-            const Bitboard& bb = pos.bb;
-            const u64 occ = bb.Occupancy;
-            u64 ourPieces = bb.Pieces[pt] & bb.Colors[stm];
-
-            while (ourPieces != 0) {
-                i32 idx = poplsb(ourPieces);
-                u64 moves = bb.AttackMask(idx, stm, pt, occ) & targets;
-
-                while (moves != 0) {
-                    i32 to = poplsb(moves);
-                    list[size++].move = Move(idx, to);
-                }
-            }
-
-            return size;
-        }
-
         template <MoveGenType GenType>
         i32 GenAll(const Position& pos, ScoredMove* list, i32 size) {
             constexpr bool noisyMoves = GenType == GenNoisy;
@@ -174,10 +155,9 @@ namespace Horsie {
                         :               ~occ;
 
                 size = GenPawns<GenType>(pos, list, targets, size);
-                size = GenNormalT<HORSIE>(pos, list, targets, size);
-                size = GenNormalT<BISHOP>(pos, list, targets, size);
-                size = GenNormalT<ROOK>(pos, list, targets, size);
-                size = GenNormalT<QUEEN>(pos, list, targets, size);
+                size = GenNormal<HORSIE>(pos, list, targets, size);
+                size = GenNormal<BISHOP>(pos, list, targets, size);
+                size = GenNormal<ROOK>(pos, list, targets, size);
             }
 
             u64 moves = PseudoAttacks[KING][ourKing] & (evasions ? ~us : targets);
@@ -187,21 +167,15 @@ namespace Horsie {
                 i32 to = poplsb(moves);
                 list[size++].move = Move(ourKing, to);
             }
-
+            
             if (nonEvasions) {
-                if (stm == Color::WHITE && (ourKing == static_cast<i32>(Square::E1) || pos.IsChess960)) {
-                    if (pos.CanCastle(occ, us, CastlingStatus::WK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WK), FlagCastle);
+                const auto col = (stm == Color::WHITE) ? CastlingStatus::White : CastlingStatus::Black;
+                for (auto dir : { CastlingStatus::Kingside, CastlingStatus::Queenside }) {
+                    const auto right = col & dir;
 
-                    if (pos.CanCastle(occ, us, CastlingStatus::WQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::WQ), FlagCastle);
-                }
-                else if (stm == Color::BLACK && (ourKing == static_cast<i32>(Square::E8) || pos.IsChess960)) {
-                    if (pos.CanCastle(occ, us, CastlingStatus::BK))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::BK), FlagCastle);
-
-                    if (pos.CanCastle(occ, us, CastlingStatus::BQ))
-                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(CastlingStatus::BQ), FlagCastle);
+                    if (pos.CanCastle(occ, us, right)) {
+                        list[size++].move = Move(ourKing, pos.CastlingRookSquare(right), FlagCastle);
+                    }
                 }
             }
 
@@ -231,16 +205,11 @@ namespace Horsie {
         i32 numMoves = pos.Checkers() ? Generate<GenEvasions>(pos, moveList, 0) :
                                         Generate<GenNonEvasions>(pos, moveList, 0);
 
-        const auto stm = pos.ToMove;
-        const auto ourKing   = pos.KingSquare(stm);
-        const auto theirKing = pos.KingSquare(Not(stm));
-        u64 pinned = pos.BlockingPieces(stm);
-
         ScoredMove* curr = moveList;
         ScoredMove* end = moveList + numMoves;
 
         while (curr != end) {
-            if (!pos.IsLegal(curr->move, ourKing, theirKing, pinned)) {
+            if (!pos.IsLegal(curr->move)) {
                 *curr = *--end;
                 numMoves--;
             }
@@ -253,13 +222,13 @@ namespace Horsie {
     }
 
 
-    template<> i32 GenNormalT<HORSIE>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+    template<> i32 GenNormal<HORSIE>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
         const auto stm = pos.ToMove;
         const auto& bb = pos.bb;
         const auto occ = bb.Occupancy;
 
         auto ourPieces = bb.Pieces[HORSIE] & bb.Colors[stm];
-        ourPieces &= ~pos.BlockingPieces(stm); // Knights never move when pinned
+        ourPieces &= ~pos.BlockingPieces(stm);
 
         while (ourPieces != 0) {
             auto sq = poplsb(ourPieces);
@@ -272,13 +241,13 @@ namespace Horsie {
         return size;
     }
 
-    template<> i32 GenNormalT<BISHOP>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+    template<> i32 GenNormal<BISHOP>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
         const auto stm = pos.ToMove;
         const auto& bb = pos.bb;
         const auto occ = bb.Occupancy;
         const auto ourKingSq = pos.KingSquare(stm);
 
-        auto ourPieces = bb.Pieces[BISHOP] & bb.Colors[stm];
+        auto ourPieces = (bb.Pieces[BISHOP] | bb.Pieces[QUEEN]) & bb.Colors[stm];
         auto unpinned = ourPieces & ~pos.BlockingPieces(stm);
         auto pinned = ourPieces & pos.BlockingPieces(stm);
         const auto pinners = pos.Pinners(Not(stm));
@@ -303,13 +272,13 @@ namespace Horsie {
         return size;
     }
 
-    template<> i32 GenNormalT<ROOK>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+    template<> i32 GenNormal<ROOK>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
         const auto stm = pos.ToMove;
         const auto& bb = pos.bb;
         const auto occ = bb.Occupancy;
         const auto ourKingSq = pos.KingSquare(stm);
 
-        auto ourPieces = bb.Pieces[ROOK] & bb.Colors[stm];
+        auto ourPieces = (bb.Pieces[ROOK] | bb.Pieces[QUEEN]) & bb.Colors[stm];
         auto unpinned = ourPieces & ~pos.BlockingPieces(stm);
         auto pinned = ourPieces & pos.BlockingPieces(stm);
         const auto pinners = pos.Pinners(Not(stm));
@@ -333,39 +302,6 @@ namespace Horsie {
 
         return size;
     }
-
-    template<> i32 GenNormalT<QUEEN>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
-        const auto stm = pos.ToMove;
-        const auto& bb = pos.bb;
-        const auto occ = bb.Occupancy;
-        const auto ourKingSq = pos.KingSquare(stm);
-
-        auto ourPieces = bb.Pieces[QUEEN] & bb.Colors[stm];
-        auto unpinned = ourPieces & ~pos.BlockingPieces(stm);
-        auto pinned = ourPieces & pos.BlockingPieces(stm);
-        const auto pinners = pos.Pinners(Not(stm));
-
-        while (unpinned != 0) {
-            auto sq = poplsb(unpinned);
-            auto moves = (GetBishopMoves(sq, occ) | GetRookMoves(sq, occ)) & targets;
-            while (moves != 0) {
-                list[size++].move = Move(sq, poplsb(moves));
-            }
-        }
-
-        while (pinned != 0) {
-            auto sq = poplsb(pinned);
-            auto moves = (GetBishopMoves(sq, occ) | GetRookMoves(sq, occ)) & targets;
-            moves &= RayBB[ourKingSq][sq];
-            while (moves != 0) {
-                list[size++].move = Move(sq, poplsb(moves));
-            }
-        }
-
-        return size;
-    }
-
-
 
 }
 

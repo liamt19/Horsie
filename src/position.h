@@ -92,7 +92,6 @@ namespace Horsie {
 
         bool IsPseudoLegal(Move move) const;
         bool IsLegal(Move move) const;
-        bool IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const;
 
         bool IsDraw(i16 ply = 0) const;
         bool HasLegalMoves() const;

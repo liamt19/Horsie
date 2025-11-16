@@ -7,6 +7,7 @@
 #include "precomputed.h"
 #include "util.h"
 #include "util/alloc.h"
+#include "util/dbg_hit.h"
 #include "zobrist.h"
 
 #include <cassert>
@@ -424,9 +425,7 @@ namespace Horsie {
         return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB(moveTo)) != 0 || move.IsCastle();
     }
 
-    bool Position::IsLegal(Move move) const { return IsLegal(move, State.KingSquares[ToMove], State.KingSquares[Not(ToMove)], State.BlockingPieces[ToMove]); }
-
-    bool Position::IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const {
+    bool Position::IsLegal(Move move) const {
         const auto [moveFrom, moveTo] = move.Unpack();
 
         const auto pt = bb.GetPieceAtIndex(moveFrom);
@@ -440,24 +439,29 @@ namespace Horsie {
             return false;
         }
 
+        const auto pinnedPieces = State.BlockingPieces[ToMove];
+
         const auto ourColor = ToMove;
+        const auto ourPieces = bb.Colors[ourColor];
+        const auto ourKing = State.KingSquares[ourColor];
+
         const auto theirColor = Not(ourColor);
+        const auto theirPieces = bb.Colors[theirColor];
+        const auto theirKing = State.KingSquares[theirColor];
+
+        const auto theirThreats = GetAllThreats();
 
         if (InCheck()) {
-            //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
 
             if (pt == Piece::KING) {
-                //  We need to move to a square that they don't attack.
-                //  We also need to consider (NeighborsMask[moveTo] & SquareBB[theirKing]), because bb.AttackersTo does NOT include king attacks
-                //  and we can't move to a square that their king attacks.
                 return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(moveFrom)) & bb.Colors[theirColor]) | (PseudoAttacks[KING][moveTo] & SquareBB(theirKing))) == 0;
             }
 
             i32 checker = lsb(State.Checkers);
-            if (((LineBB[ourKing][checker] & SquareBB(moveTo)) != 0)
+            if (IsSquareBetween(ourKing, checker, moveTo)
                 || (move.IsEnPassant() && GetIndexFile(moveTo) == GetIndexFile(checker))) {
 
-                return pinnedPieces == 0 || (pinnedPieces & SquareBB(moveFrom)) == 0;
+                return (pinnedPieces & SquareBB(moveFrom)) == 0;
             }
 
             //  This isn't a king move and doesn't get us out of check, so it's illegal.
@@ -469,47 +473,35 @@ namespace Horsie {
                 CastlingStatus thisCr = move.RelevantCastlingRight();
                 i32 rookSq = CastlingRookSquare(thisCr);
 
-                if ((SquareBB(rookSq) & bb.Pieces[ROOK] & bb.Colors[ourColor]) == 0) {
-                    //  There isn't a rook on the square that we are trying to castle towards.
-                    return false;
-                }
-
                 if (IsChess960 && (State.BlockingPieces[ourColor] & SquareBB(moveTo)) != 0) {
                     //  This rook was blocking a check, and it would put our king in check
                     //  once the rook and king switched places
                     return false;
                 }
 
-                i32 kingTo = (moveTo > moveFrom ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1)) ^ (ourColor * 56);
-                u64 them = bb.Colors[theirColor];
-                i32 dir = (moveFrom < kingTo) ? -1 : 1;
-                for (i32 sq = kingTo; sq != moveFrom; sq += dir) {
-                    if ((bb.AttackersTo(sq, bb.Occupancy) & them) != 0) {
-                        //  Moving here would put us in check
-                        return false;
-                    }
+
+                const auto kingTo = Orient(CastlingDestination(moveFrom, moveTo), ourColor);
+                if ((LineBB[moveFrom][kingTo] & theirThreats) != 0) {
+                    //  Moving here would put us in check
+                    return false;
                 }
 
-                return ((bb.AttackersTo(kingTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor])
-                        | (PseudoAttacks[KING][kingTo] & SquareBB(theirKing))) == 0;
+                return true;
             }
-
-            //  We can move anywhere as i64 as it isn't attacked by them.
-
-            //  SquareBB[ourKing] is masked out from bb.Occupancy to prevent kings from being able to move backwards out of check,
-            //  meaning a king on B1 in check from a rook on C1 can't actually go to A1.
-            return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor])
-                    | (PseudoAttacks[KING][moveTo] & SquareBB(theirKing))) == 0;
+            else {
+                const auto theirAttacks = (bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor]);
+                return (theirAttacks | (PseudoAttacks[KING][moveTo] & SquareBB(theirKing))) == 0;
+            }
         }
         else if (move.IsEnPassant()) {
             //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
             //  to make sure it is still legal
 
-            i32 idxPawn = moveTo - ShiftUpDir(ourColor);
-            u64 moveMask = SquareBB(moveFrom) | SquareBB(moveTo);
+            const auto idxPawn = moveTo - ShiftUpDir(ourColor);
+            const auto bitMask = SquareBB(moveFrom) | SquareBB(moveTo) | SquareBB(idxPawn); // These bits will be flipped
 
             //  This is only legal if our king is NOT attacked after the EP is made
-            return (bb.AttackersTo(ourKing, bb.Occupancy ^ (moveMask | SquareBB(idxPawn))) & bb.Colors[Not(ourColor)]) == 0;
+            return (bb.AttackersTo(ourKing, bb.Occupancy ^ bitMask) & theirPieces) == 0;
         }
 
         //  Otherwise, this move is legal if:
@@ -517,7 +509,7 @@ namespace Horsie {
         //  The piece is a blocker for our king, but it is moving along the same ray that it had been blocking previously.
         //  (i.e. a rook on B1 moving to A1 to capture a rook that was pinning it to our king on C1)
 
-        return ((State.BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || ((RayBB[moveFrom][moveTo] & SquareBB(ourKing)) != 0);
+        return ((State.BlockingPieces[ourColor] & SquareBB(moveFrom)) == 0) || IsAlignedOnRay(moveFrom, moveTo, ourKing);
     }
 
     bool Position::IsDraw(i16 ply) const {

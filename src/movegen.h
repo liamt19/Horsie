@@ -16,7 +16,7 @@ namespace Horsie {
     };
 
     template<i32 pt>
-    i32 GenNormalT(const Position& pos, ScoredMove* list, u64 targets, i32 size);
+    i32 GenNormal(const Position& pos, ScoredMove* list, u64 targets, i32 size);
 
     template<MoveGenType>
     i32 Generate(const Position& pos, ScoredMove* moveList, i32 size);

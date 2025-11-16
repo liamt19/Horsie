@@ -328,16 +328,14 @@ namespace Horsie::UCI {
             std::string fen = entry.substr(0, entry.find(";"));
             std::string nodesStr = entry.substr(entry.find(";") + 1);
 
-            u64 nodes = std::stoull(nodesStr);
             pos.LoadFromFEN(fen);
+            u64 nodes = std::stoull(nodesStr);
 
             u64 ourNodes = pos.Perft(5);
-            if (ourNodes != nodes) {
+            if (ourNodes != nodes)
                 std::cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << std::endl;
-            }
-            else {
+            else 
                 std::cout << "[" << fen << "] Passed" << std::endl;
-            }
 
             total += ourNodes;
         }
@@ -347,7 +345,6 @@ namespace Horsie::UCI {
         const auto nps = Timepoint::NPS(total, duration);
 
         std::cout << "\nTotal: " << total << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas(nps) << " nps)" << std::endl << std::endl;
-
     }
 
     void UCIClient::HandlePerftCommand(std::istringstream& is) {
