@@ -72,6 +72,7 @@ namespace Horsie {
     template<bool UpdateNN>
     void Position::MakeMove(Move move) {
         States.Add(State);
+        ThreatsHistory.Add(Threats);
         Hashes.push_back(Hash());
 
         if (UpdateNN) {
@@ -241,6 +242,7 @@ namespace Horsie {
         }
 
         State = States.RemoveLast();
+        Threats = ThreatsHistory.RemoveLast();
         Hashes.pop_back();
 
         ToMove = Not(ToMove);
@@ -248,6 +250,7 @@ namespace Horsie {
 
     void Position::MakeNullMove() {
         States.Add(State);
+        ThreatsHistory.Add(Threats);
         Hashes.push_back(Hash());
 
         if (State.EPSquare != EP_NONE) {
@@ -267,6 +270,7 @@ namespace Horsie {
 
     void Position::UnmakeNullMove() {
         State = States.RemoveLast();
+        Threats = ThreatsHistory.RemoveLast();
         Hashes.pop_back();
 
         ToMove = Not(ToMove);
@@ -317,12 +321,24 @@ namespace Horsie {
 
         i32 kingSq = State.KingSquares[Not(ToMove)];
 
-        State.CheckSquares[PAWN] = PawnAttackMasks[Not(ToMove)][kingSq];
+        State.CheckSquares[  PAWN] = PawnAttackMasks[Not(ToMove)][kingSq];
         State.CheckSquares[HORSIE] = PseudoAttacks[HORSIE][kingSq];
         State.CheckSquares[BISHOP] = attacks_bb<BISHOP>(kingSq, bb.Occupancy);
-        State.CheckSquares[ROOK] = attacks_bb<ROOK>(kingSq, bb.Occupancy);
-        State.CheckSquares[QUEEN] = State.CheckSquares[BISHOP] | State.CheckSquares[ROOK];
-        State.CheckSquares[KING] = 0;
+        State.CheckSquares[  ROOK] = attacks_bb<  ROOK>(kingSq, bb.Occupancy);
+        State.CheckSquares[ QUEEN] = State.CheckSquares[BISHOP] | State.CheckSquares[ROOK];
+        State.CheckSquares[  KING] = 0;
+
+        CalculateThreats();
+    }
+
+    void Position::CalculateThreats() {
+        const auto ntm = Not(ToMove);
+        Threats.PawnThreats   = bb.ThreatsBy<  PAWN>(ntm);
+        Threats.HorsieThreats = bb.ThreatsBy<HORSIE>(ntm);
+        Threats.BishopThreats = bb.ThreatsBy<BISHOP>(ntm);
+        Threats.RookThreats   = bb.ThreatsBy<  ROOK>(ntm);
+        Threats.QueenThreats  = bb.ThreatsBy< QUEEN>(ntm);
+        Threats.KingThreats   = bb.ThreatsBy<  KING>(ntm);
     }
 
     void Position::SetCastlingStatus(i32 c, i32 rfrom) {
@@ -705,8 +721,10 @@ namespace Horsie {
         bb.Reset();
         FullMoves = 1;
 
-        Hashes.clear();
         States.Clear();
+        ThreatsHistory.Clear();
+        Hashes.clear();
+
         State = {};
 
         unsigned char col, row, token;

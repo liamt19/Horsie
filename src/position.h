@@ -85,6 +85,7 @@ namespace Horsie {
 
         void SetState();
         void SetCheckInfo();
+        void CalculateThreats();
         void SetCastlingStatus(i32 c, i32 rfrom);
 
         u64 HashAfter(Move move) const;
@@ -107,13 +108,27 @@ namespace Horsie {
         bool HasCycle(i32 ply) const;
 
         template<i32 pt>
-        constexpr u64 ThreatsBy(i32 pc) const {
-            return bb.ThreatsBy<pt>(pc);
+        constexpr u64 ThreatsBy() const {
+            switch (pt) {
+            case PAWN:   return Threats.PawnThreats;
+            case HORSIE: return Threats.HorsieThreats;
+            case BISHOP: return Threats.BishopThreats;
+            case ROOK:   return Threats.RookThreats;
+            case QUEEN:  return Threats.QueenThreats;
+            case KING:   return Threats.KingThreats;
+            default: return 0;
+            };
+        }
+
+        constexpr u64 GetAllThreats() const {
+            return (Threats.PawnThreats | Threats.HorsieThreats | Threats.BishopThreats | Threats.RookThreats | Threats.QueenThreats | Threats.KingThreats);
         }
 
     private:
         Util::List<StateInfo, 2048> States{};
+        Util::List<Threats, 2048> ThreatsHistory{};
         std::vector<u64> Hashes{};
+        Threats Threats;
 
     };
 

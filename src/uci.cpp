@@ -128,6 +128,9 @@ namespace Horsie::UCI {
             else if (token == "datagen")
                 HandleDatagenCommand(is);
 
+            else if (token == "dbgprint")
+                DbgPrint();
+
 
             else if (std::ranges::count(token, '/') == 7) {
                 //  Reset the stream so the beginning part of the fen isn't consumed before we call SetPosition

@@ -244,4 +244,12 @@ namespace Horsie {
         CastlingStatus CastleStatus = CastlingStatus::None;
     };
 
+    struct Threats {
+        u64 PawnThreats;
+        u64 HorsieThreats;
+        u64 BishopThreats;
+        u64 RookThreats;
+        u64 QueenThreats;
+        u64 KingThreats;
+    };
 }

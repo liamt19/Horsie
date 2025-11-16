@@ -174,13 +174,15 @@ namespace Horsie {
                         :               ~occ;
 
                 size = GenPawns<GenType>(pos, list, targets, size);
-                size = GenNormal(pos, list, HORSIE, targets, size);
-                size = GenNormal(pos, list, BISHOP, targets, size);
-                size = GenNormal(pos, list, ROOK, targets, size);
-                size = GenNormal(pos, list, QUEEN, targets, size);
+                size = GenNormalT<HORSIE>(pos, list, targets, size);
+                size = GenNormalT<BISHOP>(pos, list, targets, size);
+                size = GenNormalT<ROOK>(pos, list, targets, size);
+                size = GenNormalT<QUEEN>(pos, list, targets, size);
             }
 
             u64 moves = PseudoAttacks[KING][ourKing] & (evasions ? ~us : targets);
+            moves &= ~pos.GetAllThreats();
+
             while (moves != 0) {
                 i32 to = poplsb(moves);
                 list[size++].move = Move(ourKing, to);
@@ -249,5 +251,121 @@ namespace Horsie {
 
         return numMoves;
     }
+
+
+    template<> i32 GenNormalT<HORSIE>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+        const auto stm = pos.ToMove;
+        const auto& bb = pos.bb;
+        const auto occ = bb.Occupancy;
+
+        auto ourPieces = bb.Pieces[HORSIE] & bb.Colors[stm];
+        ourPieces &= ~pos.BlockingPieces(stm); // Knights never move when pinned
+
+        while (ourPieces != 0) {
+            auto sq = poplsb(ourPieces);
+            auto moves = PseudoAttacks[HORSIE][sq] & targets;
+            while (moves != 0) {
+                list[size++].move = Move(sq, poplsb(moves));
+            }
+        }
+
+        return size;
+    }
+
+    template<> i32 GenNormalT<BISHOP>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+        const auto stm = pos.ToMove;
+        const auto& bb = pos.bb;
+        const auto occ = bb.Occupancy;
+        const auto ourKingSq = pos.KingSquare(stm);
+
+        auto ourPieces = bb.Pieces[BISHOP] & bb.Colors[stm];
+        auto unpinned = ourPieces & ~pos.BlockingPieces(stm);
+        auto pinned = ourPieces & pos.BlockingPieces(stm);
+        const auto pinners = pos.Pinners(Not(stm));
+
+        while (unpinned != 0) {
+            auto sq = poplsb(unpinned);
+            auto moves = GetBishopMoves(sq, occ) & targets;
+            while (moves != 0) {
+                list[size++].move = Move(sq, poplsb(moves));
+            }
+        }
+
+        while (pinned != 0) {
+            auto sq = poplsb(pinned);
+            auto moves = GetBishopMoves(sq, occ) & targets;
+            moves &= RayBB[ourKingSq][sq];
+            while (moves != 0) {
+                list[size++].move = Move(sq, poplsb(moves));
+            }
+        }
+
+        return size;
+    }
+
+    template<> i32 GenNormalT<ROOK>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+        const auto stm = pos.ToMove;
+        const auto& bb = pos.bb;
+        const auto occ = bb.Occupancy;
+        const auto ourKingSq = pos.KingSquare(stm);
+
+        auto ourPieces = bb.Pieces[ROOK] & bb.Colors[stm];
+        auto unpinned = ourPieces & ~pos.BlockingPieces(stm);
+        auto pinned = ourPieces & pos.BlockingPieces(stm);
+        const auto pinners = pos.Pinners(Not(stm));
+
+        while (unpinned != 0) {
+            auto sq = poplsb(unpinned);
+            auto moves = GetRookMoves(sq, occ) & targets;
+            while (moves != 0) {
+                list[size++].move = Move(sq, poplsb(moves));
+            }
+        }
+
+        while (pinned != 0) {
+            auto sq = poplsb(pinned);
+            auto moves = GetRookMoves(sq, occ) & targets;
+            moves &= RayBB[ourKingSq][sq];
+            while (moves != 0) {
+                list[size++].move = Move(sq, poplsb(moves));
+            }
+        }
+
+        return size;
+    }
+
+    template<> i32 GenNormalT<QUEEN>(const Position& pos, ScoredMove* list, u64 targets, i32 size) {
+        const auto stm = pos.ToMove;
+        const auto& bb = pos.bb;
+        const auto occ = bb.Occupancy;
+        const auto ourKingSq = pos.KingSquare(stm);
+
+        auto ourPieces = bb.Pieces[QUEEN] & bb.Colors[stm];
+        auto unpinned = ourPieces & ~pos.BlockingPieces(stm);
+        auto pinned = ourPieces & pos.BlockingPieces(stm);
+        const auto pinners = pos.Pinners(Not(stm));
+
+        while (unpinned != 0) {
+            auto sq = poplsb(unpinned);
+            auto moves = (GetBishopMoves(sq, occ) | GetRookMoves(sq, occ)) & targets;
+            while (moves != 0) {
+                list[size++].move = Move(sq, poplsb(moves));
+            }
+        }
+
+        while (pinned != 0) {
+            auto sq = poplsb(pinned);
+            auto moves = (GetBishopMoves(sq, occ) | GetRookMoves(sq, occ)) & targets;
+            moves &= RayBB[ourKingSq][sq];
+            while (moves != 0) {
+                list[size++].move = Move(sq, poplsb(moves));
+            }
+        }
+
+        return size;
+    }
+
+
+
 }
 
