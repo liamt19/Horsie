@@ -632,7 +632,6 @@ namespace Horsie {
                 R += cutNode * LMRCutNodeCoeff;
 
                 R -= ss->TTPV * LMRTTPVCoeff;
-                R -= isPV * LMRPVCoeff;
                 R -= (m == ss->KillerMove) * LMRKillerCoeff;
 
                 i32 histScore = LMRHist * moveHist +
@@ -644,7 +643,7 @@ namespace Horsie {
                 
                 R /= 128;
 
-                const auto reduced = std::max(0, std::min(newDepth - R, newDepth));
+                const auto reduced = std::max(0, std::min(newDepth - R, newDepth)) + isPV;
                 
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reduced, true);
 
