@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <iostream>
+#include <limits>
 
 constexpr size_t MaxDebugSlots = 64;
 
