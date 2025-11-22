@@ -157,7 +157,7 @@ namespace Horsie::NNUE {
     using vec_ps = float32x4_t;
 
     inline vec_i8 vec_packus_epi16(const vec_i16 a, const vec_i16 b) { return vcombine_u8(vqmovun_s16(a), vqmovun_s16(b)); }
-    inline void vec_storeu_epi8(vec_i8* a, const vec_i8 b) { vst1q_s8(a, b); }
+    inline void vec_storeu_epi8(vec_i8* a, const vec_i8 b) { vst1q_s8(reinterpret_cast<i8*>(a), b); }
 
     inline vec_ps vec_set1_ps(const float a) { return vdupq_n_f32(a); }
     inline vec_ps vec_fmadd_ps(const vec_ps a, const vec_ps b, const vec_ps c) { return vfmaq_f32(c, a, b); }
@@ -235,7 +235,7 @@ namespace Horsie::NNUE {
 
     inline void vec128_storeu_si128(vec_128i* a, const vec_128i b) {
 #ifdef ARM
-        vst1q_s16(a, b);
+        vec_storeu_i16(a, b);
 #else
         _mm_storeu_si128(a, b);
 #endif
