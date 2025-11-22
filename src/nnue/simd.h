@@ -157,7 +157,7 @@ namespace Horsie::NNUE {
     using vec_ps = float32x4_t;
 
     inline vec_i8 vec_packus_epi16(const vec_i16 a, const vec_i16 b) { return vcombine_u8(vqmovun_s16(a), vqmovun_s16(b)); }
-    inline void vec_storeu_epi8(vec_i8* a, const vec_i8 b) { vst1_s8(a, b); }
+    inline void vec_storeu_epi8(vec_i8* a, const vec_i8 b) { vst1q_s8(a, b); }
 
     inline vec_ps vec_set1_ps(const float a) { return vdupq_n_f32(a); }
     inline vec_ps vec_fmadd_ps(const vec_ps a, const vec_ps b, const vec_ps c) { return vfmaq_f32(c, a, b); }
@@ -177,7 +177,7 @@ namespace Horsie::NNUE {
     inline vec_i16 vec_min_epi16(const vec_i16 a, const vec_i16 b) { return vminq_s16(a, b); }
     inline vec_i16 vec_max_epi16(const vec_i16 a, const vec_i16 b) { return vmaxq_s16(a, b); }
     inline vec_i16 vec_load_epi16(const vec_i16* a) { return vld1q_s16(reinterpret_cast<const i16*>(a)); }
-    inline void vec_storeu_i16(vec_i16* a, const vec_i16 b) { vst1q_s16(a, b); }
+    inline void vec_storeu_i16(vec_i16* a, const vec_i16 b) { vst1q_s16(reinterpret_cast<i16*>(a), b); }
 
     inline vec_i32 vec_set1_epi32(const i32 a) { return vdupq_n_s32(a); }
     inline vec_i32 vec_add_epi32(const vec_i32 a, const vec_i32 b) { return vaddq_s32(a, b); }
@@ -235,7 +235,7 @@ namespace Horsie::NNUE {
 
     inline void vec128_storeu_si128(vec_128i* a, const vec_128i b) {
 #ifdef ARM
-        vst1q_s8(a, b);
+        vst1q_s16(a, b);
 #else
         _mm_storeu_si128(a, b);
 #endif
