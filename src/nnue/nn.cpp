@@ -128,8 +128,8 @@ namespace Horsie::NNUE {
 
             i32 offset = 0;
 
-            const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
-            vec_128i baseVec = _mm_setzero_si128();
+            const vec_128i baseInc = vec128_set1_epi16(u16(NNZ_INCREMENT));
+            vec_128i baseVec = vec128_setzero_si128();
 
             for (const auto acc : { us, them }) {
                 for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
@@ -156,10 +156,10 @@ namespace Horsie::NNUE {
                     for (i32 j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++) {
                         i32 lookup = (nnz_mask >> (j * 8)) & 0xFF;
                         auto offsets = nnzTable[lookup];
-                        _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
+                        vec128_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), vec128_add_epi16(baseVec, offsets));
 
                         nnzCount += std::popcount(static_cast<u32>(lookup));
-                        baseVec = _mm_add_epi16(baseVec, baseInc);
+                        baseVec = vec128_add_epi16(baseVec, baseInc);
                     }
                 }
 
