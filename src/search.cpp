@@ -226,7 +226,7 @@ namespace Horsie {
         const Bitboard& bb = pos.bb;
 
         Move bestMove = Move::Null();
-        const Move priorMove = CurrentMoves[ss->Ply - 1];
+        const Move priorMove = (ss->Ply > 0 ? CurrentMoves[ss->Ply - 1] : Move::Null());
 
         const auto us = pos.ToMove;
         i32 score = -ScoreMate - MaxPly;
@@ -786,7 +786,7 @@ namespace Horsie {
         const Bitboard& bb = pos.bb;
 
         Move bestMove = Move::Null();
-        const Move priorMove = CurrentMoves[ss->Ply - 1];
+        const Move priorMove = (ss->Ply > 0 ? CurrentMoves[ss->Ply - 1] : Move::Null());
 
         const auto us = pos.ToMove;
         const bool inCheck = pos.InCheck();
