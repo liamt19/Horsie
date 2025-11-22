@@ -38,6 +38,8 @@ namespace Horsie {
         constexpr i16* operator->() { return &entry; }
         constexpr operator const i16& () const { return entry; }
         void operator<<(i32 bonus) { entry += (bonus - (entry * std::abs(bonus) / ContinuationMax)); }
+
+        constexpr ContinuationEntry& operator+=(i32 v) { entry += static_cast<i16>(v); return *this; }
     };
 
     template<typename T, i32 ClampVal>
@@ -122,12 +124,19 @@ namespace Horsie {
 
 
         void UpdateContinuations(std::span<PieceToHistory* const> cont, std::span<Move const> moves, i16 ply, i32 piece, i32 dstSq, i32 bonus, bool checked) {
+            
+            const auto totalCH = GetContinuationEntry(cont, ply, 1, piece, dstSq)
+                               + GetContinuationEntry(cont, ply, 2, piece, dstSq)
+                               + GetContinuationEntry(cont, ply, 4, piece, dstSq)
+                               + GetContinuationEntry(cont, ply, 6, piece, dstSq);
+            
             for (auto i : { 1, 2, 4, 6 }) {
                 if (ply < i) break;
                 if (checked && i > 2) break;
 
-                if (moves[ply - i])
-                    (*cont[ply - i])[piece][dstSq] << bonus;
+                if (moves[ply - i]) {
+                    (*cont[ply - i])[piece][dstSq] += (bonus - (totalCH * std::abs(bonus) / ContinuationMax));
+                }
             }
         }
 
