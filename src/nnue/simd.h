@@ -1,11 +1,21 @@
 #pragma once
 
 #include "../defs.h"
+
+#ifndef ARM
 #include <immintrin.h>
+#else
+#include <arm_neon.h>
+#endif
 
 namespace Horsie::NNUE {
 
+#ifndef ARM
     using vec_128i = __m128i;
+#else
+    using vec_128i = int16x8_t;
+#endif
+
 
 #if defined(AVX512)
 
@@ -46,12 +56,6 @@ namespace Horsie::NNUE {
 
     inline float vec_hsum_ps(const vec_ps* v) {
         return _mm512_reduce_add_ps(v[0]);
-    }
-
-    inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
-        const vec_i16 product16 = vec_maddubs_epi16(vec0, vec1);
-        const vec_i32 product32 = vec_madd_epi16(product16, vec_set1_epi16(1));
-        return vec_add_epi32(sum, product32);
     }
 
 #elif defined(AVX256)
@@ -100,10 +104,72 @@ namespace Horsie::NNUE {
         return _mm_cvtss_f32(sum_32);
     }
 
-    inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
-        const vec_i16 product16 = vec_maddubs_epi16(vec0, vec1);
-        const vec_i32 product32 = vec_madd_epi16(product16, vec_set1_epi16(1));
-        return vec_add_epi32(sum, product32);
+#elif defined(ARM)
+
+    using vec_i8 = int8x16_t;
+    using vec_i16 = int16x8_t;
+    using vec_i32 = int32x4_t;
+    using vec_ps = float32x4_t;
+
+    inline vec_i8 vec_packus_epi16(const vec_i16 a, const vec_i16 b) { return vcombine_u8(vqmovun_s16(a), vqmovun_s16(b)); }
+    inline void vec_storeu_epi8(vec_i8* a, const vec_i8 b) { vst1q_s8(a, b); }
+
+    inline vec_ps vec_set1_ps(const float a) { return vdupq_n_f32(a); }
+    inline vec_ps vec_fmadd_ps(const vec_ps a, const vec_ps b, const vec_ps c) { return vfmaq_f32(c, a, b); }
+    inline vec_ps vec_min_ps(const vec_ps a, const vec_ps b) { return vminq_f32(a, b); }
+    inline vec_ps vec_max_ps(const vec_ps a, const vec_ps b) { return vmaxq_f32(a, b); }
+    inline vec_ps vec_mul_ps(const vec_ps a, const vec_ps b) { return vmulq_f32(a, b); }
+    inline vec_ps vec_cvtepi32_ps(const vec_i32 a) { return vcvtq_f32_s32(a); }
+    inline vec_ps vec_loadu_ps(const float* a) { return vld1q_f32(a); }
+    inline void vec_storeu_ps(float* a, const vec_ps b) { vst1q_f32(a, b); }
+
+    inline vec_i16 vec_set1_epi16(const i16 a) { return vdupq_n_s16(a); }
+    inline vec_i16 vec_setzero_epi16() { return vdupq_n_s16(0); }
+    inline vec_i16 vec_add_epi16(const vec_i16 a, const vec_i16 b) { return vaddq_s16(a, b); }
+    inline vec_i16 vec_sub_epi16(const vec_i16 a, const vec_i16 b) { return vsubq_s16(a, b); }
+
+    inline vec_i16 vec_slli_epi16(const vec_i16 a, const i16 i) { return vshlq_n_s16(a, i); }
+    inline vec_i16 vec_min_epi16(const vec_i16 a, const vec_i16 b) { return vminq_s16(a, b); }
+    inline vec_i16 vec_max_epi16(const vec_i16 a, const vec_i16 b) { return vmaxq_s16(a, b); }
+    inline vec_i16 vec_load_epi16(const vec_i16* a) { return vld1q_s16(a); }
+    inline void vec_storeu_i16(vec_i16* a, const vec_i16 b) { vst1q_i16(a, b); }
+
+    inline vec_i32 vec_set1_epi32(const i32 a) { return vdupq_n_s32(a); }
+    inline vec_i32 vec_add_epi32(const vec_i32 a, const vec_i32 b) { return vaddq_s32(a, b); }
+
+    inline vec_i16 vec_maddubs_epi16(const vec_i8 a, const vec_i8 b) {
+        const auto tl = vmulq_s16(vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(a))), vmovl_s8(vget_low_s8(b)));
+        const auto th = vmulq_s16(vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(a))), vmovl_s8(vget_high_s8(b)));
+        return vqaddq_s16(vuzp1q_s16(tl, th), vuzp2q_s16(tl, th));
+    }
+
+    inline vec_i16 vec_mulhi_epi16(const vec_i16 a, const vec_i16 b) {
+        const auto lo = vmull_s16(vget_low_s16(a), vget_low_s16(b));
+        const auto hi = vmull_s16(vget_high_s16(a), vget_high_s16(b));
+        return vcombine_s16(vshrn_n_s32(lo, 16), vshrn_n_s32(hi, 16));
+    }
+
+    inline vec_i32 vec_madd_epi16(const vec_i16 a, const vec_i16 b) { 
+        const auto lo = vmull_s16(vget_low_s16(a), vget_low_s16(b));
+        const auto hi = vmull_high_s16(a, b);
+        return vpaddq_s32(lo, hi);
+    }
+
+    inline uint16_t vec_nnz_mask(const vec_i32 vec) { 
+        const auto mask = vcgtq_s32(vec, vec_setzero_epi16());
+        const auto narrowed_mask = vmovn_u32(mask);
+        const auto packed_mask = vget_lane_u64(vreinterpret_u64_u16(narrowed_mask), 0);
+        const auto retVal = ((packed_mask & (1UL <<  0)) >>  0) |
+                            ((packed_mask & (1UL << 16)) >> 15) |
+                            ((packed_mask & (1UL << 32)) >> 30) |
+                            ((packed_mask & (1UL << 48)) >> 45);
+        return retVal;
+    }
+
+    inline float vec_hsum_ps(const vec_ps* v) {
+        const auto sum01 = vaddq_f32(v[0], v[1]);
+        const auto sum23 = vaddq_f32(v[2], v[3]);
+        return vaddvq_f32(vaddq_f32(sum01, sum23));
     }
 
 #else
@@ -151,12 +217,13 @@ namespace Horsie::NNUE {
         return _mm_cvtss_f32(sum_32);
     }
 
+#endif
+
+
     inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {
         const vec_i16 product16 = vec_maddubs_epi16(vec0, vec1);
         const vec_i32 product32 = vec_madd_epi16(product16, vec_set1_epi16(1));
         return vec_add_epi32(sum, product32);
     }
-
-#endif
 
 }

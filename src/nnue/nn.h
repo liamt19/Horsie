@@ -51,18 +51,11 @@ namespace Horsie::NNUE {
     };
     using Network = NetworkBase<i16, i8, float>;
 
-
-    struct alignas(64) NNZTable {
-        std::array<__m128i, 256> Entries;
-    };
-
     extern Network net;
-    extern NNZTable nnzTable;
 
     bool IsCompressed(std::istream& stream);
     void LoadZSTD(std::istream& m_stream, std::byte* dst);
     void LoadNetwork(const std::string& name);
-    void SetupNNZ();
     void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases);
     void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]);
 

@@ -8,12 +8,14 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             runtime-identifier: linux-x64
           - os: windows-latest
             runtime-identifier: win-x64
+          - os: macos-latest
+            runtime-identifier: osx-x64
       fail-fast: false
 
     steps:
