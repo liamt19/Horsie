@@ -29,6 +29,8 @@ CXXFLAGS_V3 := -march=x86-64-v3 -DAVX256 -DUSE_PEXT
 CXXFLAGS_V2 := -march=x86-64-v2 -DAVX128
 
 ARCH_DEFINES := $(shell echo | $(CXX) -march=native -E -dM -)
+IS_ARM := $(filter __aarch64__ __arm__,$(ARCH_DEFINES))
+
 ifneq ($(findstring __AVX512BW__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DAVX512
 endif
@@ -38,11 +40,15 @@ endif
 ifneq ($(findstring __AVX__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DAVX128
 endif
-ifneq ($(findstring __arm__, $(ARCH_DEFINES)),)
+
+ifneq ($(IS_ARM),)
 CXXFLAGS_NATIVE += -DARM
 endif
-ifeq ($(findstring __znver2__, $(ARCH_DEFINES)),)
-CXXFLAGS_NATIVE += -DUSE_PEXT
+
+ifeq ($(IS_ARM),)
+	ifeq ($(findstring __znver2__, $(ARCH_DEFINES)),)
+		CXXFLAGS_NATIVE += -DUSE_PEXT
+	endif
 endif
 
 
