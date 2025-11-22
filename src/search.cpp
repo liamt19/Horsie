@@ -628,17 +628,16 @@ namespace Horsie {
                 && legalMoves >= 2
                 && !(isPV && isCapture)) {
 
+                i32 histScore = LMRHist * moveHist +
+                    LMRHistSS1 * GetContinuationEntry(ss->Ply, 1, piece, moveTo) +
+                    LMRHistSS2 * GetContinuationEntry(ss->Ply, 2, piece, moveTo) +
+                    LMRHistSS4 * GetContinuationEntry(ss->Ply, 4, piece, moveTo);
+
                 R += (!improving) * LMRNotImpCoeff;
                 R += cutNode * LMRCutNodeCoeff;
 
                 R -= ss->TTPV * LMRTTPVCoeff;
                 R -= (m == ss->KillerMove) * LMRKillerCoeff;
-
-                i32 histScore = LMRHist * moveHist +
-                                LMRHistSS1 * GetContinuationEntry(ss->Ply, 1, piece, moveTo) +
-                                LMRHistSS2 * GetContinuationEntry(ss->Ply, 2, piece, moveTo) +
-                                LMRHistSS4 * GetContinuationEntry(ss->Ply, 4, piece, moveTo);
-
                 R -= (histScore / ((isCapture ? LMRCaptureDiv : LMRQuietDiv)));
                 
                 R /= 128;
@@ -658,7 +657,7 @@ namespace Horsie {
                     }
 
                     i32 bonus = (score <= alpha) ? LMRPenalty(newDepth)
-                              : (score >= beta)  ? LMRBonus(newDepth)
+                              : (score >=  beta) ? LMRBonus(newDepth)
                               :                    0;
 
                     UpdateContinuations(ss->Ply, MakePiece(us, ourPiece), moveTo, bonus, ss->InCheck);
