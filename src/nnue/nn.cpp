@@ -123,7 +123,7 @@ namespace Horsie::NNUE {
         }
     }
 
-    static void SetupNNZ() {
+    void SetupNNZ() {
         for (u32 i = 0; i < 256; i++) {
             u16* ptr = reinterpret_cast<u16*>(&nnzTable.Entries[i]);
 
@@ -419,7 +419,7 @@ namespace Horsie::NNUE {
         return (headerMaybe == ZSTD_HEADER);
     }
 
-    static void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases) {
+    void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases) {
         const i32 OneBucket = (INPUT_SIZE * L1_SIZE);
         std::vector<i16> temp(OneBucket, 0);
 
@@ -452,7 +452,7 @@ namespace Horsie::NNUE {
         }
     }
 
-    static void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]) {
+    void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]) {
         auto temp = new i8[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
         std::memcpy(temp, l1Weights, N_L1W);
 
