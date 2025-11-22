@@ -38,6 +38,9 @@ endif
 ifneq ($(findstring __AVX__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DAVX128
 endif
+ifneq ($(findstring __arm__, $(ARCH_DEFINES)),)
+CXXFLAGS_NATIVE += -DARM
+endif
 ifeq ($(findstring __znver2__, $(ARCH_DEFINES)),)
 CXXFLAGS_NATIVE += -DUSE_PEXT
 endif
