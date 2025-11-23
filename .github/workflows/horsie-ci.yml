@@ -24,5 +24,5 @@ jobs:
     - name: Run Make
       run: make EXE=horsie-${{ matrix.os }}
 
-    - name: Run Bench
-      run: ./horsie-${{ matrix.os }} bench
+    - name: Run detailed bench
+      run: echo "bench" | ./horsie-${{ matrix.os }}
