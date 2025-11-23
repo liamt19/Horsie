@@ -26,19 +26,6 @@ namespace Horsie::NNUE {
     using Span = std::span<T>;
 
     template <typename T, typename W, typename U>
-    struct alignas(64) QuantisedNetworkBase {
-        T FTWeights[INPUT_SIZE * L1_SIZE * INPUT_BUCKETS];
-        T FTBiases[L1_SIZE];
-        W L1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
-        U L1Biases[OUTPUT_BUCKETS][L2_SIZE];
-        U L2Weights[L2_SIZE][OUTPUT_BUCKETS][L3_SIZE];
-        U L2Biases[OUTPUT_BUCKETS][L3_SIZE];
-        U L3Weights[L3_SIZE][OUTPUT_BUCKETS];
-        U L3Biases[OUTPUT_BUCKETS];
-    };
-    using QuantisedNetwork = QuantisedNetworkBase<i16, i8, float>;
-
-    template <typename T, typename W, typename U>
     struct alignas(64) NetworkBase {
         std::array<T, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS> FTWeights;
         std::array<T, L1_SIZE>                              FTBiases;
@@ -51,18 +38,11 @@ namespace Horsie::NNUE {
     };
     using Network = NetworkBase<i16, i8, float>;
 
-
-    struct alignas(64) NNZTable {
-        std::array<__m128i, 256> Entries;
-    };
-
     extern Network net;
-    extern NNZTable nnzTable;
 
     bool IsCompressed(std::istream& stream);
     void LoadZSTD(std::istream& m_stream, std::byte* dst);
     void LoadNetwork(const std::string& name);
-    void SetupNNZ();
     void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases);
     void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]);
 

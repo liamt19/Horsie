@@ -31,16 +31,27 @@ namespace Horsie::NNUE {
     u64 EvalCalls = 0;
 #endif
 
-    NNZTable nnzTable;
+
+    alignas(64) constexpr std::array<vec_128i, 256> nnzTable = [] {
+        std::array<vec_128i, 256> entries = {};
+        for (u32 i = 0; i < 256; i++) {
+            u32 k = 0;
+            u16 bits[8] = {};
+
+            for (u32 j = i; j != 0; j &= j - 1) {
+                u32 lsbIndex = std::countr_zero(j);
+                bits[k++] = static_cast<u16>(lsbIndex);
+            }
+            entries[i] = std::bit_cast<vec_128i>(bits);
+        }
+
+        return entries;
+    }();
+
     Network net;
-    const Network* g_network;
+
 
     void LoadNetwork(const std::string& path) {
-        SetupNNZ();
-
-        g_network = &net;
-        std::unique_ptr<QuantisedNetwork> UQNet = std::make_unique<QuantisedNetwork>();
-        const auto dst = reinterpret_cast<std::byte*>(UQNet.get());
 
 #if defined(VS_COMP)
         std::ifstream stream(path, std::ios::binary);
@@ -48,52 +59,18 @@ namespace Horsie::NNUE {
         std::istringstream stream(std::string(reinterpret_cast<const char*>(gEVALData), gEVALSize));
 #endif
 
+        const auto dst = reinterpret_cast<std::byte*>(&net);
+
         if (IsCompressed(stream)) {
             LoadZSTD(stream, dst);
         }
         else {
-            stream.read(reinterpret_cast<char*>(dst), sizeof(QuantisedNetwork));
+            stream.read(reinterpret_cast<char*>(dst), sizeof(Network));
         }
 
-        auto& tempL1 = UQNet->L1Weights;
-
-        for (size_t i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS; i++)
-            net.FTWeights[i] = UQNet->FTWeights[i];
-
-        for (size_t i = 0; i < L1_SIZE; i++)
-            net.FTBiases[i] = UQNet->FTBiases[i];
-
-        PermuteFT(Span<i16>(net.FTWeights), Span<i16>(net.FTBiases));
-        PermuteL1(tempL1);
-
-        for (i32 bucket = 0; bucket < OUTPUT_BUCKETS; bucket++) {
-
-            for (i32 i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
-                for (i32 j = 0; j < L2_SIZE; ++j)
-                    for (i32 k = 0; k < L1_CHUNK_PER_32; ++k)
-                        net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
-                        + j * L1_CHUNK_PER_32
-                        + k] = tempL1[i * L1_CHUNK_PER_32 + k][bucket][j];
-
-            for (i32 i = 0; i < L2_SIZE; ++i)
-                net.L1Biases[bucket][i] = UQNet->L1Biases[bucket][i];
-
-            for (i32 i = 0; i < L2_SIZE; ++i)
-                for (i32 j = 0; j < L3_SIZE; ++j)
-                    net.L2Weights[bucket][i * L3_SIZE + j] = UQNet->L2Weights[i][bucket][j];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L2Biases[bucket][i] = UQNet->L2Biases[bucket][i];
-
-            for (i32 i = 0; i < L3_SIZE; ++i)
-                net.L3Weights[bucket][i] = UQNet->L3Weights[i][bucket];
-
-            net.L3Biases[bucket] = UQNet->L3Biases[bucket];
-        }
-
-        auto ws = reinterpret_cast<__m128i*>(&net.FTWeights);
-        auto bs = reinterpret_cast<__m128i*>(&net.FTBiases);
-        const i32 numChunks = sizeof(__m128i) / sizeof(i16);
+        auto ws = reinterpret_cast<vec_128i*>(&net.FTWeights);
+        auto bs = reinterpret_cast<vec_128i*>(&net.FTBiases);
+        const i32 numChunks = sizeof(vec_128i) / sizeof(i16);
 #if defined(AVX512)
         const i32 numRegi = 8;
         constexpr i32 order[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
@@ -104,9 +81,9 @@ namespace Horsie::NNUE {
         const i32 numRegi = 2;
         constexpr i32 order[] = { 0, 1 };
 #endif
-        __m128i regi[numRegi] = {};
+        vec_128i regi[numRegi] = {};
 
-        for (i32 i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS / numChunks; i += numRegi) {
+        for (i32 i = 0; i < N_FTW / numChunks; i += numRegi) {
             for (i32 j = 0; j < numRegi; j++)
                 regi[j] = ws[i + j];
 
@@ -122,21 +99,6 @@ namespace Horsie::NNUE {
                 bs[i + j] = regi[order[j]];
         }
     }
-
-    void SetupNNZ() {
-        for (u32 i = 0; i < 256; i++) {
-            u16* ptr = reinterpret_cast<u16*>(&nnzTable.Entries[i]);
-
-            u32 j = i;
-            u32 k = 0;
-            while (j != 0) {
-                u32 lsbIndex = std::countr_zero(j);
-                j &= j - 1;
-                ptr[k++] = static_cast<u16>(lsbIndex);
-            }
-        }
-    }
-
 
     i32 GetEvaluation(Position& pos) {
         const auto occ = popcount(pos.bb.Occupancy);
@@ -166,8 +128,8 @@ namespace Horsie::NNUE {
 
             i32 offset = 0;
 
-            const vec_128i baseInc = _mm_set1_epi16(u16(NNZ_INCREMENT));
-            vec_128i baseVec = _mm_setzero_si128();
+            const vec_128i baseInc = vec128_set1_epi16(u16(NNZ_INCREMENT));
+            vec_128i baseVec = vec128_setzero_si128();
 
             for (const auto acc : { us, them }) {
                 for (i32 i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2)) {
@@ -193,11 +155,11 @@ namespace Horsie::NNUE {
 
                     for (i32 j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++) {
                         i32 lookup = (nnz_mask >> (j * 8)) & 0xFF;
-                        auto offsets = nnzTable.Entries[lookup];
-                        _mm_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), _mm_add_epi16(baseVec, offsets));
+                        auto offsets = nnzTable[lookup];
+                        vec128_storeu_si128(reinterpret_cast<vec_128i*>(&nnzIndices[nnzCount]), vec128_add_epi16(baseVec, offsets));
 
                         nnzCount += std::popcount(static_cast<u32>(lookup));
-                        baseVec = _mm_add_epi16(baseVec, baseInc);
+                        baseVec = vec128_add_epi16(baseVec, baseInc);
                     }
                 }
 
@@ -337,7 +299,7 @@ namespace Horsie::NNUE {
 
     void ResetCaches(Position& pos) {
         for (auto& bucket : pos.CachedBuckets) {
-            bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = g_network->FTBiases;
+            bucket.accumulator.Sides[WHITE] = bucket.accumulator.Sides[BLACK] = net.FTBiases;
             bucket.Boards[WHITE].Reset();
             bucket.Boards[BLACK].Reset();
         }
@@ -359,7 +321,7 @@ namespace Horsie::NNUE {
 
         auto m_dStream = ZSTD_createDStream();
 
-        size_t n = sizeof(QuantisedNetwork);
+        size_t n = sizeof(Network);
         while (n > 0) {
             while (m_pos >= m_end && (m_input.pos < m_input.size || !m_stream.fail())) {
 
