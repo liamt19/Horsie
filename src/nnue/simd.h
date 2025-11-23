@@ -212,9 +212,10 @@ namespace Horsie::NNUE {
     }
 
     inline float vec_hsum_ps(const vec_ps* v) {
-        const auto sum01 = vaddq_f32(v[0], v[1]);
-        const auto sum23 = vaddq_f32(v[2], v[3]);
-        return vaddvq_f32(vaddq_f32(sum01, sum23));
+        const auto sum02 = vaddq_f32(v[0], v[2]);
+        const auto sum13 = vaddq_f32(v[1], v[3]);
+        const auto reduced = vaddq_f32(sum02, sum13);
+        return vaddvq_f32(reduced);
     }
 
 #endif
