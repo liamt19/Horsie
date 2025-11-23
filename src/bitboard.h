@@ -40,9 +40,10 @@ namespace Horsie {
         template<i32 pt>
         inline u64 ThreatsBy(i32 pc) const {
             u64 mask{};
+            const auto occ = Occupancy ^ KingMask(Not(pc));
             auto pieces = Pieces[pt] & Colors[pc];
             while (pieces != 0)
-                mask |= AttackMask<pt>(poplsb(pieces), pc, Occupancy);
+                mask |= AttackMask<pt>(poplsb(pieces), pc, occ);
 
             return mask;
         }

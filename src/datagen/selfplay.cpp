@@ -145,7 +145,7 @@ namespace Horsie::Datagen {
 
             i32 randMoveCount = RandNext(MinOpeningPly, MaxOpeningPly + 1);
             for (i32 i = 0; i < randMoveCount; i++) {
-                i32 size = Generate<GenLegal>(pos, legalMoves, 0);
+                i32 size = Generate<GenLegal>(pos, legalMoves);
                     
                 if (size == 0)
                     goto Retry;
@@ -329,7 +329,7 @@ namespace Horsie::Datagen {
         td.Reset();
 
         ScoredMove rms[MoveListSize] = {};
-        i32 size = Generate<GenLegal>(pos, rms, 0);
+        i32 size = Generate<GenLegal>(pos, rms);
 
         td.RootMoves.clear();
         for (i32 j = 0; j < size; j++) {

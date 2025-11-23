@@ -69,6 +69,14 @@ namespace Horsie {
         }
     }
 
+    constexpr bool IsSquareBetween(i32 lineStart, i32 lineEnd, i32 sq) {
+        return (LineBB[lineStart][lineEnd] & SquareBB(sq)) != 0;
+    }
+
+    constexpr bool IsAlignedOnRay(i32 sq1, i32 sq2, i32 sq3) {
+        return (RayBB[sq1][sq2] & SquareBB(sq3)) != 0;
+    }
+
 
     static u64 RookMagicNumbers[] = {
         0x1080002084104000, 0x004000B002200840, 0x0480200080300018, 0x0500042010010008, 0x0480140080180086, 0x8080020013800400, 0x0100020007000184, 0x01000200E0864100,

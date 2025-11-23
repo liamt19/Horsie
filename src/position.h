@@ -25,6 +25,7 @@ namespace Horsie {
 
         std::array<i32, 15> CastlingRookSquares = {};
         std::array<u64, 15> CastlingRookPaths = {};
+        std::array<u64, 15> CastlingKingPaths = {};
 
         bool IsChess960{};
 
@@ -51,13 +52,15 @@ namespace Horsie {
         constexpr bool GivesCheck(i32 pt, i32 sq) const { return (CheckSquares(pt) & SquareBB(sq)); }
 
         constexpr bool CanCastle(u64 boardOcc, u64 ourOcc, CastlingStatus cr) const {
-            return HasCastlingRight(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
+            return HasCastlingRight(cr) && !CastlesThruCheck(cr) && !CastlingImpeded(boardOcc, cr) && HasCastlingRook(ourOcc, cr);
         }
 
         constexpr i32 CastlingRookSquare(CastlingStatus cr) const { return CastlingRookSquares[static_cast<i32>(cr)]; }
         constexpr u64 CastlingRookPath(CastlingStatus cr) const { return CastlingRookPaths[static_cast<i32>(cr)]; }
+        constexpr u64 CastlingKingPath(CastlingStatus cr) const { return CastlingKingPaths[static_cast<i32>(cr)]; }
 
         constexpr bool HasCastlingRight(CastlingStatus cr) const { return ((State.CastleStatus & cr) != CastlingStatus::None); }
+        constexpr bool CastlesThruCheck(CastlingStatus cr) const { return (GetAllThreats() & CastlingKingPath(cr)); }
         constexpr bool CastlingImpeded(u64 boardOcc, CastlingStatus cr) const { return (boardOcc & CastlingRookPath(cr)); }
         constexpr bool HasCastlingRook(u64 ourOcc, CastlingStatus cr) const { return (bb.Pieces[ROOK] & SquareBB(CastlingRookSquare(cr)) & ourOcc); }
         constexpr bool HasNonPawnMaterial(i32 pc) const { return (((bb.Occupancy ^ bb.Pieces[PAWN] ^ bb.Pieces[KING]) & bb.Colors[pc])); }
@@ -85,13 +88,13 @@ namespace Horsie {
 
         void SetState();
         void SetCheckInfo();
+        void CalculateThreats();
         void SetCastlingStatus(i32 c, i32 rfrom);
 
         u64 HashAfter(Move move) const;
 
         bool IsPseudoLegal(Move move) const;
         bool IsLegal(Move move) const;
-        bool IsLegal(Move move, i32 ourKing, i32 theirKing, u64 pinnedPieces) const;
 
         bool IsDraw(i16 ply = 0) const;
         bool HasLegalMoves() const;
@@ -107,13 +110,27 @@ namespace Horsie {
         bool HasCycle(i32 ply) const;
 
         template<i32 pt>
-        constexpr u64 ThreatsBy(i32 pc) const {
-            return bb.ThreatsBy<pt>(pc);
+        constexpr u64 ThreatsBy() const {
+            switch (pt) {
+            case PAWN:   return Threats.PawnThreats;
+            case HORSIE: return Threats.HorsieThreats;
+            case BISHOP: return Threats.BishopThreats;
+            case ROOK:   return Threats.RookThreats;
+            case QUEEN:  return Threats.QueenThreats;
+            case KING:   return Threats.KingThreats;
+            default: return 0;
+            };
+        }
+
+        constexpr u64 GetAllThreats() const {
+            return (Threats.PawnThreats | Threats.HorsieThreats | Threats.BishopThreats | Threats.RookThreats | Threats.QueenThreats | Threats.KingThreats);
         }
 
     private:
         Util::List<StateInfo, 2048> States{};
+        Util::List<Threats, 2048> ThreatsHistory{};
         std::vector<u64> Hashes{};
+        Threats Threats;
 
     };
 

@@ -14,6 +14,7 @@
 #include "wdl.h"
 
 #include <algorithm>
+#include <assert.h>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -413,7 +414,7 @@ namespace Horsie {
             && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
 
             ScoredMove captures[MoveListSize];
-            i32 numCaps = GenerateQS(pos, captures, 0);
+            i32 numCaps = GenerateQS(pos, captures);
             AssignProbcutScores(pos, captures, numCaps);
 
             for (i32 i = 0; i < numCaps; i++) {
@@ -480,7 +481,7 @@ namespace Horsie {
         bool skipQuiets = false;
 
         ScoredMove list[MoveListSize];
-        i32 size = Generate<PseudoLegal>(pos, list, 0);
+        i32 size = Generate<PseudoLegal>(pos, list);
         AssignScores(pos, ss, list, size, ttMove);
 
         for (i32 i = 0; i < size; i++) {
@@ -863,7 +864,7 @@ namespace Horsie {
         i32 quietEvasions = 0;
 
         ScoredMove list[MoveListSize];
-        i32 size = GenerateQS(pos, list, 0);
+        i32 size = GenerateQS(pos, list);
         AssignQuiescenceScores(pos, ss, list, size, ttMove);
 
         for (i32 i = 0; i < size; i++) {
@@ -1132,9 +1133,9 @@ namespace Horsie {
         Bitboard& bb = pos.bb;
         const auto pc = pos.ToMove;
 
-        const auto pawnThreats = pos.ThreatsBy<PAWN>(Not(pc));
-        const auto minorThreats = pos.ThreatsBy<HORSIE>(Not(pc)) | pos.ThreatsBy<BISHOP>(Not(pc)) | pawnThreats;
-        const auto rookThreats = pos.ThreatsBy<ROOK>(Not(pc)) | minorThreats;
+        const auto pawnThreats = pos.ThreatsBy<PAWN>();
+        const auto minorThreats = pos.ThreatsBy<HORSIE>() | pos.ThreatsBy<BISHOP>() | pawnThreats;
+        const auto rookThreats = pos.ThreatsBy<ROOK>() | minorThreats;
 
         for (i32 i = 0; i < size; i++) {
             Move m = list[i].move;

@@ -37,6 +37,7 @@ namespace Horsie::UCI {
         
         void HandleBenchCommand(std::istringstream& is);
         void HandleBenchPerftCommand();
+        void HandleBenchFRCPerftCommand();
         void HandlePerftCommand(std::istringstream& is);
         void HandleListMovesCommand();
         void HandleMoveCommand(std::istringstream& is);

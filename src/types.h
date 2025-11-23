@@ -168,6 +168,18 @@ namespace Horsie {
 
     inline u64 operator|(Square s1, Square s2) { return SquareBB(s1) | s2; }
 
+    constexpr Square Orient(Square sq, i32 c) {
+        return static_cast<Square>(static_cast<i32>(sq) ^ (56 * c));
+    }
+
+    constexpr i32 Orient(i32 sq, i32 c) {
+        return (sq ^ (56 * c));
+    }
+
+    constexpr i32 CastlingDestination(i32 from, i32 to) {
+        return ((to > from) ? static_cast<i32>(Square::G1) : static_cast<i32>(Square::C1));
+    }
+
     constexpr bool DirectionOK(Square sq, Direction dir) {
         if (sq + dir < Square::A1 || sq + dir > Square::H8) {
             //  Make sure we aren't going off the board.
@@ -244,4 +256,12 @@ namespace Horsie {
         CastlingStatus CastleStatus = CastlingStatus::None;
     };
 
+    struct Threats {
+        u64 PawnThreats;
+        u64 HorsieThreats;
+        u64 BishopThreats;
+        u64 RookThreats;
+        u64 QueenThreats;
+        u64 KingThreats;
+    };
 }

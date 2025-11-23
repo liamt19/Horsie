@@ -71,7 +71,7 @@ namespace Horsie {
         }
 
         ScoredMove rms[MoveListSize] = {};
-        i32 size = Generate<GenLegal>(rootPosition, rms, 0);
+        i32 size = Generate<GenLegal>(rootPosition, rms);
 
         const auto isInSearchMoves = [&](const Move m) {
             if (setup.UCISearchMoves.size() == 0)

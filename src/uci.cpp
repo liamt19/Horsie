@@ -99,6 +99,9 @@ namespace Horsie::UCI {
             else if (token == "benchperft" || token == "b")
                 HandleBenchPerftCommand();
 
+            else if (token == "benchfrc" || token == "bfrc")
+                HandleBenchFRCPerftCommand();
+
             else if (token == "perft")
                 HandlePerftCommand(is);
 
@@ -127,6 +130,9 @@ namespace Horsie::UCI {
 
             else if (token == "datagen")
                 HandleDatagenCommand(is);
+
+            else if (token == "dbgprint")
+                DbgPrint();
 
 
             else if (std::ranges::count(token, '/') == 7) {
@@ -325,16 +331,14 @@ namespace Horsie::UCI {
             std::string fen = entry.substr(0, entry.find(";"));
             std::string nodesStr = entry.substr(entry.find(";") + 1);
 
-            u64 nodes = std::stoull(nodesStr);
             pos.LoadFromFEN(fen);
+            u64 nodes = std::stoull(nodesStr);
 
             u64 ourNodes = pos.Perft(5);
-            if (ourNodes != nodes) {
+            if (ourNodes != nodes)
                 std::cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << std::endl;
-            }
-            else {
+            else 
                 std::cout << "[" << fen << "] Passed" << std::endl;
-            }
 
             total += ourNodes;
         }
@@ -344,7 +348,36 @@ namespace Horsie::UCI {
         const auto nps = Timepoint::NPS(total, duration);
 
         std::cout << "\nTotal: " << total << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas(nps) << " nps)" << std::endl << std::endl;
+    }
 
+    void UCIClient::HandleBenchFRCPerftCommand() {
+        const auto startTime = Timepoint::Now();
+
+        u64 total = 0;
+        for (std::string entry : EtherealFRCFens) {
+            std::string fen = entry.substr(0, entry.find(";"));
+            std::string nodesStr = entry.substr(entry.find(";") + 1);
+
+            std::string d5Nodes = nodesStr.substr(0, nodesStr.find(";"));
+            std::string d6Nodes = nodesStr.substr(nodesStr.find(";") + 1);
+
+            pos.LoadFromFEN(fen);
+            u64 nodes = std::stoull(d5Nodes);
+
+            u64 ourNodes = pos.Perft(5);
+            if (ourNodes != nodes)
+                std::cout << "[" << fen << "] FAILED!! Expected: " << nodes << " Got: " << ourNodes << std::endl;
+            else
+                std::cout << "[" << fen << "] Passed" << std::endl;
+
+            total += ourNodes;
+        }
+
+        const auto duration = Timepoint::TimeSince(startTime);
+        const auto [durSeconds, durMillis] = Timepoint::UnpackSecondsMillis(duration);
+        const auto nps = Timepoint::NPS(total, duration);
+
+        std::cout << "\nTotal: " << total << " in " << durSeconds << "." << durMillis << "s (" << FormatWithCommas(nps) << " nps)" << std::endl << std::endl;
     }
 
     void UCIClient::HandlePerftCommand(std::istringstream& is) {
@@ -363,7 +396,7 @@ namespace Horsie::UCI {
 
     void UCIClient::HandleListMovesCommand() {
         ScoredMove pseudos[MoveListSize] = {};
-        i32 pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0], 0);
+        i32 pseudoSize = Generate<GenNonEvasions>(pos, &pseudos[0]);
 
         std::cout << "Pseudo: ";
         for (size_t i = 0; i < pseudoSize; i++)
@@ -371,7 +404,7 @@ namespace Horsie::UCI {
         std::cout << std::endl;
 
         ScoredMove legals[MoveListSize] = {};
-        i32 legalsSize = Generate<GenLegal>(pos, &legals[0], 0);
+        i32 legalsSize = Generate<GenLegal>(pos, &legals[0]);
 
         std::cout << "Legal: ";
         for (size_t i = 0; i < legalsSize; i++) {
