@@ -26,19 +26,6 @@ namespace Horsie::NNUE {
     using Span = std::span<T>;
 
     template <typename T, typename W, typename U>
-    struct alignas(64) QuantisedNetworkBase {
-        T FTWeights[INPUT_SIZE * L1_SIZE * INPUT_BUCKETS];
-        T FTBiases[L1_SIZE];
-        W L1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
-        U L1Biases[OUTPUT_BUCKETS][L2_SIZE];
-        U L2Weights[L2_SIZE][OUTPUT_BUCKETS][L3_SIZE];
-        U L2Biases[OUTPUT_BUCKETS][L3_SIZE];
-        U L3Weights[L3_SIZE][OUTPUT_BUCKETS];
-        U L3Biases[OUTPUT_BUCKETS];
-    };
-    using QuantisedNetwork = QuantisedNetworkBase<i16, i8, float>;
-
-    template <typename T, typename W, typename U>
     struct alignas(64) NetworkBase {
         std::array<T, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS> FTWeights;
         std::array<T, L1_SIZE>                              FTBiases;

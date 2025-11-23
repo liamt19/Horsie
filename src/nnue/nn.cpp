@@ -321,7 +321,7 @@ namespace Horsie::NNUE {
 
         auto m_dStream = ZSTD_createDStream();
 
-        size_t n = sizeof(QuantisedNetwork);
+        size_t n = sizeof(Network);
         while (n > 0) {
             while (m_pos >= m_end && (m_input.pos < m_input.size || !m_stream.fail())) {
 

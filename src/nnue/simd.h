@@ -228,7 +228,7 @@ namespace Horsie::NNUE {
 
     inline vec_128i vec128_set1_epi16(const i16 a) {
 #ifdef ARM
-        return vdupq_n_s16(a);
+        return vec_set1_epi16(a);
 #else
         return _mm_set1_epi16(a);
 #endif
@@ -248,7 +248,7 @@ namespace Horsie::NNUE {
 
     inline vec_128i vec128_add_epi16(const vec_128i a, const vec_128i b) {
 #ifdef ARM
-        return vaddq_s16(a, b);
+        return vec_add_epi16(a, b);
 #else
         return _mm_add_epi16(a, b);
 #endif
