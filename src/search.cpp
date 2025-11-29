@@ -636,6 +636,7 @@ namespace Horsie {
                 R += (!improving) * LMRNotImpCoeff;
                 R += cutNode * LMRCutNodeCoeff;
 
+                R -= pos.InCheck() * LMRCheckCoeff;
                 R -= ss->TTPV * LMRTTPVCoeff;
                 R -= (m == ss->KillerMove) * LMRKillerCoeff;
                 R -= (histScore / ((isCapture ? LMRCaptureDiv : LMRQuietDiv)));
