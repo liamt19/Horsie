@@ -18,31 +18,19 @@ namespace Horsie {
 namespace Horsie::NNUE {
 
     struct alignas(64) Accumulator {
-        Util::NDArray<i16, 2, L1_SIZE> Sides{};
+        Util::NDArray<float, CONV1_EXTENDED_SIZE> Accumulation{};
         NetworkUpdate Update{};
         std::array<bool, 2> NeedsRefresh = { true, true };
         std::array<bool, 2> Computed = { false, false };
 
-        const std::array<i16, L1_SIZE> operator[](const i32 c) { return Sides[c]; }
-
         void CopyTo(Accumulator* target) const {
-            target->Sides = Sides;
+            target->Accumulation = Accumulation;
             target->NeedsRefresh = NeedsRefresh;
         }
 
-        void CopyTo(Accumulator* target, const i32 c) const {
-            target->Sides[c] = Sides[c];
-            target->NeedsRefresh[c] = NeedsRefresh[c];
-        }
-
         void CopyTo(Accumulator& target) const {
-            target.Sides = Sides;
+            target.Accumulation = Accumulation;
             target.NeedsRefresh = NeedsRefresh;
-        }
-
-        void CopyTo(Accumulator& target, const i32 c) const {
-            target.Sides[c] = Sides[c];
-            target.NeedsRefresh[c] = NeedsRefresh[c];
         }
 
         void MarkDirty() {
@@ -58,7 +46,7 @@ namespace Horsie::NNUE {
             Reset();
         }
         
-        const std::array<i16, L1_SIZE> operator[](const i32 c) { return CurrentAccumulator->Sides[c]; }
+        const std::array<float, CONV1_EXTENDED_SIZE> operator[](const i32 c) { return CurrentAccumulator->Accumulation; }
         
         void Reset() { 
             HeadIndex = 0;
@@ -74,17 +62,14 @@ namespace Horsie::NNUE {
         void MakeMove(const Position& pos, Move m);
         void UndoMove();
 
-        void EnsureUpdated(Position& pos);
         void RefreshIntoCache(Position& pos);
-        void RefreshIntoCache(Position& pos, i32 perspective);
-        void RefreshFromCache(Position& pos, i32 perspective);
+        void RefreshPosition(Position& pos);
 
     private:
         std::vector<Accumulator> AccStack{};
         i32 HeadIndex{};
         Accumulator* CurrentAccumulator{};
 
-        void ProcessUpdate(Accumulator* prev, Accumulator* curr, i32 perspective);
     };
 
     struct FinnyTable {

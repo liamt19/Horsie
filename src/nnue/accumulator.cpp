@@ -11,21 +11,26 @@
 namespace Horsie::NNUE {
 
     void AccumulatorStack::MoveNext() {
+#if defined(NO)
         if (++HeadIndex == AccStack.size()) {
             AccStack.emplace_back();
         }
 
         CurrentAccumulator = &AccStack[HeadIndex];
+#endif
     }
 
     void AccumulatorStack::UndoMove() {
+#if defined(NO)
         assert(HeadIndex > 0);
         HeadIndex--;
 
         CurrentAccumulator = &AccStack[HeadIndex];
+#endif
     }
 
     void AccumulatorStack::MakeMove(const Position& pos, Move m) {
+#if defined(NO)
         const auto& bb = pos.bb;
 
         MoveNext();
@@ -107,83 +112,20 @@ namespace Horsie::NNUE {
                 bUpdate.PushSub(bCap);
             }
         }
+#endif
     }
-
-
-    void AccumulatorStack::EnsureUpdated(Position& pos) {
-
-        for (i32 perspective = 0; perspective < 2; perspective++) {
-            //  If the current state is correct for our perspective, no work is needed
-            if (CurrentAccumulator->Computed[perspective])
-                continue;
-
-            //  If the current state needs a refresh, don't bother with previous states
-            if (CurrentAccumulator->NeedsRefresh[perspective]) {
-                RefreshFromCache(pos, perspective);
-                continue;
-            }
-
-            //  Find the most recent computed or refresh-needed accumulator
-            Accumulator* curr = &AccStack[HeadIndex - 1];
-            while (!curr->Computed[perspective] && !curr->NeedsRefresh[perspective])
-                curr--;
-
-            if (curr->NeedsRefresh[perspective]) {
-                //  The most recent accumulator would need to be refreshed,
-                //  so don't bother and refresh the current one instead
-                RefreshFromCache(pos, perspective);
-            }
-            else {
-                //  Update incrementally till the current accumulator is correct
-                while (curr != CurrentAccumulator) {
-                    Accumulator* prev = curr;
-                    curr++;
-                    ProcessUpdate(prev, curr, perspective);
-                }
-            }
-        }
-    }
-
-    void AccumulatorStack::ProcessUpdate(Accumulator* prev, Accumulator* curr, i32 perspective) {
-        auto FeatureWeights = reinterpret_cast<const i16*>(&net.FTWeights[0]);
-        const auto& updates = curr->Update[perspective];
-
-        assert(updates.AddCnt != 0 || updates.SubCnt != 0);
-
-        auto src = reinterpret_cast<i16*>(&prev->Sides[perspective]);
-        auto dst = reinterpret_cast<i16*>(&curr->Sides[perspective]);
-        if (updates.AddCnt == 1 && updates.SubCnt == 1) {
-            SubAdd(src, dst,
-                   &FeatureWeights[updates.Subs[0]],
-                   &FeatureWeights[updates.Adds[0]]);
-        }
-        else if (updates.AddCnt == 1 && updates.SubCnt == 2) {
-            SubSubAdd(src, dst,
-                      &FeatureWeights[updates.Subs[0]],
-                      &FeatureWeights[updates.Subs[1]],
-                      &FeatureWeights[updates.Adds[0]]);
-        }
-        else if (updates.AddCnt == 2 && updates.SubCnt == 2) {
-            SubSubAddAdd(src, dst,
-                         &FeatureWeights[updates.Subs[0]],
-                         &FeatureWeights[updates.Subs[1]],
-                         &FeatureWeights[updates.Adds[0]],
-                         &FeatureWeights[updates.Adds[1]]);
-        }
-        curr->Computed[perspective] = true;
-    }
-
 
     void AccumulatorStack::RefreshIntoCache(Position& pos) {
-        RefreshIntoCache(pos, WHITE);
-        RefreshIntoCache(pos, BLACK);
+        RefreshPosition(pos);
     }
 
-    void AccumulatorStack::RefreshIntoCache(Position& pos, i32 perspective) {
+    void AccumulatorStack::RefreshPosition(Position& pos) {
+#if defined(NO)
+        i32 perspective = pos.ToMove;
         auto accumulator = CurrentAccumulator;
         Bitboard& bb = pos.bb;
 
-        accumulator->Sides[perspective] = net.FTBiases;
+        std::memcpy(&accumulator->Accumulation, &net.Conv1Weights, sizeof(accumulator->Accumulation));
         accumulator->NeedsRefresh[perspective] = false;
         accumulator->Computed[perspective] = true;
 
@@ -197,62 +139,11 @@ namespace Horsie::NNUE {
 
             i32 idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
 
-            const auto accum = reinterpret_cast<i16*>(&accumulator->Sides[perspective]);
-            const auto weights = &net.FTWeights[idx];
+            const auto accum = reinterpret_cast<i16*>(&accumulator->Accumulation);
+            const auto weights = accum;// &net.FTWeights[idx];
             Add(accum, accum, weights);
         }
-
-        auto& cache = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-        auto& entryBB = cache.Boards[perspective];
-        auto& entryAcc = cache.accumulator;
-
-        accumulator->CopyTo(entryAcc, perspective);
-        bb.CopyTo(entryBB);
-    }
-
-    void AccumulatorStack::RefreshFromCache(Position& pos, i32 perspective) {
-        auto accumulator = CurrentAccumulator;
-        Bitboard& bb = pos.bb;
-
-        i32 ourKing = pos.KingSquare(perspective);
-
-        auto& rtEntry = pos.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-        auto& entryBB = rtEntry.Boards[perspective];
-        auto& entryAcc = rtEntry.accumulator;
-
-        auto ourAccumulation = reinterpret_cast<i16*>(&entryAcc.Sides[perspective]);
-        accumulator->NeedsRefresh[perspective] = false;
-
-        for (i32 pc = 0; pc < COLOR_NB; pc++) {
-            for (i32 pt = 0; pt < PIECE_NB; pt++) {
-                u64 prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
-                u64 curr =      bb.Pieces[pt] &      bb.Colors[pc];
-
-                u64 added   = curr & ~prev;
-                u64 removed = prev & ~curr;
-
-                while (added != 0) {
-                    i32 sq = poplsb(added);
-                    i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-
-                    const auto weights = &net.FTWeights[idx];
-                    Add(ourAccumulation, ourAccumulation, weights);
-                }
-
-                while (removed != 0) {
-                    i32 sq = poplsb(removed);
-                    i32 idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-
-                    const auto weights = &net.FTWeights[idx];
-                    Sub(ourAccumulation, ourAccumulation, weights);
-                }
-            }
-        }
-
-        entryAcc.CopyTo(accumulator, perspective);
-        bb.CopyTo(entryBB);
-
-        accumulator->Computed[perspective] = true;
+#endif
     }
 
 }

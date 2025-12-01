@@ -11,6 +11,11 @@ using namespace Horsie;
 
 i32 main(i32 argc, char* argv[]) {
 
+#if defined(VS_COMP)
+#undef EVALFILE
+#define EVALFILE "conv1.bin"
+#endif
+
     NNUE::LoadNetwork(std::string(EVALFILE));
     Precomputed::Init();
     Zobrist::Init();
