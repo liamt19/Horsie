@@ -1098,7 +1098,7 @@ namespace Horsie {
             const auto capturedPiece = bb.GetPieceAtIndex(moveTo);
 
             if (m == ttMove) {
-                list[i].score = INT32_MAX - 100000;
+                list[i].score = -(INT32_MAX - 100000);
             }
             else if (capturedPiece != Piece::NONE && !m.IsCastle()) {
                 const auto hist = GetNoisyHistory(MakePiece(pc, pt), moveTo, capturedPiece);
