@@ -410,7 +410,7 @@ namespace Horsie {
             && !isPV
             && !doSkip
             && std::abs(beta) < ScoreTTWin
-            && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
+            && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta || (tte->PV() && (tte->Bound() & BoundUpper)))) {
 
             ScoredMove captures[MoveListSize];
             i32 numCaps = GenerateQS(pos, captures, 0);
