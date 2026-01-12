@@ -416,6 +416,8 @@ namespace Horsie {
             i32 numCaps = GenerateQS(pos, captures, 0);
             AssignProbcutScores(pos, captures, numCaps);
 
+            i32 pcDepth = ProbcutDepthTable[depth];
+
             for (i32 i = 0; i < numCaps; i++) {
                 Move m = OrderNextMove(captures, numCaps, i);
                 if (!pos.IsLegal(m) || !pos.SEE_GE(m, std::max(1, probBeta - ss->StaticEval))) {
@@ -438,13 +440,13 @@ namespace Horsie {
 
                 if (score >= probBeta) {
                     //  Verify at a low depth
-                    score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, pcDepth, !cutNode);
                 }
 
                 pos.UnmakeMove(m);
 
                 if (score >= probBeta) {
-                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
+                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, pcDepth + 1, m, rawEval, TT->Age, ss->TTPV);
                     return score;
                 }
             }

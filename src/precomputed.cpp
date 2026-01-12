@@ -29,6 +29,7 @@ namespace Horsie {
 
     Util::NDArray<i32, MaxPly, MoveListSize> LogarithmicReductionTable = {};
     Util::NDArray<i32, 2, MaxDepth> LMPTable = {};
+    std::array<i32, MaxPly> ProbcutDepthTable = {};
 
     namespace {
         std::array<u64, 0x19000> RookTable = {};    // To store rook attacks
@@ -106,6 +107,12 @@ namespace Horsie {
         for (i32 depth = 0; depth < MaxDepth; depth++) {
             LMPTable[0][depth] = (3 + (depth * depth)) / 2;
             LMPTable[1][depth] = 3 + (depth * depth);
+        }
+
+        for (i32 depth = 1; depth < MaxPly; depth++) {
+            auto v = 32.0 * std::log10((static_cast<double>(depth) / 13.5) + 0.5) + 3.7;
+            v = std::max(0.0, v);
+            ProbcutDepthTable[depth] = static_cast<i32>(v);
         }
     }
 

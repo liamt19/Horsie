@@ -17,6 +17,7 @@ namespace Horsie {
 
     extern Util::NDArray<i32, MaxPly, MoveListSize> LogarithmicReductionTable;
     extern Util::NDArray<i32, 2, MaxDepth> LMPTable;
+    extern std::array<i32, MaxPly> ProbcutDepthTable;
 
     namespace Precomputed {
         void Init();
