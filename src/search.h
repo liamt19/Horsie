@@ -62,6 +62,7 @@ namespace Horsie {
             i16 DoubleExtensions;
             i16 Ply;
             i16 StaticEval;
+            i16 Reduction;
             Move KillerMove;
             Move Skip;
             bool InCheck;
@@ -73,7 +74,7 @@ namespace Horsie {
             void Clear() {
                 Skip = KillerMove = Move::Null();
 
-                Ply = 0;
+                Ply = Reduction = 0;
                 DoubleExtensions = 0;
                 StaticEval = ScoreNone;
 
