@@ -420,7 +420,7 @@ namespace Horsie {
             && !isPV
             && !doSkip
             && std::abs(beta) < ScoreTTWin
-            && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta)) {
+            && (!ss->TTHit || tte->Depth() < depth - 3 || tte->Score() >= probBeta || (tte->PV() && (tte->Bound() & BoundUpper)))) {
 
             ScoredMove captures[MoveListSize];
             i32 numCaps = GenerateQS(pos, captures, 0);
@@ -446,15 +446,26 @@ namespace Horsie {
 
                 score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1);
 
+                const auto ogProbDepth = std::max(0, depth - 3);
+                auto pcRealDepth = std::max(0, depth - 3 - std::clamp(((score - probBeta - 50) / 300), 0, 3));
+                const auto raisedBeta = std::clamp(probBeta + (ogProbDepth - pcRealDepth) * 275, -ScoreInfinite + 1, ScoreInfinite);
+
                 if (score >= probBeta) {
                     //  Verify at a low depth
-                    score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -raisedBeta, -raisedBeta + 1, pcRealDepth, !cutNode);
+                    if (score < raisedBeta && probBeta < raisedBeta) {
+                        pcRealDepth = ogProbDepth;
+                        score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, pcRealDepth, !cutNode);
+                    }
+                    else {
+                        probBeta = raisedBeta;
+                    }
                 }
 
                 pos.UnmakeMove(m);
 
                 if (score >= probBeta) {
-                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, depth - 2, m, rawEval, TT->Age, ss->TTPV);
+                    tte->Update(pos.Hash(), MakeTTScore(static_cast<i16>(score), ss->Ply), TTNodeType::Alpha, pcRealDepth + 1, m, rawEval, TT->Age, ss->TTPV);
                     return score;
                 }
             }
