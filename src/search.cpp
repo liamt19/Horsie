@@ -336,12 +336,10 @@ namespace Horsie {
         if (!isPV
             && !doSkip
             && !ss->InCheck
-            && depth >= 2
-            && (ss - 1)->Reduction >= 1
-            && (ss - 1)->StaticEval != ScoreNone
-            && (ss->StaticEval + (ss - 1)->StaticEval) >= 140) {
+            && (ss - 1)->Reduction >= 2
+            && (ss->StaticEval + (ss - 1)->StaticEval) < 0) {
 
-            depth -= 1;
+            depth += 1;
         }
 
         if (UseRFP
