@@ -333,6 +333,14 @@ namespace Horsie {
             UpdateMainHistory(Not(us), priorMove, bonus);
         }
 
+        if (!isPV
+            && !doSkip
+            && !ss->InCheck
+            && (ss - 1)->Reduction >= 2
+            && (ss->StaticEval + (ss - 1)->StaticEval) < 0) {
+
+            depth += 1;
+        }
 
         if (UseRFP
             && !ss->TTPV
@@ -644,7 +652,9 @@ namespace Horsie {
 
                 const auto reduced = std::max(0, std::min(newDepth - R, newDepth)) + isPV;
                 
+                ss->Reduction = static_cast<i16>(newDepth - reduced);
                 score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reduced, true);
+                ss->Reduction = 0;
 
                 if (score > alpha && reduced < newDepth) {
                     bool    deeper = score > (bestScore + DeeperMargin + 4 * newDepth);
