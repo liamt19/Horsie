@@ -643,6 +643,7 @@ namespace Horsie {
 
                 R += (!improving) * LMRNotImpCoeff;
                 R += cutNode * LMRCutNodeCoeff;
+                R += (ss->TTPV && ttScore != ScoreNone && ttScore <= alpha) * 128;
 
                 R -= ss->TTPV * LMRTTPVCoeff;
                 R -= (m == ss->KillerMove) * LMRKillerCoeff;
