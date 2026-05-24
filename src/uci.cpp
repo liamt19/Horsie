@@ -354,7 +354,10 @@ namespace Horsie::UCI {
 
         const auto startTime = Timepoint::Now();
         u64 nodes = pos.SplitPerft(depth);
-        const auto duration = Timepoint::TimeSince(startTime);
+        auto duration = Timepoint::TimeSince(startTime);
+
+        duration = std::max<u64>(duration, 1);
+
         const auto [durSeconds, durMillis] = Timepoint::UnpackSecondsMillis(duration);
         const auto nps = Timepoint::NPS(nodes, duration);
 

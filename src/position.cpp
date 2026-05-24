@@ -602,6 +602,10 @@ namespace Horsie {
     }
 
     u64 Position::SplitPerft(i32 depth) {
+        if (depth <= 0) {
+            return 0;
+        }
+
         ScoredMove movelist[MoveListSize];
         ScoredMove* list = &movelist[0];
         i32 size = Generate<GenLegal>(*this, list, 0);
@@ -611,7 +615,7 @@ namespace Horsie {
             Move m = list[i].move;
 
             MakeMove<false>(m);
-            n = Perft(depth - 1);
+            n = (depth == 1) ? 1 : Perft(depth - 1);
             total += n;
             UnmakeMove<false>(m);
 
