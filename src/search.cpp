@@ -728,7 +728,6 @@ namespace Horsie {
                     }
 
                     if (score >= beta) {
-                        UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
                         break;
                     }
 
@@ -752,6 +751,9 @@ namespace Horsie {
             if (didSkip) {
                 bestScore = alpha;
             }
+        }
+        else if (bestMove) {
+            UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
         }
 
         if (bestScore <= alpha) {
