@@ -304,7 +304,7 @@ namespace Horsie {
         else if (ss->TTHit) {
             rawEval = tte->StatEval() != ScoreNone ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, rawEval, ss->Ply);
 
             if (ttScore != ScoreNone && (tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0) {
                 eval = ttScore;
@@ -313,7 +313,7 @@ namespace Horsie {
         else {
             rawEval = NNUE::GetEvaluation(pos);
 
-            eval = ss->StaticEval = AdjustEval(pos, rawEval);
+            eval = ss->StaticEval = AdjustEval(pos, rawEval, ss->Ply);
 
             tte->Update(pos.Hash(), ScoreNone, TTNodeType::Invalid, TTEntry::DepthNone, Move::Null(), rawEval, TT->Age, ss->TTPV);
         }
@@ -553,7 +553,7 @@ namespace Horsie {
                 i32 futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (shallowHist / NMFutMarginDiv);
                 if (isQuiet 
                     && !ss->InCheck
-                    && lmrDepth <= 8 
+                    && lmrDepth <= 8
                     && ss->StaticEval + futilityMargin < alpha) {
                     skipQuiets = true;
                     continue;
@@ -842,7 +842,7 @@ namespace Horsie {
             if (ss->TTHit) {
                 rawEval = (tte->StatEval() != ScoreNone) ? tte->StatEval() : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, rawEval, ss->Ply);
 
                 if (ttScore != ScoreNone && ((tte->Bound() & (ttScore > eval ? BoundLower : BoundUpper)) != 0)) {
                     eval = ttScore;
@@ -851,7 +851,7 @@ namespace Horsie {
             else {
                 rawEval = (priorMove == Move::Null()) ? (-(ss - 1)->StaticEval) : NNUE::GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(pos, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, rawEval, ss->Ply);
             }
 
             if (eval >= beta) {
@@ -1008,10 +1008,10 @@ namespace Horsie {
 
     }
 
-    i16 SearchThread::AdjustEval(Position& pos, i16 rawEval) const {
+    i16 SearchThread::AdjustEval(const Position& pos, i16 rawEval, i16 ply) const {
 
         const auto hmvScaled = (rawEval * (200 - pos.HalfmoveClock())) / 200;
-        const auto corr = GetCorrection(pos);
+        const auto corr = GetCorrection(pos, ply);
 
         return static_cast<i16>(hmvScaled + corr);
     }

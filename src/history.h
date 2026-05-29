@@ -138,14 +138,16 @@ namespace Horsie {
             return (*cont[ply - i])[piece][dstSq];
         }
 
-        i32 GetCorrection(const Position& pos) const {
+        i32 GetCorrection(const Position& pos, const i16 ply) const {
             const auto us = pos.ToMove;
 
             i32 corr = 0;
             corr += PawnCorrCoeff * PawnCorrection[us][pos.PawnHash() % CorrectionSize];
             corr += NonPawnCorrCoeff * NonPawnCorrection[us][pos.NonPawnHash(Color::WHITE) % CorrectionSize];
             corr += NonPawnCorrCoeff * NonPawnCorrection[us][pos.NonPawnHash(Color::BLACK) % CorrectionSize];
-            corr /= CorrDivisor;
+
+            const auto plyFactor = std::clamp(1.0 + ((static_cast<double>(ply) - 8) / 96.0), 1.0, 1.4);
+            corr = static_cast<i32>(corr * plyFactor) / CorrDivisor;
 
             return corr;
         }

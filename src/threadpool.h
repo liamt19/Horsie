@@ -100,7 +100,7 @@ namespace Horsie {
         i32 QSearch(Position& pos, SearchStackEntry* ss, i32 alpha, i32 beta);
 
         void UpdateCorrectionHistory(Position& pos, i32 diff, i32 depth);
-        i16 AdjustEval(Position& pos, i16 rawEval) const;
+        i16 AdjustEval(const Position& pos, i16 rawEval, const i16 ply) const;
 
         void AssignProbcutScores(Position& pos, ScoredMove* list, i32 size) const;
         void AssignQuiescenceScores(Position& pos, SearchStackEntry* ss, ScoredMove* list, i32 size, Move ttMove) const;
@@ -142,7 +142,7 @@ namespace Horsie {
         inline void ClearContinuations() { Continuations.fill(NullContHist()); }
         inline PieceToHistory* NullContHist() { return &(History.Continuations[0][0][0][0]); }
 
-        i32 GetCorrection(Position& pos) const { return History.GetCorrection(pos); }
+        i32 GetCorrection(const Position& pos, const i16 ply) const { return History.GetCorrection(pos, ply); }
         void UpdateCorrections(const Position& pos, i32 diff, i32 depth) { History.UpdateCorrections(pos, diff, depth); }
 
         i16 GetPlyHistory(i16 ply, Move m) const {
