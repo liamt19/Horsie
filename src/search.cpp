@@ -723,17 +723,15 @@ namespace Horsie {
 
                 if (score > alpha) {
                     bestMove = m;
+                    alpha = score;
 
                     if (isPV && !isRoot) {
                         UpdatePV(ss->PV, m, (ss + 1)->PV);
                     }
 
                     if (score >= beta) {
-                        UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
                         break;
                     }
-
-                    alpha = score;
                 }
             }
 
@@ -753,6 +751,9 @@ namespace Horsie {
             if (didSkip) {
                 bestScore = alpha;
             }
+        }
+        else if (alpha != startAlpha) {
+            UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
         }
 
         if (bestScore <= alpha) {
