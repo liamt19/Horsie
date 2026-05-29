@@ -63,6 +63,7 @@ namespace Horsie {
     UCI_OPTION(LMRNotImpCoeff, 119)
     UCI_OPTION(LMRCutNodeCoeff, 280)
     UCI_OPTION(LMRTTPVCoeff, 124)
+    UCI_OPTION(LMRTTPVFailLowCoeff, 128)
     UCI_OPTION(LMRKillerCoeff, 129)
 
     UCI_OPTION(LMRHist, 189)
