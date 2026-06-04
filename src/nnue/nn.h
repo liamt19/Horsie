@@ -27,14 +27,14 @@ namespace Horsie::NNUE {
 
     template <typename T, typename W, typename U>
     struct alignas(64) NetworkBase {
-        std::array<T, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS> FTWeights;
-        std::array<T, L1_SIZE>                              FTBiases;
-        Util::NDArray<W, OUTPUT_BUCKETS, L1_SIZE * L2_SIZE> L1Weights;
-        Util::NDArray<U, OUTPUT_BUCKETS, L2_SIZE>           L1Biases;
-        Util::NDArray<U, OUTPUT_BUCKETS, L2_SIZE * L3_SIZE> L2Weights;
-        Util::NDArray<U, OUTPUT_BUCKETS, L3_SIZE>           L2Biases;
-        Util::NDArray<U, OUTPUT_BUCKETS, L3_SIZE>           L3Weights;
-        std::array<U, OUTPUT_BUCKETS>                       L3Biases;
+        std::array<T, INPUT_SIZE * L1_SIZE * INPUT_BUCKETS>     FTWeights;
+        std::array<T, L1_SIZE>                                  FTBiases;
+        Util::NDArray<W, OUTPUT_BUCKETS, L1_SIZE * L2_SIZE>     L1Weights;
+        Util::NDArray<U, OUTPUT_BUCKETS, L2_SIZE>               L1Biases;
+        Util::NDArray<U, OUTPUT_BUCKETS, L2_SIZE * 2 * L3_SIZE> L2Weights;
+        Util::NDArray<U, OUTPUT_BUCKETS, L3_SIZE>               L2Biases;
+        Util::NDArray<U, OUTPUT_BUCKETS, L3_SIZE>               L3Weights;
+        std::array<U, OUTPUT_BUCKETS>                           L3Biases;
     };
     using Network = NetworkBase<i16, i8, float>;
 
@@ -54,14 +54,14 @@ namespace Horsie::NNUE {
 
 
     constexpr i32 KingBuckets[] = {
-         0,  1,  2,  3, 17, 16, 15, 14,
-         4,  5,  6,  7, 21, 20, 19, 18,
-         8,  9, 10, 11, 25, 24, 23, 22,
-         8,  9, 10, 11, 25, 24, 23, 22,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
-        12, 12, 13, 13, 27, 27, 26, 26,
+        0, 1, 2, 3, 13, 12, 11, 10,
+        4, 4, 5, 5, 15, 15, 14, 14,
+        6, 6, 6, 6, 16, 16, 16, 16,
+        7, 7, 7, 7, 17, 17, 17, 17,
+        8, 8, 8, 8, 18, 18, 18, 18,
+        8, 8, 8, 8, 18, 18, 18, 18,
+        9, 9, 9, 9, 19, 19, 19, 19,
+        9, 9, 9, 9, 19, 19, 19, 19
     };
 
     constexpr i32 BucketForPerspective(i32 ksq, i32 perspective) {

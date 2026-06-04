@@ -115,7 +115,7 @@ namespace Horsie::NNUE {
         const auto them = Span<i16>(accumulator->Sides[Not(pos.ToMove)]);
 
         i8 ft_outputs[L1_SIZE];
-        float L1Outputs[L2_SIZE];
+        float L1Outputs[L2_SIZE * 2];
         float L2Outputs[L3_SIZE];
         float L3Output = 0;
 
@@ -196,12 +196,14 @@ namespace Horsie::NNUE {
 
             const auto zero = vec_set1_ps(0.0f);
             const auto one = vec_set1_ps(1.0f);
+            constexpr auto dualOffset = L2_SIZE / F32_CHUNK_SIZE;
             for (i32 i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i) {
                 const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
                 const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
-                const auto clipped = vec_min_ps(vec_max_ps(sumPs, zero), one);
-                const auto squared = vec_mul_ps(clipped, clipped);
-                vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], squared);
+                const auto clipped = vec_clamp_ps(sumPs, zero, one);
+                const auto squared = vec_clamp_ps(vec_sqr_ps(sumPs), zero, one);
+                vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], clipped);
+                vec_storeu_ps(&outputs[(i + dualOffset) * F32_CHUNK_SIZE], squared);
             }
         }
 
@@ -217,7 +219,7 @@ namespace Horsie::NNUE {
             for (i32 i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
                 sumVecs[i] = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
 
-            for (i32 i = 0; i < L2_SIZE; ++i) {
+            for (i32 i = 0; i < L2_SIZE * 2; ++i) {
                 const auto inputVec = vec_set1_ps(inputs[i]);
                 const auto weight = reinterpret_cast<const vec_ps*>(&weights[i * L3_SIZE]);
                 for (i32 j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)

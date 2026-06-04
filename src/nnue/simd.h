@@ -261,4 +261,6 @@ namespace Horsie::NNUE {
         return vec_add_epi32(sum, product32);
     }
 
+    inline vec_ps vec_clamp_ps(const vec_ps a, const vec_ps b, const vec_ps c) { return vec_min_ps(vec_max_ps(a, b), c); }
+    inline vec_ps vec_sqr_ps(const vec_ps a) { return vec_mul_ps(a, a); }
 }
