@@ -201,7 +201,7 @@ namespace Horsie::NNUE {
                 const auto biasVec = vec_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
                 const auto sumPs = vec_fmadd_ps(vec_cvtepi32_ps(sums[i]), sumMul, biasVec);
                 const auto clipped = vec_clamp_ps(sumPs, zero, one);
-                const auto squared = vec_clamp_ps(vec_sqr_ps(sumPs), zero, one);
+                const auto squared = vec_min_ps(vec_sqr_ps(sumPs), one);
                 vec_storeu_ps(&outputs[i * F32_CHUNK_SIZE], clipped);
                 vec_storeu_ps(&outputs[(i + dualOffset) * F32_CHUNK_SIZE], squared);
             }
@@ -383,56 +383,6 @@ namespace Horsie::NNUE {
         return (headerMaybe == ZSTD_HEADER);
     }
 
-    void PermuteFT(Span<i16> ftWeights, Span<i16> ftBiases) {
-        const i32 OneBucket = (INPUT_SIZE * L1_SIZE);
-        std::vector<i16> temp(OneBucket, 0);
-
-        for (i32 bucket = 0; bucket < INPUT_BUCKETS; bucket++) {
-            Span<i16> ftBucket = Span<i16>(&ftWeights[(bucket * OneBucket)], OneBucket);
-
-            for (size_t i = 0; i < OneBucket; i++)
-                temp[i] = ftBucket[i];
-
-            for (i32 i = 0; i < INPUT_SIZE; i++) {
-                for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++) {
-                    i32 src = PermuteIndices[dst];
-                    auto f = i * L1_SIZE;
-
-                    ftBucket[f + dst] = temp[f + src];
-                    ftBucket[f + dst + L1_PAIR_COUNT] = temp[f + src + L1_PAIR_COUNT];
-                }
-            }
-        }
-
-        std::vector<i16> temp2(L1_SIZE, 0);
-        for (i32 i = 0; i < L1_SIZE; i++)
-            temp2[i] = ftBiases[i];
-
-        for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++) {
-            i32 src = PermuteIndices[dst];
-
-            ftBiases[dst] = temp2[src];
-            ftBiases[dst + L1_PAIR_COUNT] = temp2[src + L1_PAIR_COUNT];
-        }
-    }
-
-    void PermuteL1(i8 l1Weights[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE]) {
-        auto temp = new i8[L1_SIZE][OUTPUT_BUCKETS][L2_SIZE];
-        std::memcpy(temp, l1Weights, N_L1W);
-
-        for (i32 dst = 0; dst < L1_PAIR_COUNT; dst++) {
-            i32 src = PermuteIndices[dst];
-
-            for (i32 b = 0; b < OUTPUT_BUCKETS; b++) {
-                for (i32 l2 = 0; l2 < L2_SIZE; l2++) {
-                    l1Weights[dst][b][l2] = temp[src][b][l2];
-                    l1Weights[dst + L1_PAIR_COUNT][b][l2] = temp[src + L1_PAIR_COUNT][b][l2];
-                }
-            }
-        }
-
-        delete[] temp;
-    }
 
     void SubSubAddAdd(const i16* _src, i16* _dst, const i16* _sub1, const i16* _sub2, const i16* _add1, const i16* _add2) {
         const vec_i16* src = reinterpret_cast<const vec_i16*>(_src);
