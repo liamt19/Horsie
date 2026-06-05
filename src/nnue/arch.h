@@ -13,7 +13,7 @@ namespace Horsie::NNUE {
 
     constexpr auto FT_QUANT = 255;
     constexpr auto FT_SHIFT = 10;
-    constexpr auto L1_QUANT = 96;
+    //constexpr auto L1_QUANT = 64;
     constexpr auto OutputScale = 400;
 
     constexpr auto U8_CHUNK_SIZE = sizeof(vec_i8) / sizeof(u8);
@@ -34,7 +34,7 @@ namespace Horsie::NNUE {
 
     constexpr auto SIMD_CHUNKS = L1_SIZE / (sizeof(vec_i16) / sizeof(i16));
 
-    constexpr float L1_MUL = (1 << FT_SHIFT) / static_cast<float>(FT_QUANT * FT_QUANT * L1_QUANT);
+    //constexpr float L1_MUL = (1 << FT_SHIFT) / static_cast<float>(FT_QUANT * FT_QUANT * L1_QUANT);
 
     constexpr auto N_FTW = INPUT_SIZE * L1_SIZE * INPUT_BUCKETS;
     constexpr auto N_FTB = L1_SIZE;

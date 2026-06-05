@@ -68,6 +68,11 @@ namespace Horsie::NNUE {
         return (KingBuckets[(ksq ^ (56 * perspective))]);
     }
 
+    constexpr u32 L1Quantization[] = {
+         97, 114, 108, 132,
+        134, 135, 138, 110
+    };
+
 
     template<typename IntType>
     inline IntType read_little_endian(std::istream& stream) {
